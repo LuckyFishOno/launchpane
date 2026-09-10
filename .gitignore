@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode local/generated data
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Local build artifacts
+Builds/
+build.log
+*.profraw
+*.profdata
+
+# Local patch / experiment backups
+*.backup-*
+.animation-backup-*/
+*.xcodeproj.backup-*/
+
+# Temporary files
+*.tmp
+*.orig
+*~

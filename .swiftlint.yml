@@ -1,0 +1,22 @@
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - DerivedData
+
+disabled_rules:
+  - trailing_comma
+
+line_length:
+  warning: 120
+  error: 160
+
+identifier_name:
+  min_length: 2
+
+opt_in_rules:
+  - empty_count
+  - fatal_error_message
+  - first_where
+  - sorted_imports
