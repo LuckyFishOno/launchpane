@@ -19,14 +19,20 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 
 OpenLaunchpad is currently distributed without an Apple Developer ID signature or Apple notarization.
 
-On first launch, macOS may block the application. If this happens:
+On first launch, macOS may display an **“OpenLaunchpad” Not Opened** warning because it cannot verify the application.
 
-1. Try to open OpenLaunchpad once.
+If this happens:
+
+1. Click **Done**. Do not choose **Move to Trash**.
 2. Open **System Settings → Privacy & Security**.
-3. Find the security message for OpenLaunchpad and choose **Open Anyway**.
-4. Confirm that you want to open the application.
+3. Scroll down to the **Security** section.
+4. Find the message stating that OpenLaunchpad was blocked and click **Open Anyway**.
+5. Authenticate with your password or Touch ID if requested.
+6. Confirm by clicking **Open**.
 
-This is only required because the current release is distributed outside the Mac App Store without Apple Developer ID notarization.
+After OpenLaunchpad has been allowed once, macOS will remember this choice and the application can be opened normally afterward.
+
+This extra step is required because the current release is distributed outside the Mac App Store without Apple Developer ID notarization.
 
 ## System Requirements
 
