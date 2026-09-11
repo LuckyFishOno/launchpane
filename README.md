@@ -4,6 +4,35 @@ OpenLaunchpad is a native macOS application launcher built with Swift 6, AppKit,
 
 Version 1.0 focuses on a fast, responsive launcher experience with adaptive layout, native application discovery, local search, interactive paging, persistent reordering, and folders.
 
+## Download
+
+[Download OpenLaunchpad for macOS](https://github.com/LuckyFishOno/open-launchpad/releases/latest/download/OpenLaunchpad.dmg)
+
+## Installation
+
+1. Download `OpenLaunchpad.dmg`.
+2. Open the disk image.
+3. Drag `OpenLaunchpad.app` into the `Applications` folder.
+4. Launch OpenLaunchpad from `Applications`.
+
+### First Launch
+
+OpenLaunchpad is currently distributed without an Apple Developer ID signature or Apple notarization.
+
+On first launch, macOS may block the application. If this happens:
+
+1. Try to open OpenLaunchpad once.
+2. Open **System Settings → Privacy & Security**.
+3. Find the security message for OpenLaunchpad and choose **Open Anyway**.
+4. Confirm that you want to open the application.
+
+This is only required because the current release is distributed outside the Mac App Store without Apple Developer ID notarization.
+
+## System Requirements
+
+- macOS 15 or later
+- Apple silicon or Intel Mac
+
 ## Features
 
 - Native AppKit and Core Animation runtime.
@@ -22,12 +51,6 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 - Respect for the macOS Reduce Motion setting.
 - No telemetry, account, or mandatory network connection.
 
-## Requirements
-
-- macOS 15 or later
-- Xcode 26 or later
-- XcodeGen 2.42 or later
-
 ## Build and Run
 
 OpenLaunchpad is a native macOS application and should be built with Xcode.
@@ -39,11 +62,12 @@ packaging location, not an automatic login-item registration.
 
 SwiftPM builds and tests the reusable core libraries, not the application bundle.
 
-### Requirements
+### Development Requirements
 
 - macOS 15 or later
-- Xcode
+- Xcode 26 or later
 - Swift 6
+- XcodeGen 2.42 or later when regenerating the Xcode project
 
 ### Build
 
