@@ -7,13 +7,20 @@ import QuartzCore
 // This controller owns the AppKit event surface and its tightly coupled Core Animation presentation state.
 // swiftlint:disable file_length type_body_length
 @MainActor
+private final class LaunchpadCanvasView: NSView {
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+        true
+    }
+}
+
+@MainActor
 final class LaunchpadRootView: NSView {
     private let solver = LayoutConstraintSolver()
     private let catalog = AppCatalogActor()
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
     private let iconCache = AppIconCache()
     private let wallpaperView = NSImageView()
-    private let canvasView = NSView()
+    private let canvasView = LaunchpadCanvasView()
     private let rootLayer = CALayer()
     private let fixedBackgroundLayer = CALayer()
     private let fixedOverlayLayer = CALayer()
@@ -40,6 +47,7 @@ final class LaunchpadRootView: NSView {
     private var interactivePageSwipe: InteractivePageSwipe?
     private var interactivePageGeneration = 0
     private var iconPrewarmTask: Task<Void, Never>?
+    private var pagingDisplayLink: CADisplayLink?
 
     private var isPageTransitionActive: Bool {
         pageTransitionAnimator.isAnimating || interactivePageSwipe != nil
@@ -68,6 +76,10 @@ final class LaunchpadRootView: NSView {
     private var isLoadingApplications = true
 
     override var acceptsFirstResponder: Bool {
+        true
+    }
+
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
         true
     }
 
@@ -114,6 +126,14 @@ final class LaunchpadRootView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+
+        if window == nil {
+            pagingDisplayLink?.invalidate()
+            pagingDisplayLink = nil
+        } else if pagingDisplayLink == nil {
+            configurePagingDisplayLink()
+        }
+
         guard window != nil, !hasLoadedApplications else { return }
         hasLoadedApplications = true
         window?.makeFirstResponder(self)
@@ -1020,6 +1040,74 @@ private extension LaunchpadRootView {
         }
     }
 
+    func configurePagingDisplayLink() {
+        pagingDisplayLink?.invalidate()
+
+        // NSView.displayLink(...) follows the physical display containing this
+        // view. Keep the default frame-rate range so Core Animation can use the
+        // display's native cadence: typically 60 Hz, or up to 120 Hz on
+        // ProMotion displays.
+        let link = displayLink(
+            target: self,
+            selector: #selector(pagingDisplayLinkDidFire(_:))
+        )
+
+        link.isPaused = true
+        link.add(
+            to: RunLoop.main,
+            forMode: .common
+        )
+
+        pagingDisplayLink = link
+    }
+
+    @objc
+    func pagingDisplayLinkDidFire(_ link: CADisplayLink) {
+        guard
+            !link.isPaused,
+            let swipe = interactivePageSwipe,
+            swipe.phase == .tracking,
+            swipe.needsPresentationUpdate
+        else {
+            return
+        }
+
+        presentInteractivePageSwipe(swipe)
+    }
+
+    func presentInteractivePageSwipe(
+        _ swipe: InteractivePageSwipe
+    ) {
+        guard swipe.phase == .tracking else { return }
+
+        swipe.needsPresentationUpdate = false
+
+        let outgoingPosition = CGPoint(
+            x: swipe.restingPosition.x + swipe.translation,
+            y: swipe.restingPosition.y
+        )
+
+        let incomingPosition = CGPoint(
+            x: swipe.restingPosition.x
+                + CGFloat(swipe.direction) * swipe.width
+                + swipe.translation,
+            y: swipe.restingPosition.y
+        )
+
+        // One compositor transaction per physical display refresh.
+        //
+        // Trackpad events may arrive faster, slower, or irregularly relative
+        // to refresh. Coalescing them here avoids presenting multiple model
+        // updates between two visible frames.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        swipe.outgoingSurface.layer.position = outgoingPosition
+        swipe.incomingSurface.layer.position = incomingPosition
+
+        CATransaction.commit()
+    }
+
     func handleInteractivePageSwipe(_ event: NSEvent) -> Bool {
         guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else {
             return false
@@ -1066,15 +1154,29 @@ private extension LaunchpadRootView {
         let forwardVelocity =
             -swipe.velocity * CGFloat(swipe.direction)
         let normalizedForwardVelocity = forwardVelocity / width
+        // A native-feeling trackpad flick should not require dragging a large
+        // fraction of the screen. Project the release briefly forward and allow
+        // a short, intentional flick to commit while still rejecting tiny jitter.
         let projectedProgress =
-            progress + normalizedForwardVelocity * 0.085
+            progress + normalizedForwardVelocity * 0.10
 
+        // Launchpad paging should react to intent, not require a long drag.
+        //
+        // A short deliberate horizontal movement is enough to commit:
+        // - ~2.5% page travel commits even at a gentle release.
+        // - A very short flick can commit from ~0.8% when it has velocity.
+        //
+        // Horizontal-dominance filtering and the one-page-per-gesture gate
+        // still protect against ordinary trackpad jitter.
         let commit =
-            progress >= 0.22
-                || projectedProgress >= 0.29
+            progress >= 0.025
                 || (
-                    progress >= 0.07
-                        && normalizedForwardVelocity >= 1.35
+                    progress >= 0.012
+                        && projectedProgress >= 0.040
+                )
+                || (
+                    progress >= 0.008
+                        && normalizedForwardVelocity >= 0.25
                 )
 
         finishInteractivePageSwipe(commit: commit)
@@ -1216,10 +1318,15 @@ private extension LaunchpadRootView {
 
         // Protect against a rare huge NSEvent delta without adding any filter or
         // latency to ordinary trackpad movement.
+        // AppKit's precise trackpad delta is deliberately conservative for a
+        // full-screen page. A modest gain keeps the page visually attached to
+        // a light two-finger swipe without turning the gesture into a jump.
+        let trackingGain: CGFloat = 1.60
+        let adjustedDelta = deltaX * trackingGain
         let maximumDelta = swipe.width * 0.18
         let boundedDelta = min(
             maximumDelta,
-            max(-maximumDelta, deltaX)
+            max(-maximumDelta, adjustedDelta)
         )
 
         let instantaneousVelocity = boundedDelta / elapsed
@@ -1245,28 +1352,33 @@ private extension LaunchpadRootView {
             swipe.translation = max(0, min(swipe.width, proposed))
         }
 
-        let outgoingPosition = CGPoint(
-            x: swipe.restingPosition.x + swipe.translation,
-            y: swipe.restingPosition.y
-        )
-        let incomingPosition = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width
-                + swipe.translation,
-            y: swipe.restingPosition.y
-        )
+        // Keep input sampling completely finger-driven, but present the newest
+        // translation only on the physical display's refresh boundary.
+        //
+        // Multiple trackpad events between two refreshes collapse into one
+        // compositor update; on ProMotion the same path naturally gets more
+        // opportunities to present.
+        swipe.needsPresentationUpdate = true
 
-        // Direct manipulation stays exactly finger-driven. Do not animate or
-        // smooth the position itself; that would trade visual smoothness for lag.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        swipe.outgoingSurface.layer.position = outgoingPosition
-        swipe.incomingSurface.layer.position = incomingPosition
-        CATransaction.commit()
+        if let pagingDisplayLink {
+            pagingDisplayLink.isPaused = false
+        } else {
+            // Defensive fallback. Normal macOS 15 presentation always has the
+            // NSView display link configured.
+            presentInteractivePageSwipe(swipe)
+        }
     }
 
     func finishInteractivePageSwipe(commit: Bool) {
         guard let swipe = interactivePageSwipe, swipe.phase == .tracking else { return }
+
+        // Make the last input sample available to Core Animation before the
+        // compositor-driven settle begins.
+        if swipe.needsPresentationUpdate {
+            presentInteractivePageSwipe(swipe)
+        }
+
+        pagingDisplayLink?.isPaused = true
         swipe.phase = .settling
         interactivePageGeneration &+= 1
         let generation = interactivePageGeneration
@@ -1338,6 +1450,8 @@ private extension LaunchpadRootView {
         _ swipe: InteractivePageSwipe,
         commit: Bool
     ) {
+        pagingDisplayLink?.isPaused = true
+
         swipe.outgoingSurface.layer.removeAllAnimations()
         swipe.incomingSurface.layer.removeAllAnimations()
 
@@ -1409,6 +1523,7 @@ private extension LaunchpadRootView {
     func cancelInteractivePageSwipeImmediately() {
         guard let swipe = interactivePageSwipe else { return }
 
+        pagingDisplayLink?.isPaused = true
         interactivePageGeneration &+= 1
         swipe.outgoingSurface.layer.removeAllAnimations()
         swipe.incomingSurface.layer.removeAllAnimations()
@@ -4707,6 +4822,7 @@ private final class InteractivePageSwipe {
     var translation: CGFloat = 0
     var velocity: CGFloat = 0
     var lastTimestamp: TimeInterval
+    var needsPresentationUpdate = false
 
     init(
         outgoingSurface: LaunchpadPageSurface,

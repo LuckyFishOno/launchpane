@@ -179,11 +179,13 @@ final class LaunchpadWindowController: NSWindowController {
             presentMenuBarBackdrop(on: screen)
         }
 
-        window.present()
-
-        // Accessory activation is still required for keyboard/search input.
-        // It no longer participates in menu-bar suppression.
+        // The embedded agent is launched with `configuration.activates = false`.
+        // Activate it BEFORE making the launcher window key. Otherwise AppKit can
+        // consume the first background click only to activate the application,
+        // and the click never reaches LaunchpadRootView.mouseDown(_:).
         NSApplication.shared.activate()
+
+        window.present()
     }
 
     private func presentMenuBarBackdrop(on screen: NSScreen) {

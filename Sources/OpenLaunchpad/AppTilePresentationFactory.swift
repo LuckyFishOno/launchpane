@@ -143,6 +143,17 @@ enum AppTilePresentationFactory {
             scale: input.scale
         ))
 
+        // Cache the fully composed tile (selection + icon shadow + label shadow)
+        // as one small Retina surface. Paging then moves cached tile surfaces
+        // instead of repeatedly compositing every child layer and shadow.
+        //
+        // Do this per tile rather than on the full page: a full-screen Retina/5K
+        // raster surface is large and can itself cause a hitch when allocated.
+        configurePagingRasterCache(
+            tileLayer,
+            scale: input.scale
+        )
+
         return AppTilePresentation(
             tileLayer: tileLayer,
             selectionLayer: selectionLayer,
@@ -171,12 +182,36 @@ enum AppTilePresentationFactory {
             scale: input.scale
         ))
 
+        // Folder tiles have an even deeper layer tree because of the miniature
+        // child icons. Cache the finished tile so page motion stays compositor-
+        // friendly without flattening the entire Launchpad page.
+        configurePagingRasterCache(
+            tileLayer,
+            scale: input.scale
+        )
+
         return FolderTilePresentation(
             tileLayer: tileLayer,
             selectionLayer: selectionLayer,
             iconLayer: iconLayer,
             button: FolderTileButton(folderID: input.folderID, title: input.title)
         )
+    }
+
+    private static func configurePagingRasterCache(
+        _ layer: CALayer,
+        scale: CGFloat
+    ) {
+        guard scale.isFinite, scale > 0 else { return }
+
+        // Rasterizing at the backing scale preserves Retina sharpness.
+        //
+        // The cache remains valid while an ancestor page layer changes position,
+        // which is exactly what interactive paging and settle animations do.
+        // Child changes such as hover, selection, or refreshed icons naturally
+        // invalidate only the affected tile.
+        layer.shouldRasterize = true
+        layer.rasterizationScale = scale
     }
 
     private static func makeIconLayer(
