@@ -13,11 +13,9 @@ final class LaunchpadRootView: NSView {
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
     private let iconCache = AppIconCache()
     private let wallpaperView = NSImageView()
-    private let backgroundView = NSVisualEffectView()
     private let canvasView = NSView()
     private let rootLayer = CALayer()
     private let fixedBackgroundLayer = CALayer()
-    private let backgroundGradientLayer = CAGradientLayer()
     private let fixedOverlayLayer = CALayer()
     private let pageIndicatorLayer = CATextLayer()
     private let folderOverlayLayer = CALayer()
@@ -38,6 +36,7 @@ final class LaunchpadRootView: NSView {
     private var currentMetrics: GridMetrics?
     private var pendingPageDirection = 0
     private var pageScrollGesture = PageScrollGesture()
+    private var pageSwipeInputGate = PageSwipeInputGate()
     private var interactivePageSwipe: InteractivePageSwipe?
     private var interactivePageGeneration = 0
     private var iconPrewarmTask: Task<Void, Never>?
@@ -70,6 +69,26 @@ final class LaunchpadRootView: NSView {
 
     override var acceptsFirstResponder: Bool {
         true
+    }
+
+    // Both window levels display this exact, already-composited desktop image.
+    // Independent visual-effect backdrops cannot agree at their shared edge.
+    var desktopBackdropImage: NSImage? { wallpaperView.image }
+    private(set) var desktopImage: NSImage?
+
+    func resetForNewPresentation() {
+        searchField.resetForPresentation()
+        window?.makeFirstResponder(self)
+        searchDidChange()
+    }
+
+    func prepareForPresentation(displayContext: DisplayContext) {
+        if self.displayContext != displayContext {
+            update(displayContext: displayContext)
+        } else {
+            updateWallpaper()
+        }
+        layoutSubtreeIfNeeded()
     }
 
     init(frame frameRect: NSRect, displayContext: DisplayContext) {
@@ -134,12 +153,9 @@ final class LaunchpadRootView: NSView {
         closeFolder(animated: false)
         resetPageTransition()
         pageScrollGesture = PageScrollGesture()
-        let displayChanged = self.displayContext.displayID != displayContext.displayID
         self.displayContext = displayContext
         frame = CGRect(origin: .zero, size: displayContext.frame.size)
-        if displayChanged {
-            updateWallpaper()
-        }
+        updateWallpaper()
         invalidatePageSurfaceCache()
         needsLayout = true
     }
@@ -223,6 +239,21 @@ final class LaunchpadRootView: NSView {
             return
         }
 
+        // Finish the current transition without snapping back on a new gesture.
+        // Keep rejecting that gesture's remainder even if settling ends midway.
+        // Phase-less wheels must still update the discrete gesture's idle clock,
+        // otherwise a long burst could be mistaken for a second page turn.
+        if !event.phase.isEmpty || !event.momentumPhase.isEmpty {
+            if pageSwipeInputGate.consumes(
+                phase: PageScrollPhase(event.phase),
+                momentum: PageScrollMomentum(event.momentumPhase),
+                isAnimating: pageTransitionAnimator.isAnimating
+                    || interactivePageSwipe?.phase == .settling
+            ) {
+                return
+            }
+        }
+
         // Precise trackpad gestures use direct manipulation:
         // the page follows the fingers, then settles after release.
         if handleInteractivePageSwipe(event) {
@@ -259,18 +290,14 @@ private extension LaunchpadRootView {
     func configureCanvas() {
         wallpaperView.imageFrameStyle = .none
         wallpaperView.imageAlignment = .alignCenter
-        wallpaperView.imageScaling = .scaleProportionallyUpOrDown
+        // Provider has already applied the desktop's placement on a full-screen
+        // canvas. Do not fit/crop the wallpaper a second time inside this view.
+        wallpaperView.imageScaling = .scaleAxesIndependently
         wallpaperView.wantsLayer = true
         wallpaperView.layer?.masksToBounds = true
         wallpaperView.setAccessibilityHidden(true)
         addSubview(wallpaperView)
         updateWallpaper()
-
-        backgroundView.material = .fullScreenUI
-        backgroundView.blendingMode = .withinWindow
-        backgroundView.state = .active
-        backgroundView.alphaValue = 0.96
-        addSubview(backgroundView)
 
         canvasView.wantsLayer = true
         canvasView.layer = rootLayer
@@ -280,14 +307,6 @@ private extension LaunchpadRootView {
         rootLayer.addSublayer(fixedBackgroundLayer)
         rootLayer.addSublayer(pageContentLayer)
         rootLayer.addSublayer(fixedOverlayLayer)
-
-        backgroundGradientLayer.colors = [
-            NSColor(calibratedRed: 0.02, green: 0.08, blue: 0.16, alpha: 0.1).cgColor,
-            NSColor(calibratedWhite: 0.02, alpha: 0.14).cgColor,
-        ]
-        backgroundGradientLayer.startPoint = CGPoint(x: 0, y: 1)
-        backgroundGradientLayer.endPoint = CGPoint(x: 1, y: 0)
-        fixedBackgroundLayer.addSublayer(backgroundGradientLayer)
 
         pageIndicatorLayer.alignmentMode = .center
         pageIndicatorLayer.fontSize = 15.5
@@ -299,8 +318,10 @@ private extension LaunchpadRootView {
     }
 
     func updateWallpaper() {
-        wallpaperView.image = DesktopWallpaperProvider.image(for: displayContext.displayID)
-        wallpaperView.layer?.backgroundColor = NSColor.black.cgColor
+        let images = DesktopWallpaperProvider.images(for: displayContext.displayID)
+        desktopImage = images?.desktop
+        wallpaperView.image = images?.frosted
+        wallpaperView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
     }
 
     func render() {
@@ -369,12 +390,10 @@ private extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         wallpaperView.frame = bounds
-        backgroundView.frame = bounds
         canvasView.frame = bounds
         rootLayer.frame = bounds
         rootLayer.contentsScale = scale
         fixedBackgroundLayer.frame = bounds
-        backgroundGradientLayer.frame = bounds
         fixedOverlayLayer.frame = bounds
         folderOverlayLayer.frame = bounds
         dragOverlayLayer.frame = bounds
@@ -701,10 +720,23 @@ private extension LaunchpadRootView {
                 }
             }
 
+            // Count from the actual compositor tree as well as the cache. A
+            // dropped cache entry must not hide an attached, retired page tree.
+            let trackedPageLayers = Set(pageSurfaces.values.map {
+                ObjectIdentifier($0.layer)
+            })
+            let orphanPageTrees = (rootLayer.sublayers ?? []).filter {
+                $0 !== fixedBackgroundLayer
+                    && $0 !== fixedOverlayLayer
+                    && !trackedPageLayers.contains(ObjectIdentifier($0))
+                    && !($0.sublayers?.isEmpty ?? true)
+            }.count
+
             print(
                 "[PagingPerf] current=\(currentPage) "
                     + "buttons=\(attachedTileButtons) "
                     + "stagedLayers=\(stagedPageLayers) "
+                    + "orphanPageTrees=\(orphanPageTrees) "
                     + "pages=\(pageSurfaces.count)"
             )
         }
@@ -810,7 +842,9 @@ private extension LaunchpadRootView {
         cancelIconPrewarming()
         contentRevision &+= 1
         renderedConfiguration = nil
-        pageSurfaces.removeAll(keepingCapacity: true)
+        // Keep ownership until rebuildPageSurfaces retires every attached tree.
+        // Clearing this cache here would abandon the staged adjacent pages in
+        // rootLayer, accumulating stale layers after search or layout changes.
     }
 }
 
@@ -1017,6 +1051,7 @@ private extension LaunchpadRootView {
 
     func finishInteractivePageSwipeAfterRelease() -> Bool {
         guard let swipe = interactivePageSwipe else { return false }
+        guard swipe.phase == .tracking else { return true }
         let width = max(1, swipe.width)
 
         let progress = min(
@@ -1047,6 +1082,7 @@ private extension LaunchpadRootView {
     }
 
     func continueInteractivePageSwipe(_ event: NSEvent) -> Bool {
+        guard interactivePageSwipe?.phase != .settling else { return true }
         // Native paging ignores inertial scrolling after the finger releases.
         if !event.momentumPhase.isEmpty {
             return true
@@ -1170,6 +1206,7 @@ private extension LaunchpadRootView {
         deltaX: CGFloat,
         timestamp: TimeInterval
     ) {
+        guard swipe.phase == .tracking else { return }
         let rawElapsed = timestamp - swipe.lastTimestamp
         let elapsed = min(
             1.0 / 24.0,
@@ -1228,382 +1265,70 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func finishInteractivePageSwipe(
-        commit: Bool
-    ) {
-        // OPENLAUNCHPAD_PAGING_70_30_TAIL_V1
-        //
-        // Preserve the current motion exactly through the first 70% of the
-        // remaining distance. Only the final 30% is time-stretched, so the page
-        // stays responsive up front and takes longer to decelerate into rest.
-        guard let swipe = interactivePageSwipe else { return }
-
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            completeInteractivePageSwipe(swipe, commit: commit)
-            return
-        }
-
+    func finishInteractivePageSwipe(commit: Bool) {
+        guard let swipe = interactivePageSwipe, swipe.phase == .tracking else { return }
+        swipe.phase = .settling
         interactivePageGeneration &+= 1
         let generation = interactivePageGeneration
 
-        let finalTranslation: CGFloat =
-            commit
-                ? -CGFloat(swipe.direction) * swipe.width
-                : 0
-
-        let outgoingStart =
-            swipe.outgoingSurface.layer.presentation()?.position
-                ?? swipe.outgoingSurface.layer.position
-        let incomingStart =
-            swipe.incomingSurface.layer.presentation()?.position
-                ?? swipe.incomingSurface.layer.position
-
+        let finalTranslation = commit ? -CGFloat(swipe.direction) * swipe.width : 0
+        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position
+            ?? swipe.outgoingSurface.layer.position
+        let incomingStart = swipe.incomingSurface.layer.presentation()?.position
+            ?? swipe.incomingSurface.layer.position
         let outgoingEnd = CGPoint(
             x: swipe.restingPosition.x + finalTranslation,
             y: swipe.restingPosition.y
         )
         let incomingEnd = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width
-                + finalTranslation,
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + finalTranslation,
             y: swipe.restingPosition.y
         )
 
-        let targetDelta = finalTranslation - swipe.translation
-        let remainingFraction = min(
-            1,
-            abs(targetDelta) / max(1, swipe.width)
-        )
-
-        guard let settleTransition =
-            LaunchpadVisualStyle.interactivePageSettleTransition(
-                direction: swipe.direction,
-                displayWidth: swipe.width,
-                remainingFraction: remainingFraction,
-                releaseVelocity: swipe.velocity,
-                targetDelta: targetDelta
-            )
-        else {
+        // Use the position actually displayed, not a potentially newer input
+        // sample. One cubic preserves release velocity all the way into rest;
+        // stretching its duration afterward would introduce a sudden slowdown.
+        guard let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
+            direction: swipe.direction,
+            displayWidth: swipe.width,
+            releaseVelocity: swipe.velocity,
+            targetDelta: outgoingEnd.x - outgoingStart.x
+        ) else {
             completeInteractivePageSwipe(swipe, commit: commit)
             return
         }
 
-        // ---------------------------------------------------------------
-        // 70 / 30 motion profile
-        // ---------------------------------------------------------------
-        //
-        // `settleTransition` is the motion you already liked after the previous
-        // smooth-paging tuning. We split THAT exact cubic timing curve at the
-        // point where it reaches 70% positional progress.
-        //
-        //   0% ---------------- 70% ----------- 100%
-        //       exact old motion      slower tail
-        //
-        // The first segment therefore has the same position-vs-time curve as
-        // before. The remaining duration is stretched by 1.55x.
-        //
-        // The right-hand cubic's initial slope is increased by the same factor,
-        // which compensates for the longer segment duration. That keeps physical
-        // velocity continuous at the 70% boundary instead of creating a hidden
-        // brake/re-accelerate point.
-        let splitProgress: CGFloat = 0.70
-
-        // OPENLAUNCHPAD_PAGING_OVERALL_SLOW_V1
-        //
-        // Slow the complete post-release settle uniformly while preserving the
-        // existing 70/30 motion profile.
-        //
-        // IMPORTANT:
-        // This does NOT affect direct finger tracking. While fingers are on the
-        // trackpad, page movement remains exactly 1:1.
-        //
-        // 1.12 = approximately 12% slower overall.
-        let overallSettleScale: CFTimeInterval = 1.30
-
-        // The final 30% still receives the existing extra deceleration stretch.
-        let tailStretch: CFTimeInterval = 1.55
-
-        func controlPoint(
-            _ index: Int,
-            of function: CAMediaTimingFunction
-        ) -> CGPoint {
-            var values = [Float](repeating: 0, count: 2)
-            values.withUnsafeMutableBufferPointer { buffer in
-                guard let baseAddress = buffer.baseAddress else { return }
-                function.getControlPoint(
-                    at: index,
-                    values: baseAddress
-                )
-            }
-            return CGPoint(
-                x: CGFloat(values[0]),
-                y: CGFloat(values[1])
-            )
-        }
-
-        func interpolate(
-            _ a: CGPoint,
-            _ b: CGPoint,
-            _ t: CGFloat
-        ) -> CGPoint {
-            CGPoint(
-                x: a.x + (b.x - a.x) * t,
-                y: a.y + (b.y - a.y) * t
-            )
-        }
-
-        func cubicPoint(
-            p0: CGPoint,
-            p1: CGPoint,
-            p2: CGPoint,
-            p3: CGPoint,
-            t: CGFloat
-        ) -> CGPoint {
-            let a = interpolate(p0, p1, t)
-            let b = interpolate(p1, p2, t)
-            let c = interpolate(p2, p3, t)
-            let d = interpolate(a, b, t)
-            let e = interpolate(b, c, t)
-            return interpolate(d, e, t)
-        }
-
-        let p0 = controlPoint(0, of: settleTransition.timingFunction)
-        let p1 = controlPoint(1, of: settleTransition.timingFunction)
-        let p2 = controlPoint(2, of: settleTransition.timingFunction)
-        let p3 = controlPoint(3, of: settleTransition.timingFunction)
-
-        // Find the Bezier parameter whose output progress is exactly 70%.
-        // Binary search is deterministic, tiny (~20 iterations), and runs only
-        // once at finger release -- never in the gesture's hot path.
-        var lowerT: CGFloat = 0
-        var upperT: CGFloat = 1
-
-        for _ in 0 ..< 20 {
-            let middleT = (lowerT + upperT) * 0.5
-            let point = cubicPoint(
-                p0: p0,
-                p1: p1,
-                p2: p2,
-                p3: p3,
-                t: middleT
-            )
-
-            if point.y < splitProgress {
-                lowerT = middleT
-            } else {
-                upperT = middleT
-            }
-        }
-
-        let splitT = (lowerT + upperT) * 0.5
-
-        // De Casteljau split of the original cubic.
-        let a = interpolate(p0, p1, splitT)
-        let b = interpolate(p1, p2, splitT)
-        let c = interpolate(p2, p3, splitT)
-        let d = interpolate(a, b, splitT)
-        let e = interpolate(b, c, splitT)
-        let splitPoint = interpolate(d, e, splitT)
-
-        let safeSplitX = max(0.0001, splitPoint.x)
-        let safeSplitY = max(0.0001, splitPoint.y)
-        let safeTailX = max(0.0001, 1 - splitPoint.x)
-        let safeTailY = max(0.0001, 1 - splitPoint.y)
-
-        // Left segment normalized back to a legal CAMediaTimingFunction.
-        let leftCP1 = CGPoint(
-            x: a.x / safeSplitX,
-            y: a.y / safeSplitY
-        )
-        let leftCP2 = CGPoint(
-            x: d.x / safeSplitX,
-            y: d.y / safeSplitY
-        )
-
-        // Right segment normalized back to 0...1.
-        let originalRightCP1 = CGPoint(
-            x: (e.x - splitPoint.x) / safeTailX,
-            y: (e.y - splitPoint.y) / safeTailY
-        )
-        let originalRightCP2 = CGPoint(
-            x: (c.x - splitPoint.x) / safeTailX,
-            y: (c.y - splitPoint.y) / safeTailY
-        )
-
-        let baseDuration =
-            settleTransition.duration
-
-        // Apply the same slowdown to BOTH sections first.
-        //
-        // This means:
-        //
-        //   first 70%  -> 12% slower
-        //   final 30%  -> 12% slower
-        //
-        // Then apply the existing 1.55x tail stretch on top of the final 30%.
-        // The relative 70/30 character therefore stays exactly the same.
-        let scaledBaseDuration =
-            baseDuration
-                * overallSettleScale
-
-        let leadingDuration =
-            scaledBaseDuration
-                * CFTimeInterval(
-                    splitPoint.x
-                )
-
-        let originalTailDuration =
-            scaledBaseDuration
-                - leadingDuration
-
-        let stretchedTailDuration =
-            originalTailDuration
-                * tailStretch
-        let totalDuration =
-            leadingDuration + stretchedTailDuration
-
-        // Stretching time would normally reduce velocity at the split point.
-        // Compensate the tail's normalized starting slope by `tailStretch` so
-        // d(position)/dt remains continuous across the keyframe boundary.
-        let originalTailStartSlope =
-            originalRightCP1.x > 0.0001
-                ? originalRightCP1.y / originalRightCP1.x
-                : 1
-
-        let stretchedTailStartSlope =
-            originalTailStartSlope * CGFloat(tailStretch)
-
-        let tailCP1X = min(
-            0.42,
-            max(0.08, originalRightCP1.x)
-        )
-        let tailCP1Y = min(
-            0.94,
-            max(
-                0.02,
-                tailCP1X * stretchedTailStartSlope
-            )
-        )
-
-        // Preserve the old tail's second control point. Its Y is normally 1,
-        // which keeps final velocity at zero; only the early tail is reshaped to
-        // maintain velocity continuity after the duration stretch.
-        let tailCP2X = min(
-            0.92,
-            max(tailCP1X + 0.02, originalRightCP2.x)
-        )
-        let tailCP2Y = min(
-            1,
-            max(tailCP1Y, originalRightCP2.y)
-        )
-
-        let leadingTiming = CAMediaTimingFunction(
-            controlPoints:
-                Float(leftCP1.x),
-                Float(leftCP1.y),
-                Float(leftCP2.x),
-                Float(leftCP2.y)
-        )
-
-        let tailTiming = CAMediaTimingFunction(
-            controlPoints:
-                Float(tailCP1X),
-                Float(tailCP1Y),
-                Float(tailCP2X),
-                Float(tailCP2Y)
-        )
-
-        let splitKeyTime =
-            totalDuration > 0
-                ? leadingDuration / totalDuration
-                : 0.5
-
-        func positionAtProgress(
-            from start: CGPoint,
-            to end: CGPoint,
-            progress: CGFloat
-        ) -> CGPoint {
-            CGPoint(
-                x: start.x + (end.x - start.x) * progress,
-                y: start.y + (end.y - start.y) * progress
-            )
-        }
-
-        func makeSettleAnimation(
-            from start: CGPoint,
-            to end: CGPoint
-        ) -> CAKeyframeAnimation {
-            let animation = CAKeyframeAnimation(keyPath: "position")
-
-            animation.values = [
-                NSValue(point: start),
-                NSValue(
-                    point: positionAtProgress(
-                        from: start,
-                        to: end,
-                        progress: splitProgress
-                    )
-                ),
-                NSValue(point: end),
-            ]
-
-            animation.keyTimes = [
-                NSNumber(value: 0.0),
-                NSNumber(value: Double(splitKeyTime)),
-                NSNumber(value: 1.0),
-            ]
-
-            animation.timingFunctions = [
-                leadingTiming,
-                tailTiming,
-            ]
-
-            animation.duration = totalDuration
-            animation.calculationMode = .linear
+        func animation(from start: CGPoint, to end: CGPoint) -> CABasicAnimation {
+            let animation = CABasicAnimation(keyPath: "position")
+            animation.fromValue = NSValue(point: start)
+            animation.toValue = NSValue(point: end)
+            animation.duration = transition.duration
+            animation.timingFunction = transition.timingFunction
             return animation
         }
 
-        swipe.outgoingSurface.layer.removeAnimation(
-            forKey: "interactivePageOut"
-        )
-        swipe.incomingSurface.layer.removeAnimation(
-            forKey: "interactivePageIn"
-        )
-
+        // Commit model endpoints and both animations together. No intermediate
+        // transaction may expose the destination before its animation exists.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        swipe.outgoingSurface.layer.position = outgoingEnd
-        swipe.incomingSurface.layer.position = incomingEnd
-        CATransaction.commit()
-
-        let outgoingAnimation = makeSettleAnimation(
-            from: outgoingStart,
-            to: outgoingEnd
-        )
-        let incomingAnimation = makeSettleAnimation(
-            from: incomingStart,
-            to: incomingEnd
-        )
-
-        CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
             Task { @MainActor [weak self] in
                 guard
                     let self,
                     generation == interactivePageGeneration,
                     interactivePageSwipe === swipe
-                else {
-                    return
-                }
+                else { return }
                 completeInteractivePageSwipe(swipe, commit: commit)
             }
         }
+        swipe.outgoingSurface.layer.position = outgoingEnd
+        swipe.incomingSurface.layer.position = incomingEnd
         swipe.outgoingSurface.layer.add(
-            outgoingAnimation,
+            animation(from: outgoingStart, to: outgoingEnd),
             forKey: "interactivePageOut"
         )
         swipe.incomingSurface.layer.add(
-            incomingAnimation,
+            animation(from: incomingStart, to: incomingEnd),
             forKey: "interactivePageIn"
         )
         CATransaction.commit()
@@ -1714,6 +1439,7 @@ private extension LaunchpadRootView {
     func resetPageTransition() {
         cancelIconPrewarming()
         cancelInteractivePageSwipeImmediately()
+        pageSwipeInputGate = PageSwipeInputGate()
         pendingPageDirection = 0
         pageTransitionAnimator.reset(contentLayer: pageContentLayer, canvasBounds: bounds)
         setPageHitTargetsEnabled(true)
@@ -4965,6 +4691,12 @@ private extension CGRect {
 
 @MainActor
 private final class InteractivePageSwipe {
+    enum Phase {
+        case tracking
+        case settling
+    }
+
+    var phase: Phase = .tracking
     let outgoingSurface: LaunchpadPageSurface
     let incomingSurface: LaunchpadPageSurface
     let targetPage: Int

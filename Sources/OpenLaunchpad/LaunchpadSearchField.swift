@@ -113,6 +113,28 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
         textField.currentEditor()?.insertText(text)
     }
 
+    /// A new launcher presentation is not a continuation of the old search.
+    /// End the shared field editor too, including any unfinished IME input.
+    func resetForPresentation() {
+        stopFieldEditorObservation()
+        if let editor = activeFieldEditor {
+            editor.inputContext?.discardMarkedText()
+            editor.unmarkText()
+            editor.string = ""
+            window?.endEditing(for: textField)
+        }
+        textField.stringValue = ""
+        isEditing = false
+        NSObject.cancelPreviousPerformRequests(
+            withTarget: self,
+            selector: #selector(reconcileEditingPresentation),
+            object: nil
+        )
+        cancelContentMotionAnimation()
+        updatePresentation()
+        layoutSubtreeIfNeeded()
+    }
+
     func controlTextDidChange(_: Notification) {
         installFieldEditorObservationIfNeeded()
         updatePresentation()

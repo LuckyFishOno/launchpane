@@ -43,17 +43,6 @@ enum LaunchpadVisualStyle {
         static let height: CGFloat = 32
     }
 
-    private enum PageTransitionMetrics {
-        // Mouse wheel / keyboard paging should react immediately and then glide.
-        // The old symmetric ease-in-out spent too much time accelerating from rest.
-        static let duration: CFTimeInterval = 0.48
-        static let firstControlPointX: Float = 0.20
-        static let firstControlPointY: Float = 0.78
-        static let secondControlPointX: Float = 0.22
-        static let secondControlPointY: Float = 1
-        static let minimumInteractiveSettleDuration: CFTimeInterval = 0.16
-    }
-
     private enum FolderTransitionMetrics {
         static let openDuration: CFTimeInterval = 0.21
         static let closeDuration: CFTimeInterval = 0.18
@@ -148,93 +137,47 @@ enum LaunchpadVisualStyle {
     static func pageTransition(direction: Int, displayWidth: CGFloat) -> PageTransition? {
         guard
             direction != 0,
-            displayWidth > 0,
+            displayWidth.isFinite, displayWidth > 0,
             !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         else {
             return nil
         }
 
-        return PageTransition(
-            duration: PageTransitionMetrics.duration,
-            timingFunction: CAMediaTimingFunction(
-                controlPoints: PageTransitionMetrics.firstControlPointX,
-                PageTransitionMetrics.firstControlPointY,
-                PageTransitionMetrics.secondControlPointX,
-                PageTransitionMetrics.secondControlPointY
-            ),
-            travelDistance: displayWidth
-        )
+        return pageTransition(profile: .discrete, displayWidth: displayWidth)
     }
 
     static func interactivePageSettleTransition(
         direction: Int,
         displayWidth: CGFloat,
-        remainingFraction: CGFloat,
         releaseVelocity: CGFloat,
         targetDelta: CGFloat
     ) -> PageTransition? {
         guard
             direction != 0,
-            displayWidth > 0,
-            abs(targetDelta) > 0.25,
-            !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+            let profile = PageMotionProfile.settle(
+                displayWidth: Double(displayWidth),
+                targetDelta: Double(targetDelta),
+                releaseVelocity: Double(releaseVelocity)
+            )
         else {
             return nil
         }
 
-        // A fixed ease-in-out has zero initial velocity. On a fast flick that
-        // produces a tiny brake/re-accelerate discontinuity exactly at release.
-        // Derive the duration and first cubic-Bezier slope from the real finger
-        // velocity so Core Animation continues the same motion on the compositor.
-        let fraction = min(1, max(0, remainingFraction))
-        let distance = max(1, abs(targetDelta))
-        let targetSign: CGFloat = targetDelta >= 0 ? 1 : -1
-        let velocityTowardTarget = max(0, releaseVelocity * targetSign)
-        let normalizedSpeed = velocityTowardTarget / displayWidth
+        return pageTransition(profile: profile, displayWidth: displayWidth)
+    }
 
-        let distanceDuration =
-            0.13 + 0.35 * pow(Double(fraction), 0.72)
-        let velocityReduction = min(
-            0.040,
-            Double(normalizedSpeed) * 0.018
-        )
-        let duration = min(
-            0.48,
-            max(
-                PageTransitionMetrics.minimumInteractiveSettleDuration,
-                distanceDuration - velocityReduction
-            )
-        )
-
-        // For a cubic timing function the starting slope is y1/x1.
-        // Matching that slope to v * duration / distance preserves release
-        // velocity as closely as a monotonic cubic curve allows.
-        let normalizedInitialSlope = min(
-            4.6,
-            max(
-                0,
-                Double(velocityTowardTarget)
-                    * duration
-                    / Double(distance)
-            )
-        )
-        let controlPointX1 = 0.20
-        let controlPointY1 = min(
-            0.92,
-            max(
-                0.035,
-                controlPointX1 * normalizedInitialSlope
-            )
-        )
-
+    private static func pageTransition(
+        profile: PageMotionProfile,
+        displayWidth: CGFloat
+    ) -> PageTransition {
         return PageTransition(
-            duration: duration,
+            duration: profile.duration,
             timingFunction: CAMediaTimingFunction(
-                controlPoints:
-                    Float(controlPointX1),
-                    Float(controlPointY1),
-                    0.68,
-                    1
+                controlPoints: Float(profile.firstControlPoint.x),
+                Float(profile.firstControlPoint.y),
+                Float(profile.secondControlPoint.x),
+                Float(profile.secondControlPoint.y)
             ),
             travelDistance: displayWidth
         )
@@ -387,7 +330,9 @@ final class PageTransitionAnimator {
         guard generation == self.generation else { return }
 
         outgoingLayer?.removeAllAnimations()
-        outgoingLayer?.removeFromSuperlayer()
+        // The controller retains adjacent pages for the next gesture. Leave the
+        // outgoing tree attached until staging decides whether it is still near;
+        // detaching here only to reattach it in completion churns the render tree.
         outgoingLayer?.shouldRasterize = false
         self.outgoingLayer = nil
         incomingLayer?.removeAllAnimations()

@@ -8,14 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		0473325F92F5258D0EFFB709 /* AppCatalogActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A71E63C4F81618B4309D179 /* AppCatalogActor.swift */; };
-		047D9F3F5C3242E0F314B5E8 /* AppCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; };
-		057E03BC32A539E4B012750B /* AppIconCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = D453BE91D8AC9209C1579803 /* AppIconCache.swift */; };
 		06AE82056D84B58F1069B121 /* GridSelectionNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 923104603F4482D099C1A3BD /* GridSelectionNavigator.swift */; };
-		0B2323E447BC3C1B2FF58FEA /* LayoutCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		09D8835A3A84C41F74DC8AFC /* ResolvedLaunchpadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */; };
 		0D75DFD8B3636EBE3C49B253 /* FolderGridMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4FE193FBED9D30F9E18F22 /* FolderGridMetrics.swift */; };
 		0E7BE9F258F11E32BBBDA4BC /* LauncherDragStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0316EF912435FF4406D68B /* LauncherDragStateMachineTests.swift */; };
-		11A2B59ED87F5B12DDD07D81 /* LaunchpadWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B619722288AFCCF8E443240 /* LaunchpadWindowController.swift */; };
-		11C10E9BB8066A90338FA494 /* DesktopWallpaperProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B7A7140B4CDCDB9030B72F /* DesktopWallpaperProvider.swift */; };
+		12244CC4613DD5D5BC183E64 /* OpenLaunchpadAgent.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		15317DE43A84082B5D8F1374 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1B0BA9C755B1111664D706C4 /* LauncherLayoutDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443ADE5BD70008889E14D3C2 /* LauncherLayoutDraft.swift */; };
 		21F1378191CE5F7511A2D664 /* GridMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E56C5EAF5E8F1588E68A9B /* GridMetrics.swift */; };
@@ -27,64 +24,69 @@
 		2F41671EA778A1981C5EA746 /* AppMetadataResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7888236C5D76843001275B /* AppMetadataResolver.swift */; };
 		3328C97485BAF06F60CA59B6 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
 		38338CE141DF7A401F741EB8 /* DisplayInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA93710BB6535845908D4F8 /* DisplayInsets.swift */; };
-		3B89BF006A61C149348D2EA0 /* PageScrollGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5582D3009A0729AEB083C298 /* PageScrollGesture.swift */; };
 		3FCF8F204ADC6A3F01EEEB92 /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; };
+		4247153B8892FDD2C15E40D1 /* LaunchpadSearchComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87E6A740240D9B0D3535A82 /* LaunchpadSearchComponents.swift */; };
 		45D8759CBAB893D7807245BC /* LauncherDragPreviewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B82049AF39D0EE1704D010 /* LauncherDragPreviewState.swift */; };
-		4892A72BB5150766C645F309 /* LaunchpadPresentationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30850971FE77D9F3C72CBD63 /* LaunchpadPresentationController.swift */; };
+		48945C82D0C2F2EBDE9D5655 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB2DA73B71E42DFD2282ECC /* main.swift */; };
 		4AB7E10CD1AD74EC3A6073B0 /* LauncherLayoutReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8172469CCCFEC76AE9EA87 /* LauncherLayoutReconciler.swift */; };
 		4BF61D2F63AAA0313946A12A /* ApplicationIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71016D9946EA364519778E5 /* ApplicationIdentityTests.swift */; };
+		4FE603E15D2EBBDA7ABCF3AD /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; };
 		554B253BC555D81ED3544343 /* LauncherLayoutDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD5D979B1C7F17EAD127F69 /* LauncherLayoutDraftTests.swift */; };
+		576B2AD694B796D08BC9E257 /* PageSwipeInputGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E1EB07541F69D0A31D137EF /* PageSwipeInputGateTests.swift */; };
 		57B9A3E95F79ACB7A9AD8C52 /* AppCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; };
-		595C2E00D69A84D6991E1D59 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
+		5E85CCD398BE0C348CAAF09F /* AppTileButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BA734C9BC2743B9126C8DF /* AppTileButton.swift */; };
 		66DFE17C98AE09F860C4D9FE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C0FEBCEA50BB7DED8593A8B /* Assets.xcassets */; };
-		6B704E10CD7F23C39777817F /* LaunchpadSearchComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87E6A740240D9B0D3535A82 /* LaunchpadSearchComponents.swift */; };
+		6C0AD29151E507B5C3D7CCD1 /* AppTilePresentationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8674EBF4DC9CF16929FC9208 /* AppTilePresentationFactory.swift */; };
 		73EB310DEE40DE862CC48166 /* LayoutCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		7683AE5CF44381FD60B6C8C2 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		742D544AFE2AD75CDF0C8F48 /* LaunchpadSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F123D9E01057F33CCEE8C8F8 /* LaunchpadSearchField.swift */; };
+		74B353BD689754E370C35CBD /* PageSwipeInputGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45B035DE8628F65130BE4BA /* PageSwipeInputGate.swift */; };
+		78A84C42AA09EDC62F1AF3F5 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
+		7ADE28F647B62F1FA8A80F9F /* PageScrollGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5582D3009A0729AEB083C298 /* PageScrollGesture.swift */; };
 		7D13D66E6AB7023E6E15D1BB /* AppCatalogActorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5258BDAEC230F766CEA45BB6 /* AppCatalogActorTests.swift */; };
 		8064EC976AAB851F2A8B01C9 /* FolderLayoutConstraintSolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35FDED82180A56F6A542E724 /* FolderLayoutConstraintSolver.swift */; };
 		83CF9D37C4C8FFDEFA6363C8 /* PageTransitionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E3BBAB293B4C885807CBD7 /* PageTransitionStateTests.swift */; };
-		870737B5E804F40C8E43B021 /* LaunchpadWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6704EE704752E1B700379D8 /* LaunchpadWindow.swift */; };
-		8967D86AD098A5E02CE75289 /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; };
+		8891FCB45B7EEABCF68AAFAC /* DesktopWallpaperProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B7A7140B4CDCDB9030B72F /* DesktopWallpaperProvider.swift */; };
 		8AE129D56A97F106EC32B1F9 /* LauncherLayoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F1DF5F55DA2514F95D019C /* LauncherLayoutStore.swift */; };
 		8C5CC43FDFEFEA018FF88530 /* AppCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		8E33BF2A559BD4E5CE99DFA4 /* WallpaperLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC25F4369C5A202FE36D9E6 /* WallpaperLayout.swift */; };
+		9227412F4505882E0E7DD33D /* LaunchpadPresentationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30850971FE77D9F3C72CBD63 /* LaunchpadPresentationController.swift */; };
 		96A96046F1CC4C663C419352 /* PageTransitionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F63F3C59882C8698FF60D5 /* PageTransitionState.swift */; };
+		977D17606B3A33B4F5AF50DB /* LayoutCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		9822FBB9857D74F50D7F9F88 /* PageMotionProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B59604F608CE8477EE1138B /* PageMotionProfile.swift */; };
 		9D84044BCC7785CC301C78C2 /* GridSelectionNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F415C3B84CDA46F4EC5DA53 /* GridSelectionNavigatorTests.swift */; };
 		9E1117AC6FA0ACFA8D8BBCC4 /* ApplicationIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4DD9B562099FCB3AFBACDE /* ApplicationIdentity.swift */; };
 		A780A6DA3C9E839CCC62F01C /* LauncherDragCommitStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E229850957C5AD71D22DD37 /* LauncherDragCommitStateTests.swift */; };
-		A85ED029B471E81A72576329 /* LaunchpadSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F123D9E01057F33CCEE8C8F8 /* LaunchpadSearchField.swift */; };
+		ABF7D9DF7083E8E8F31AF65C /* OpenLaunchpadAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */; };
+		ACF411DEBB490DE553B05FEF /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		AFB607DA6FAB5DAAA5F8A1ED /* LaunchpadVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408C803592FEE9AADE0D481D /* LaunchpadVisualStyle.swift */; };
 		B3B8DD678C68BDD603140072 /* LauncherLayoutDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9518B652FD8CD8C57497B9DE /* LauncherLayoutDocumentTests.swift */; };
+		B60E2E45077A95F095CAEEEC /* WallpaperLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1CA8F789646A63824B35CE8 /* WallpaperLayoutTests.swift */; };
 		BBD927F0234C09615E21EFEF /* DisplayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0946DC2D0BD13B636F8886A /* DisplayContext.swift */; };
 		C04D59C36E7C233FFB4A7FCF /* LauncherLayoutReconcilerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACCE0659ABCCEA957FB42AC /* LauncherLayoutReconcilerTests.swift */; };
-		C34311A15B704E4760917405 /* LaunchpadVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408C803592FEE9AADE0D481D /* LaunchpadVisualStyle.swift */; };
 		C665B8BED7749C2CB584FB85 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
 		CD38ECE9DAA3FA7BFADB27A3 /* FolderLayoutTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9CE27EBFA652CBA3E31B67D /* FolderLayoutTokens.swift */; };
 		CE585326F1AAE90FAC1E4629 /* ApplicationRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0010D0D559BB03A275C5E2D7 /* ApplicationRecord.swift */; };
-		CFE13AE26B636F8CA23B2868 /* AppTileButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BA734C9BC2743B9126C8DF /* AppTileButton.swift */; };
-		D43DA51DEDCD27C6DAFFB23A /* OpenLaunchpadAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */; };
-		D73DAA2238C9E8B0175D4D6D /* AppCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CED3475B2679E293531AA094 /* MenuBarBackdropWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5462CB0F958F486BD9D285B0 /* MenuBarBackdropWindow.swift */; };
+		D7608E4264A69F175E1E9917 /* AppCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; };
 		DF2568B13D8E83F6EE571409 /* LauncherLayoutDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2283965C7B8580E623BDF407 /* LauncherLayoutDocument.swift */; };
 		E248EBE2D852A55B5EDBB646 /* LayoutConstraintSolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 009C277962A3AE13A61CCE8F /* LayoutConstraintSolverTests.swift */; };
+		E33584186695C9C800A1AD0F /* AppIconCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = D453BE91D8AC9209C1579803 /* AppIconCache.swift */; };
 		E38DB2D9C05247EC6C9E346C /* LauncherLayoutStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022176DEACD2A50A3D887207 /* LauncherLayoutStoreTests.swift */; };
-		E39E7D4488F78B2DF18D6B6C /* ResolvedLaunchpadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */; };
 		E50538903ABDAA277D54BB54 /* DisplayContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2FEDF9B1040E2BC75BBC0C /* DisplayContextTests.swift */; };
 		E6933876A15CDD861A244E62 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
 		E6AF7A7F57C90533FE267065 /* LauncherDragStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331B4CEC80B332CBD4C548BC /* LauncherDragStateMachine.swift */; };
 		E754536A2A3A83427C738E43 /* ScreenDisplayContextResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136C4AC0BA1222160B7396B7 /* ScreenDisplayContextResolver.swift */; };
 		E7C43FA64687096CED95DC84 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E9DC648E2B6FAB77C71311CC /* LaunchpadWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6704EE704752E1B700379D8 /* LaunchpadWindow.swift */; };
 		EA7CB40CC9BDEC554FCF325A /* LayoutTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C735E23F834DA31394689A /* LayoutTokens.swift */; };
 		EC6ED64604B08802F3D1B6E8 /* LayoutConstraintSolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7063D05C62C50D27709A8D0E /* LayoutConstraintSolver.swift */; };
 		ED1D7F71E65DF6981AB28963 /* LauncherDragPreviewStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60AB0C1125C6F0B71C3689B1 /* LauncherDragPreviewStateTests.swift */; };
-		F8C9C11E282CF53528B4CA39 /* AppTilePresentationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8674EBF4DC9CF16929FC9208 /* AppTilePresentationFactory.swift */; };
+		EDBA2C92CE75250BCA60722D /* AppCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EF8FB1C8A1FD228F2E89F5DD /* PageMotionProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2E689B95E0A1F4DCD985E9 /* PageMotionProfileTests.swift */; };
+		FBD82A0C49F0AFC8E4E7C9C9 /* LaunchpadWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B619722288AFCCF8E443240 /* LaunchpadWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		0067F698A8D0D5D8893BFA86 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A742D13D123D58D7443D071D;
-			remoteInfo = AppCore;
-		};
 		28C52E07AAE9272836CEA557 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
@@ -92,12 +94,12 @@
 			remoteGlobalIDString = 5E043041C2F50E83AEA383F6;
 			remoteInfo = LayoutCore;
 		};
-		648482527064C96B560ABD4D /* PBXContainerItemProxy */ = {
+		591B76DF58DAE3568FC7EF19 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = B072042C9B93747290AEA0B3;
-			remoteInfo = DisplayCore;
+			remoteGlobalIDString = 5E043041C2F50E83AEA383F6;
+			remoteInfo = LayoutCore;
 		};
 		82E69718AB24EE6FE7D55CCF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -106,12 +108,19 @@
 			remoteGlobalIDString = B072042C9B93747290AEA0B3;
 			remoteInfo = DisplayCore;
 		};
-		839C6CC0733E5D0CF0C522E5 /* PBXContainerItemProxy */ = {
+		87BAD235FBBE161349E09867 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 5E043041C2F50E83AEA383F6;
-			remoteInfo = LayoutCore;
+			remoteGlobalIDString = B072042C9B93747290AEA0B3;
+			remoteInfo = DisplayCore;
+		};
+		A674D87F47AE3A7932BF70F7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A742D13D123D58D7443D071D;
+			remoteInfo = AppCore;
 		};
 		B209A39F33161F473C52271C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -126,6 +135,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = B072042C9B93747290AEA0B3;
 			remoteInfo = DisplayCore;
+		};
+		CE86F3D4A028913A18358730 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D4ABD2A63C24B8AD8627CD54;
+			remoteInfo = OpenLaunchpadAgent;
 		};
 		F35B1C0486348253B7C037CA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -148,17 +164,28 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A33D9D18C42247B9F828EC06 /* Embed Frameworks */ = {
+		680CF34A02193DFEAD207A69 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				D73DAA2238C9E8B0175D4D6D /* AppCore.framework in Embed Frameworks */,
-				7683AE5CF44381FD60B6C8C2 /* DisplayCore.framework in Embed Frameworks */,
-				0B2323E447BC3C1B2FF58FEA /* LayoutCore.framework in Embed Frameworks */,
+				EDBA2C92CE75250BCA60722D /* AppCore.framework in Embed Frameworks */,
+				ACF411DEBB490DE553B05FEF /* DisplayCore.framework in Embed Frameworks */,
+				977D17606B3A33B4F5AF50DB /* LayoutCore.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		87168B8C3FD4B1C557ACAB15 /* Embed Dependencies */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LoginItems;
+			dstSubfolderSpec = 1;
+			files = (
+				12244CC4613DD5D5BC183E64 /* OpenLaunchpadAgent.app in Embed Dependencies */,
+			);
+			name = "Embed Dependencies";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B79C48E29443CCD82BFEECFD /* Embed Frameworks */ = {
@@ -192,11 +219,14 @@
 		022176DEACD2A50A3D887207 /* LauncherLayoutStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutStoreTests.swift; sourceTree = "<group>"; };
 		05BDA3348588276429A32E8C /* LauncherDragCommitState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragCommitState.swift; sourceTree = "<group>"; };
 		06F63F3C59882C8698FF60D5 /* PageTransitionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTransitionState.swift; sourceTree = "<group>"; };
+		0B59604F608CE8477EE1138B /* PageMotionProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageMotionProfile.swift; sourceTree = "<group>"; };
 		0D4FE193FBED9D30F9E18F22 /* FolderGridMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderGridMetrics.swift; sourceTree = "<group>"; };
 		136C4AC0BA1222160B7396B7 /* ScreenDisplayContextResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenDisplayContextResolver.swift; sourceTree = "<group>"; };
 		14B080262F0D053F847C8C56 /* DisplayCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = DisplayCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C0FEBCEA50BB7DED8593A8B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1C32D26B5C679828632E513F /* FolderLayoutConstraintSolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderLayoutConstraintSolverTests.swift; sourceTree = "<group>"; };
+		1E1EB07541F69D0A31D137EF /* PageSwipeInputGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeInputGateTests.swift; sourceTree = "<group>"; };
+		1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenLaunchpadAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		222A916923502CF88621E550 /* AppDiscoverySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiscoverySource.swift; sourceTree = "<group>"; };
 		2283965C7B8580E623BDF407 /* LauncherLayoutDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDocument.swift; sourceTree = "<group>"; };
 		29BA734C9BC2743B9126C8DF /* AppTileButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTileButton.swift; sourceTree = "<group>"; };
@@ -211,6 +241,7 @@
 		443ADE5BD70008889E14D3C2 /* LauncherLayoutDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDraft.swift; sourceTree = "<group>"; };
 		44F7FDAC2CCD3E1F9BC1ACCF /* AppCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AppCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		5258BDAEC230F766CEA45BB6 /* AppCatalogActorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCatalogActorTests.swift; sourceTree = "<group>"; };
+		5462CB0F958F486BD9D285B0 /* MenuBarBackdropWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarBackdropWindow.swift; sourceTree = "<group>"; };
 		5582D3009A0729AEB083C298 /* PageScrollGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageScrollGesture.swift; sourceTree = "<group>"; };
 		58E56C5EAF5E8F1588E68A9B /* GridMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridMetrics.swift; sourceTree = "<group>"; };
 		58F1DF5F55DA2514F95D019C /* LauncherLayoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutStore.swift; sourceTree = "<group>"; };
@@ -223,6 +254,7 @@
 		6F029DB8DF3AA6B270BCD7FD /* LayoutCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LayoutCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7063D05C62C50D27709A8D0E /* LayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConstraintSolver.swift; sourceTree = "<group>"; };
 		7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLaunchpadAppDelegate.swift; sourceTree = "<group>"; };
+		7C2E689B95E0A1F4DCD985E9 /* PageMotionProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageMotionProfileTests.swift; sourceTree = "<group>"; };
 		7D4DD9B562099FCB3AFBACDE /* ApplicationIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIdentity.swift; sourceTree = "<group>"; };
 		85B82049AF39D0EE1704D010 /* LauncherDragPreviewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragPreviewState.swift; sourceTree = "<group>"; };
 		8674EBF4DC9CF16929FC9208 /* AppTilePresentationFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTilePresentationFactory.swift; sourceTree = "<group>"; };
@@ -232,11 +264,14 @@
 		923104603F4482D099C1A3BD /* GridSelectionNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridSelectionNavigator.swift; sourceTree = "<group>"; };
 		9518B652FD8CD8C57497B9DE /* LauncherLayoutDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDocumentTests.swift; sourceTree = "<group>"; };
 		9B619722288AFCCF8E443240 /* LaunchpadWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadWindowController.swift; sourceTree = "<group>"; };
+		A1CA8F789646A63824B35CE8 /* WallpaperLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperLayoutTests.swift; sourceTree = "<group>"; };
 		A6E016B8F4BBBF3C3E66756D /* UserLayoutPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLayoutPreferences.swift; sourceTree = "<group>"; };
+		AAB2DA73B71E42DFD2282ECC /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B0946DC2D0BD13B636F8886A /* DisplayContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayContext.swift; sourceTree = "<group>"; };
 		B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResolvedLaunchpadItem.swift; sourceTree = "<group>"; };
 		C6704EE704752E1B700379D8 /* LaunchpadWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadWindow.swift; sourceTree = "<group>"; };
 		D453BE91D8AC9209C1579803 /* AppIconCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconCache.swift; sourceTree = "<group>"; };
+		D45B035DE8628F65130BE4BA /* PageSwipeInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeInputGate.swift; sourceTree = "<group>"; };
 		D6C735E23F834DA31394689A /* LayoutTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutTokens.swift; sourceTree = "<group>"; };
 		D8980D149844E12745569181 /* DisplayCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DisplayCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9CE27EBFA652CBA3E31B67D /* FolderLayoutTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderLayoutTokens.swift; sourceTree = "<group>"; };
@@ -247,9 +282,20 @@
 		F71016D9946EA364519778E5 /* ApplicationIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIdentityTests.swift; sourceTree = "<group>"; };
 		F87E6A740240D9B0D3535A82 /* LaunchpadSearchComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadSearchComponents.swift; sourceTree = "<group>"; };
 		FACCE0659ABCCEA957FB42AC /* LauncherLayoutReconcilerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutReconcilerTests.swift; sourceTree = "<group>"; };
+		FFC25F4369C5A202FE36D9E6 /* WallpaperLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperLayout.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1BB5FEB02E0DDE257DDDE23A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7608E4264A69F175E1E9917 /* AppCore.framework in Frameworks */,
+				78A84C42AA09EDC62F1AF3F5 /* DisplayCore.framework in Frameworks */,
+				4FE603E15D2EBBDA7ABCF3AD /* LayoutCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1D3E432D551FF058742F43D4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -275,16 +321,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		6D27196BB7552261664A2DF8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				047D9F3F5C3242E0F314B5E8 /* AppCore.framework in Frameworks */,
-				595C2E00D69A84D6991E1D59 /* DisplayCore.framework in Frameworks */,
-				8967D86AD098A5E02CE75289 /* LayoutCore.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		7D7B425867758093546E1EEE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -302,6 +338,7 @@
 				1C32D26B5C679828632E513F /* FolderLayoutConstraintSolverTests.swift */,
 				2F415C3B84CDA46F4EC5DA53 /* GridSelectionNavigatorTests.swift */,
 				009C277962A3AE13A61CCE8F /* LayoutConstraintSolverTests.swift */,
+				A1CA8F789646A63824B35CE8 /* WallpaperLayoutTests.swift */,
 			);
 			path = LayoutCoreTests;
 			sourceTree = "<group>";
@@ -318,6 +355,8 @@
 				3CD5D979B1C7F17EAD127F69 /* LauncherLayoutDraftTests.swift */,
 				FACCE0659ABCCEA957FB42AC /* LauncherLayoutReconcilerTests.swift */,
 				022176DEACD2A50A3D887207 /* LauncherLayoutStoreTests.swift */,
+				7C2E689B95E0A1F4DCD985E9 /* PageMotionProfileTests.swift */,
+				1E1EB07541F69D0A31D137EF /* PageSwipeInputGateTests.swift */,
 				F3E3BBAB293B4C885807CBD7 /* PageTransitionStateTests.swift */,
 			);
 			path = AppCoreTests;
@@ -333,6 +372,7 @@
 				89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */,
 				6F029DB8DF3AA6B270BCD7FD /* LayoutCoreTests.xctest */,
 				3FB4D471A61995223FC3DF49 /* OpenLaunchpad.app */,
+				1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -351,6 +391,7 @@
 				C6704EE704752E1B700379D8 /* LaunchpadWindow.swift */,
 				9B619722288AFCCF8E443240 /* LaunchpadWindowController.swift */,
 				6B31A338D9D6D61031ECD4A2 /* main.swift */,
+				5462CB0F958F486BD9D285B0 /* MenuBarBackdropWindow.swift */,
 				7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */,
 				5582D3009A0729AEB083C298 /* PageScrollGesture.swift */,
 				B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */,
@@ -374,6 +415,8 @@
 				443ADE5BD70008889E14D3C2 /* LauncherLayoutDraft.swift */,
 				8E8172469CCCFEC76AE9EA87 /* LauncherLayoutReconciler.swift */,
 				58F1DF5F55DA2514F95D019C /* LauncherLayoutStore.swift */,
+				0B59604F608CE8477EE1138B /* PageMotionProfile.swift */,
+				D45B035DE8628F65130BE4BA /* PageSwipeInputGate.swift */,
 				06F63F3C59882C8698FF60D5 /* PageTransitionState.swift */,
 			);
 			path = AppCore;
@@ -387,6 +430,14 @@
 				136C4AC0BA1222160B7396B7 /* ScreenDisplayContextResolver.swift */,
 			);
 			path = DisplayCore;
+			sourceTree = "<group>";
+		};
+		7907B142E5B447BF5AB8C31A /* OpenLaunchpadAgent */ = {
+			isa = PBXGroup;
+			children = (
+				AAB2DA73B71E42DFD2282ECC /* main.swift */,
+			);
+			path = OpenLaunchpadAgent;
 			sourceTree = "<group>";
 		};
 		7D722812A4BE974615F8AC03 /* DisplayCoreTests */ = {
@@ -408,6 +459,7 @@
 				7063D05C62C50D27709A8D0E /* LayoutConstraintSolver.swift */,
 				D6C735E23F834DA31394689A /* LayoutTokens.swift */,
 				A6E016B8F4BBBF3C3E66756D /* UserLayoutPreferences.swift */,
+				FFC25F4369C5A202FE36D9E6 /* WallpaperLayout.swift */,
 			);
 			path = LayoutCore;
 			sourceTree = "<group>";
@@ -446,6 +498,7 @@
 				653B517893F31BDC96DB62F6 /* DisplayCore */,
 				9F1FF3F849D56E025C55E5FA /* LayoutCore */,
 				25137C27C66D2E1BEC4318A7 /* OpenLaunchpad */,
+				7907B142E5B447BF5AB8C31A /* OpenLaunchpadAgent */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -519,15 +572,12 @@
 			buildPhases = (
 				D62C611A2F914D9A76A3D0CB /* Sources */,
 				AB6FC30484D5021C3F26D4C5 /* Resources */,
-				6D27196BB7552261664A2DF8 /* Frameworks */,
-				A33D9D18C42247B9F828EC06 /* Embed Frameworks */,
+				87168B8C3FD4B1C557ACAB15 /* Embed Dependencies */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				D4D938B036B4285B1620770A /* PBXTargetDependency */,
-				A6152F40931928DE9AF905A0 /* PBXTargetDependency */,
-				E48AD861C301E2B86AA5660D /* PBXTargetDependency */,
+				A332CD3DF8F13682C66387A7 /* PBXTargetDependency */,
 			);
 			name = OpenLaunchpad;
 			packageProductDependencies = (
@@ -570,6 +620,28 @@
 			productReference = 14B080262F0D053F847C8C56 /* DisplayCore.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "OpenLaunchpadAgent" */;
+			buildPhases = (
+				BC9CB06B1095B5D147FF7B0E /* Sources */,
+				1BB5FEB02E0DDE257DDDE23A /* Frameworks */,
+				680CF34A02193DFEAD207A69 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				303B72CD3445F9B803EE3022 /* PBXTargetDependency */,
+				ACDDC9F6A4E7D473E95C9314 /* PBXTargetDependency */,
+				A4A541E3B8BA2022D98C2F0E /* PBXTargetDependency */,
+			);
+			name = OpenLaunchpadAgent;
+			packageProductDependencies = (
+			);
+			productName = OpenLaunchpadAgent;
+			productReference = 1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */;
+			productType = "com.apple.product-type.application";
+		};
 		FAE6BA9E8C49944AC05AECE5 /* AppCoreTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 71ADE9C52B9940BEB6DC9209 /* Build configuration list for PBXNativeTarget "AppCoreTests" */;
@@ -602,6 +674,9 @@
 					A601FBF8B0FF84481231803F = {
 						ProvisioningStyle = Automatic;
 					};
+					D4ABD2A63C24B8AD8627CD54 = {
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = DFE695066891B9FE3D2D7E5C /* Build configuration list for PBXProject "OpenLaunchpad" */;
@@ -621,6 +696,7 @@
 				A742D13D123D58D7443D071D /* AppCore */,
 				B072042C9B93747290AEA0B3 /* DisplayCore */,
 				5E043041C2F50E83AEA383F6 /* LayoutCore */,
+				D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */,
 				A601FBF8B0FF84481231803F /* OpenLaunchpad */,
 				12CFDAEAC98137A52DD8682D /* DisplayCoreTests */,
 				FAE6BA9E8C49944AC05AECE5 /* AppCoreTests */,
@@ -664,6 +740,8 @@
 				554B253BC555D81ED3544343 /* LauncherLayoutDraftTests.swift in Sources */,
 				C04D59C36E7C233FFB4A7FCF /* LauncherLayoutReconcilerTests.swift in Sources */,
 				E38DB2D9C05247EC6C9E346C /* LauncherLayoutStoreTests.swift in Sources */,
+				EF8FB1C8A1FD228F2E89F5DD /* PageMotionProfileTests.swift in Sources */,
+				576B2AD694B796D08BC9E257 /* PageSwipeInputGateTests.swift in Sources */,
 				83CF9D37C4C8FFDEFA6363C8 /* PageTransitionStateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -680,6 +758,7 @@
 				EC6ED64604B08802F3D1B6E8 /* LayoutConstraintSolver.swift in Sources */,
 				EA7CB40CC9BDEC554FCF325A /* LayoutTokens.swift in Sources */,
 				26A850A64CAFCB2B4856CDB1 /* UserLayoutPreferences.swift in Sources */,
+				8E33BF2A559BD4E5CE99DFA4 /* WallpaperLayout.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -699,6 +778,8 @@
 				1B0BA9C755B1111664D706C4 /* LauncherLayoutDraft.swift in Sources */,
 				4AB7E10CD1AD74EC3A6073B0 /* LauncherLayoutReconciler.swift in Sources */,
 				8AE129D56A97F106EC32B1F9 /* LauncherLayoutStore.swift in Sources */,
+				9822FBB9857D74F50D7F9F88 /* PageMotionProfile.swift in Sources */,
+				74B353BD689754E370C35CBD /* PageSwipeInputGate.swift in Sources */,
 				96A96046F1CC4C663C419352 /* PageTransitionState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -710,6 +791,29 @@
 				27F24BD6F3FEBB68F9B638C2 /* FolderLayoutConstraintSolverTests.swift in Sources */,
 				9D84044BCC7785CC301C78C2 /* GridSelectionNavigatorTests.swift in Sources */,
 				E248EBE2D852A55B5EDBB646 /* LayoutConstraintSolverTests.swift in Sources */,
+				B60E2E45077A95F095CAEEEC /* WallpaperLayoutTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC9CB06B1095B5D147FF7B0E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E33584186695C9C800A1AD0F /* AppIconCache.swift in Sources */,
+				5E85CCD398BE0C348CAAF09F /* AppTileButton.swift in Sources */,
+				6C0AD29151E507B5C3D7CCD1 /* AppTilePresentationFactory.swift in Sources */,
+				8891FCB45B7EEABCF68AAFAC /* DesktopWallpaperProvider.swift in Sources */,
+				9227412F4505882E0E7DD33D /* LaunchpadPresentationController.swift in Sources */,
+				4247153B8892FDD2C15E40D1 /* LaunchpadSearchComponents.swift in Sources */,
+				742D544AFE2AD75CDF0C8F48 /* LaunchpadSearchField.swift in Sources */,
+				AFB607DA6FAB5DAAA5F8A1ED /* LaunchpadVisualStyle.swift in Sources */,
+				E9DC648E2B6FAB77C71311CC /* LaunchpadWindow.swift in Sources */,
+				FBD82A0C49F0AFC8E4E7C9C9 /* LaunchpadWindowController.swift in Sources */,
+				CED3475B2679E293531AA094 /* MenuBarBackdropWindow.swift in Sources */,
+				ABF7D9DF7083E8E8F31AF65C /* OpenLaunchpadAppDelegate.swift in Sources */,
+				7ADE28F647B62F1FA8A80F9F /* PageScrollGesture.swift in Sources */,
+				09D8835A3A84C41F74DC8AFC /* ResolvedLaunchpadItem.swift in Sources */,
+				48945C82D0C2F2EBDE9D5655 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -717,19 +821,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				057E03BC32A539E4B012750B /* AppIconCache.swift in Sources */,
-				CFE13AE26B636F8CA23B2868 /* AppTileButton.swift in Sources */,
-				F8C9C11E282CF53528B4CA39 /* AppTilePresentationFactory.swift in Sources */,
-				11C10E9BB8066A90338FA494 /* DesktopWallpaperProvider.swift in Sources */,
-				4892A72BB5150766C645F309 /* LaunchpadPresentationController.swift in Sources */,
-				6B704E10CD7F23C39777817F /* LaunchpadSearchComponents.swift in Sources */,
-				A85ED029B471E81A72576329 /* LaunchpadSearchField.swift in Sources */,
-				C34311A15B704E4760917405 /* LaunchpadVisualStyle.swift in Sources */,
-				870737B5E804F40C8E43B021 /* LaunchpadWindow.swift in Sources */,
-				11A2B59ED87F5B12DDD07D81 /* LaunchpadWindowController.swift in Sources */,
-				D43DA51DEDCD27C6DAFFB23A /* OpenLaunchpadAppDelegate.swift in Sources */,
-				3B89BF006A61C149348D2EA0 /* PageScrollGesture.swift in Sources */,
-				E39E7D4488F78B2DF18D6B6C /* ResolvedLaunchpadItem.swift in Sources */,
 				25A728D9AB20BA136BAA71A1 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -770,20 +861,25 @@
 			target = A742D13D123D58D7443D071D /* AppCore */;
 			targetProxy = B209A39F33161F473C52271C /* PBXContainerItemProxy */;
 		};
-		A6152F40931928DE9AF905A0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B072042C9B93747290AEA0B3 /* DisplayCore */;
-			targetProxy = 648482527064C96B560ABD4D /* PBXContainerItemProxy */;
-		};
-		D4D938B036B4285B1620770A /* PBXTargetDependency */ = {
+		303B72CD3445F9B803EE3022 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A742D13D123D58D7443D071D /* AppCore */;
-			targetProxy = 0067F698A8D0D5D8893BFA86 /* PBXContainerItemProxy */;
+			targetProxy = A674D87F47AE3A7932BF70F7 /* PBXContainerItemProxy */;
 		};
-		E48AD861C301E2B86AA5660D /* PBXTargetDependency */ = {
+		A332CD3DF8F13682C66387A7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */;
+			targetProxy = CE86F3D4A028913A18358730 /* PBXContainerItemProxy */;
+		};
+		A4A541E3B8BA2022D98C2F0E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 5E043041C2F50E83AEA383F6 /* LayoutCore */;
-			targetProxy = 839C6CC0733E5D0CF0C522E5 /* PBXContainerItemProxy */;
+			targetProxy = 591B76DF58DAE3568FC7EF19 /* PBXContainerItemProxy */;
+		};
+		ACDDC9F6A4E7D473E95C9314 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B072042C9B93747290AEA0B3 /* DisplayCore */;
+			targetProxy = 87BAD235FBBE161349E09867 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -850,6 +946,30 @@
 			};
 			name = Release;
 		};
+		622F8F83507ADCAA79DC6279 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
+				PRODUCT_NAME = OpenLaunchpadAgent;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
 		71E6CDFC5F57BAD1CB162DF9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -865,6 +985,30 @@
 				SDKROOT = macosx;
 			};
 			name = Debug;
+		};
+		773C407A5CA0A9CD38DC3886 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
+				PRODUCT_NAME = OpenLaunchpadAgent;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
 		};
 		8F2A6DDAE221CF5485A37C75 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -1192,6 +1336,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "OpenLaunchpadAgent" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				622F8F83507ADCAA79DC6279 /* Debug */,
+				773C407A5CA0A9CD38DC3886 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		3AE47CD7032C60FFAED411B5 /* Build configuration list for PBXNativeTarget "DisplayCore" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

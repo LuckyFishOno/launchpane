@@ -12,7 +12,10 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 - Installed-application discovery using public filesystem and bundle metadata APIs.
 - Case-insensitive contiguous-substring search by application display name.
 - IME-aware search presentation for marked text such as Zhuyin, Pinyin, and Japanese input.
+- Fresh search state on reopening: empty query, centered placeholder, and the first application page.
 - Interactive trackpad paging with direct finger tracking and smooth velocity-aware settling.
+- Calmer 0.56-second wheel/keyboard paging, with one page per continuous wheel burst.
+- Full-display frosted wallpaper with a visually replaced menu region and an interactive system Dock.
 - Persistent drag-and-drop reordering and folder creation.
 - Keyboard navigation and native accessibility hit targets.
 - Right-to-left layout support.
@@ -28,6 +31,13 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 ## Build and Run
 
 OpenLaunchpad is a native macOS application and should be built with Xcode.
+
+The Dock opens a short-lived `OpenLaunchpad.app` launcher. Its embedded
+`OpenLaunchpadAgent.app` owns the persistent UI; both use accessory activation.
+Keep the entire app bundle together. The embedded `LoginItems` directory is a
+packaging location, not an automatic login-item registration.
+
+SwiftPM builds and tests the reusable core libraries, not the application bundle.
 
 ### Requirements
 
@@ -63,7 +73,8 @@ open "$PWD/Builds/OpenLaunchpad.app"
 ### Clean Build
 
 ```bash
-rm -rf Builds
+pkill -x OpenLaunchpad 2>/dev/null || true
+pkill -x OpenLaunchpadAgent 2>/dev/null || true
 
 xcodebuild \
   -project OpenLaunchpad.xcodeproj \
@@ -73,12 +84,81 @@ xcodebuild \
   clean build
 ```
 
+### Full Reset
+
+Use this when you want OpenLaunchpad to start from a completely clean local development state.
+
+This removes:
+
+- Project-local build output
+- SwiftPM build artifacts
+- OpenLaunchpad-specific Xcode DerivedData
+- Persisted launcher layout and folders
+- OpenLaunchpad preferences
+- OpenLaunchpad caches
+- Saved application state
+
+It does **not** delete the source repository or Git history.
+
+```bash
+pkill -x OpenLaunchpad 2>/dev/null || true
+pkill -x OpenLaunchpadAgent 2>/dev/null || true
+
+rm -rf "$PWD/Builds"
+rm -rf "$PWD/.build"
+
+find "$HOME/Library/Developer/Xcode/DerivedData" \
+  -maxdepth 1 \
+  -type d \
+  -name 'OpenLaunchpad-*' \
+  -exec rm -rf {} +
+
+rm -rf "$HOME/Library/Application Support/OpenLaunchpad"
+rm -rf "$HOME/Library/Caches/org.openlaunchpad.OpenLaunchpad"
+rm -rf "$HOME/Library/Saved Application State/org.openlaunchpad.OpenLaunchpad.savedState"
+
+defaults delete org.openlaunchpad.OpenLaunchpad \
+  2>/dev/null || true
+```
+
+Verify that the persisted launcher layout is gone:
+
+```bash
+test ! -e \
+  "$HOME/Library/Application Support/OpenLaunchpad/LauncherLayout.json" \
+  && echo "Launcher layout: clean"
+```
+
+Then create a completely fresh Debug build:
+
+```bash
+xcodebuild \
+  -project OpenLaunchpad.xcodeproj \
+  -scheme OpenLaunchpad \
+  -configuration Debug \
+  CONFIGURATION_BUILD_DIR="$PWD/Builds" \
+  clean build
+```
+
+The freshly built app will be available at:
+
+```text
+Builds/OpenLaunchpad.app
+```
+
+Run it with:
+
+```bash
+open "$PWD/Builds/OpenLaunchpad.app"
+```
+
 ### Release Build
 
 To create an optimized Release build in the same project-local output directory:
 
 ```bash
-rm -rf Builds
+pkill -x OpenLaunchpad 2>/dev/null || true
+pkill -x OpenLaunchpadAgent 2>/dev/null || true
 
 xcodebuild \
   -project OpenLaunchpad.xcodeproj \
@@ -112,6 +192,14 @@ Or run the Swift package tests:
 swift test
 ```
 
+The standalone AppKit search-reopening regression check and its invocation are
+documented in [`Tests/Runtime/README.md`](Tests/Runtime/README.md). It covers
+outside-click dismissal, rapid reopening, incomplete IME input, and restored
+search appearance using an isolated layout store.
+
+See [`docs/PAGING_PERFORMANCE.md`](docs/PAGING_PERFORMANCE.md) for paging fixes,
+before/after measurements, and the limits of those measurements.
+
 ## Project Structure
 
 ```text
@@ -119,12 +207,14 @@ Sources/
 ├── AppCore/          Application discovery, search, layout persistence, and drag state
 ├── DisplayCore/      Display geometry and screen resolution handling
 ├── LayoutCore/       Adaptive grid and folder layout solvers
-└── OpenLaunchpad/    AppKit/Core Animation application runtime
+├── OpenLaunchpad/    Shared AppKit/Core Animation UI and Dock launcher entry point
+└── OpenLaunchpadAgent/ Embedded accessory-agent entry point
 
 Tests/
 ├── AppCoreTests/
 ├── DisplayCoreTests/
-└── LayoutCoreTests/
+├── LayoutCoreTests/
+└── Runtime/         Standalone AppKit regression checks
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the architecture and runtime boundaries.

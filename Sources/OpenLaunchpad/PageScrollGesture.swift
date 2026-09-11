@@ -39,7 +39,7 @@ extension PageScrollPhase {
     }
 }
 
-private extension PageScrollMomentum {
+extension PageScrollMomentum {
     init(_ phase: NSEvent.Phase) {
         if phase.contains(.ended) || phase.contains(.cancelled) {
             self = .ended
