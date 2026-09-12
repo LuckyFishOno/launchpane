@@ -144,7 +144,7 @@ finish as one coordinated drag commit.
 
 ### Regression Coverage
 
-The 2026-09-12 page-local change passes 133 Swift core tests and the Debug
+The 2026-09-12 page-local change passes 136 Swift core tests and the Debug
 application build. `LauncherPageLayoutTests` adds 19 deterministic cases for
 legacy migration, explicit page round-tripping, empty/partial pages, overflow,
 forward/reverse moves, folders, reconciliation, and boundary-only commits.
@@ -160,6 +160,13 @@ frame pacing or replace manual physical-device testing.
 ## Accessibility and Input
 
 The visual grid is rendered with Core Animation, while native controls provide accessibility and hit-test semantics. Keyboard navigation, right-to-left layout, multi-display behavior, and Reduce Motion are architectural requirements rather than optional visual polish.
+
+The search field's trailing ellipsis is a native button with one menu command,
+`Reset Launchpad`. The button is outside the translated search-content layer, so
+it cannot shift the centered magnifier/placeholder. Reset requires confirmation,
+refreshes discovery, and is refused when discovery is partial. A successful
+transaction removes custom folders and page boundaries, persists the complete
+alphabetical catalog as one canonical list, then returns the UI to page one.
 
 ## Project Generation
 

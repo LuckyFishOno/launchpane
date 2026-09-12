@@ -54,6 +54,7 @@ This extra step is required because the current release is distributed outside t
 - Persistent drag-and-drop reordering and folder creation.
 - Page-local app placement: moving an app out leaves room on that page; only overflow pushes apps into later pages.
 - Multi-page dragging by holding an app at the screen edge, including a new trailing page when needed.
+- A right-side search-field menu with a guarded `Reset Launchpad` action for restoring the alphabetical app layout.
 - Keyboard navigation and native accessibility hit targets.
 - Right-to-left layout support.
 - Respect for the macOS Reduce Motion setting.
@@ -252,7 +253,7 @@ before/after measurements, and the limits of those measurements.
 `LauncherPageLayoutTests` covers page-local gaps, forward overflow, multi-page
 and reverse moves, folders, reconciliation, page-boundary-only persistence,
 and schema migration/backup preservation. The cross-page change passes the
-133-test Swift core suite and the Debug application build. Standalone runtime
+136-test Swift core suite and the Debug application build. Standalone runtime
 checks cover held-edge traversal, reverse traversal, release at the edge and
 during animation, cancellation, new pages, and unresolved-app index mapping.
 See [`Tests/Runtime/README.md`](Tests/Runtime/README.md) to reproduce them; these

@@ -134,6 +134,7 @@ public enum LauncherLayoutTransactionDisposition: Sendable {
 public enum LauncherLayoutStoreError: Error, Equatable, Sendable {
     case revisionConflict(expected: UInt64, actual: UInt64)
     case revisionOverflow
+    case incompleteCatalogForReset
 }
 
 public actor LauncherLayoutStore {
@@ -247,6 +248,31 @@ public actor LauncherLayoutStore {
             document: committedDocument,
             report: reconciliation.report
         )
+    }
+
+    /// Replaces every customized page/folder with one canonical application list.
+    /// The caller must provide a complete discovery result: resetting from a
+    /// partial catalog could permanently discard applications that are only
+    /// temporarily unavailable.
+    public func reset(
+        applications: [ApplicationRecord],
+        completeness: LauncherCatalogCompleteness
+    ) throws -> LauncherLayoutDocument {
+        guard completeness == .complete else {
+            throw LauncherLayoutStoreError.incompleteCatalogForReset
+        }
+        let currentDocument = try load()
+        var seen: Set<ApplicationIdentity> = []
+        let items = applications.compactMap { application -> LauncherLayoutItem? in
+            guard seen.insert(application.id).inserted else { return nil }
+            return .application(LauncherApplicationReference(application: application))
+        }
+        let candidate = LauncherLayoutDocument(
+            revision: currentDocument.revision,
+            pages: [items]
+        )
+        guard candidate.pages != currentDocument.pages else { return currentDocument }
+        return try commit(candidate, replacing: currentDocument)
     }
 
     private func commit(

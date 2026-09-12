@@ -19,6 +19,9 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
     private var textField: NSTextField {
         descendants(search).compactMap { $0 as? NSTextField }.first { $0.isEditable }!
     }
+    private var settingsButton: NSButton? {
+        descendants(search).compactMap { $0 as? NSButton }.first { $0.menu != nil }
+    }
 
     private func descendants(_ view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants($0) }
@@ -83,6 +86,11 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
             }
             initialTileCount = descendants(root).filter { $0 is AppTileButton }.count
             check(initialTileCount > 1, "application catalog loaded")
+            check(settingsButton != nil, "settings button exists")
+            check(abs((settingsButton?.frame.maxX ?? 0) - (search.bounds.maxX - 10)) <= 1,
+                  "settings button is at the search field's right edge")
+            check(settingsButton?.menu?.items.map(\.title) == ["Reset Launchpad"],
+                  "settings menu has only Reset Launchpad")
             input("saf")
             check(search.stringValue == "saf", "partial search entered")
             check(descendants(root).filter { $0 is AppTileButton }.count < initialTileCount,

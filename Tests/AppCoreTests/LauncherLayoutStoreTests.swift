@@ -136,6 +136,65 @@ final class LauncherLayoutStoreTests: XCTestCase {
         XCTAssertEqual(fileIO.writeCount, 1)
     }
 
+    func testResetReplacesFoldersAndPagesWithProvidedApplicationOrder() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let alpha = application("Alpha")
+        let beta = application("Beta")
+        let folder = LauncherFolder(applications: [
+            LauncherApplicationReference(application: alpha),
+            LauncherApplicationReference(application: beta),
+        ])
+        _ = try await store.transact(expectedRevision: 0) { document in
+            document.pages = [[], [.folder(folder)]]
+            return .commit
+        }
+
+        let reset = try await store.reset(
+            applications: [beta, alpha, beta],
+            completeness: .complete
+        )
+
+        XCTAssertEqual(reset.revision, 2)
+        XCTAssertEqual(reset.pages, [[
+            .application(LauncherApplicationReference(application: beta)),
+            .application(LauncherApplicationReference(application: alpha)),
+        ]])
+        XCTAssertEqual(fileIO.writeCount, 2)
+    }
+
+    func testResetRejectsPartialCatalogWithoutChangingLayout() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let alpha = application("Alpha")
+        _ = try await store.reconcileAndCommit(applications: [alpha])
+
+        do {
+            _ = try await store.reset(applications: [], completeness: .partial)
+            XCTFail("Expected incomplete catalog reset to be rejected")
+        } catch let error as LauncherLayoutStoreError {
+            XCTAssertEqual(error, .incompleteCatalogForReset)
+        }
+
+        let unchanged = try await store.load()
+        XCTAssertEqual(unchanged.items, [
+            .application(LauncherApplicationReference(application: alpha)),
+        ])
+        XCTAssertEqual(fileIO.writeCount, 1)
+    }
+
+    func testResetOfAlreadyCanonicalLayoutDoesNotWriteAgain() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let alpha = application("Alpha")
+        let original = try await store.reset(applications: [alpha], completeness: .complete)
+
+        let unchanged = try await store.reset(applications: [alpha], completeness: .complete)
+
+        XCTAssertEqual(unchanged, original)
+        XCTAssertEqual(fileIO.writeCount, 1)
+    }
+
     func testSequentialMigrationIsPersistedWithoutChangingRevision() async throws {
         let legacy = LegacyLayoutDocument(
             schemaVersion: 0,
@@ -198,6 +257,14 @@ final class LauncherLayoutStoreTests: XCTestCase {
             bundleIdentifier: bundleIdentifier,
             bundleURL: URL(fileURLWithPath: "/Applications/\(bundleIdentifier).app")
         ))
+    }
+
+    private func application(_ name: String) -> ApplicationRecord {
+        ApplicationRecord(
+            displayName: name,
+            bundleIdentifier: "org.example.\(name.lowercased())",
+            bundleURL: URL(fileURLWithPath: "/Applications/\(name).app")
+        )
     }
 }
 

@@ -59,6 +59,7 @@ final class LaunchpadRootView: NSView {
     private var dragCommitContext: LaunchpadDragCommitContext?
     private var isCommittingLayout = false
     private var isFinishingDragVisuals = false
+    private var isResettingLayout = false
 
     private var openFolderID: UUID?
     private var folderPage = 0
@@ -115,6 +116,9 @@ final class LaunchpadRootView: NSView {
         }
         searchField.onCancel = { [weak self] in
             self?.requestClose()
+        }
+        searchField.onResetRequested = { [weak self] in
+            self?.confirmResetLaunchpad()
         }
         addSubview(searchField)
     }
@@ -184,7 +188,8 @@ final class LaunchpadRootView: NSView {
         guard
             !isPageTransitionActive,
             dragSession == nil,
-            !isFinishingDragVisuals
+            !isFinishingDragVisuals,
+            !isResettingLayout
         else { return }
         let point = convert(event.locationInWindow, from: nil)
         if openFolderID != nil {
@@ -197,7 +202,7 @@ final class LaunchpadRootView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        guard !isFinishingDragVisuals else { return }
+        guard !isFinishingDragVisuals, !isResettingLayout else { return }
 
         if event.keyCode == 53, dragStateMachine.state != .idle {
             cancelDragInteraction()
@@ -249,7 +254,8 @@ final class LaunchpadRootView: NSView {
         guard
             dragStateMachine.state == .idle,
             !isCommittingLayout,
-            !isFinishingDragVisuals
+            !isFinishingDragVisuals,
+            !isResettingLayout
         else { return }
 
         if openFolderID != nil {
@@ -358,7 +364,8 @@ private extension LaunchpadRootView {
             !isPageTransitionActive,
             dragSession == nil,
             !isCommittingLayout,
-            !isFinishingDragVisuals
+            !isFinishingDragVisuals,
+            !isResettingLayout
         else { return }
 
         let scale =
@@ -1010,6 +1017,83 @@ private extension LaunchpadRootView {
     func requestClose() {
         cancelDragInteraction(animated: false)
         (window as? LaunchpadWindow)?.dismiss()
+    }
+
+    func confirmResetLaunchpad() {
+        guard
+            !isResettingLayout,
+            !isPageTransitionActive,
+            dragSession == nil,
+            !isCommittingLayout,
+            !isFinishingDragVisuals,
+            let window
+        else {
+            NSSound.beep()
+            return
+        }
+
+        isResettingLayout = true
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Reset Launchpad?"
+        alert.informativeText = "This removes your custom app order and folders, then restores the default alphabetical layout."
+        alert.addButton(withTitle: "Reset Launchpad")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.hasDestructiveAction = true
+        alert.beginSheetModal(for: window) { [weak self] response in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard response == .alertFirstButtonReturn else {
+                    isResettingLayout = false
+                    return
+                }
+                await resetLaunchpad()
+            }
+        }
+    }
+
+    func resetLaunchpad() async {
+        cancelDragInteraction(animated: false)
+        closeFolder(animated: false)
+        searchField.resetForPresentation()
+        window?.makeFirstResponder(self)
+        setPageHitTargetsEnabled(false)
+        let discovery = await catalog.refreshOutcome()
+        do {
+            let resetDocument = try await layoutStore.reset(
+                applications: discovery.applications,
+                completeness: discovery.completeness
+            )
+            applications = discovery.applications
+            layoutDocument = resetDocument
+            currentPage = 0
+            selectedIndex = -1
+            resetPageTransition()
+            pageScrollGesture = PageScrollGesture()
+            invalidatePageSurfaceCache()
+            isResettingLayout = false
+            setPageHitTargetsEnabled(true)
+            window?.makeFirstResponder(self)
+            needsLayout = true
+        } catch {
+            isResettingLayout = false
+            setPageHitTargetsEnabled(true)
+            presentResetFailure(error)
+        }
+    }
+
+    func presentResetFailure(_ error: Error) {
+        guard let window else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Launchpad Couldn’t Be Reset"
+        if error as? LauncherLayoutStoreError == .incompleteCatalogForReset {
+            alert.informativeText = "The application scan was incomplete, so your current layout was kept unchanged. Try again in a moment."
+        } else {
+            alert.informativeText = "Your current layout was kept unchanged."
+        }
+        alert.addButton(withTitle: "OK")
+        alert.beginSheetModal(for: window)
     }
 }
 

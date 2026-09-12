@@ -14,6 +14,8 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
     private let textField = FocusTrackingTextField()
     private let centeredPlaceholderLabel = NSTextField(labelWithString: "")
     private let clearButton = NSButton()
+    private let settingsButton = NSButton()
+    private let settingsMenu = NSMenu()
 
     private let placeholder = NSAttributedString(
         string: "Search",
@@ -37,6 +39,7 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
 
     var onTextChanged: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onResetRequested: (() -> Void)?
 
     var stringValue: String {
         get {
@@ -60,6 +63,7 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
         configureCenteredPlaceholder()
         configureTextField()
         configureClearButton()
+        configureSettingsButton()
         updatePresentation()
     }
 
@@ -93,6 +97,7 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
             iconOriginY: iconOriginY,
             textOriginY: textOriginY
         )
+        layoutSettingsButton(isRightToLeft: isRightToLeft)
         layoutClearButton(isRightToLeft: isRightToLeft)
         layoutTextField(
             isRightToLeft: isRightToLeft,
@@ -197,6 +202,8 @@ private extension LaunchpadSearchField {
         static let iconTextSpacing: CGFloat = 5
         static let placeholderCellHorizontalPadding: CGFloat = 2
         static let clearButtonSize: CGFloat = 16
+        static let settingsButtonSize: CGFloat = 18
+        static let accessorySpacing: CGFloat = 5
         static let textClearButtonSpacing: CGFloat = 4
         static let textFieldHeight: CGFloat = 22
         static let textOpticalCenterOffset: CGFloat = -1.5
@@ -315,13 +322,25 @@ private extension LaunchpadSearchField {
 
     func layoutClearButton(isRightToLeft: Bool) {
         let clearButtonOrigin = isRightToLeft
-            ? Metrics.horizontalInset
-            : bounds.width - Metrics.horizontalInset - Metrics.clearButtonSize
+            ? settingsButton.frame.maxX + Metrics.accessorySpacing
+            : settingsButton.frame.minX - Metrics.accessorySpacing - Metrics.clearButtonSize
         clearButton.frame = NSRect(
             x: alignedToBackingScale(clearButtonOrigin),
             y: floor((bounds.height - Metrics.clearButtonSize) / 2),
             width: Metrics.clearButtonSize,
             height: Metrics.clearButtonSize
+        )
+    }
+
+    func layoutSettingsButton(isRightToLeft: Bool) {
+        let originX = isRightToLeft
+            ? Metrics.horizontalInset
+            : bounds.width - Metrics.horizontalInset - Metrics.settingsButtonSize
+        settingsButton.frame = NSRect(
+            x: alignedToBackingScale(originX),
+            y: floor((bounds.height - Metrics.settingsButtonSize) / 2),
+            width: Metrics.settingsButtonSize,
+            height: Metrics.settingsButtonSize
         )
     }
 
@@ -472,6 +491,31 @@ private extension LaunchpadSearchField {
         clearButton.isHidden = true
         clearButton.setAccessibilityLabel("Clear search")
         addSubview(clearButton)
+    }
+
+    func configureSettingsButton() {
+        settingsButton.image = NSImage(
+            systemSymbolName: "ellipsis.circle",
+            accessibilityDescription: "Launchpad settings"
+        )
+        settingsButton.contentTintColor = NSColor.white.withAlphaComponent(0.86)
+        settingsButton.isBordered = false
+        settingsButton.imageScaling = .scaleProportionallyDown
+        settingsButton.focusRingType = .none
+        settingsButton.target = self
+        settingsButton.action = #selector(settingsButtonPressed)
+        settingsButton.setAccessibilityLabel("Launchpad settings")
+
+        settingsMenu.autoenablesItems = false
+        let resetItem = NSMenuItem(
+            title: "Reset Launchpad",
+            action: #selector(resetLaunchpadMenuItemPressed),
+            keyEquivalent: ""
+        )
+        resetItem.target = self
+        settingsMenu.addItem(resetItem)
+        settingsButton.menu = settingsMenu
+        addSubview(settingsButton)
     }
 
     func updatePresentation() {
@@ -771,6 +815,18 @@ private extension LaunchpadSearchField {
 
     @objc func clearButtonPressed() {
         clearSearch()
+    }
+
+    @objc func settingsButtonPressed() {
+        let menuOrigin = NSPoint(
+            x: settingsButton.frame.maxX - settingsMenu.size.width,
+            y: settingsButton.frame.minY - Metrics.accessorySpacing
+        )
+        settingsMenu.popUp(positioning: nil, at: menuOrigin, in: self)
+    }
+
+    @objc func resetLaunchpadMenuItemPressed() {
+        onResetRequested?()
     }
 }
 
