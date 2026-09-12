@@ -12,7 +12,7 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 
 1. Download `OpenLaunchpad.dmg`.
 2. Open the disk image.
-3. Drag `OpenLaunchpad.app` into the `Applications` folder.
+3. Drag `Open Launchpad.app` into the `Applications` folder.
 4. Launch OpenLaunchpad from `Applications`.
 
 ### First Launch
