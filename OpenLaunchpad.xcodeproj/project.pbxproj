@@ -56,6 +56,7 @@
 		9D84044BCC7785CC301C78C2 /* GridSelectionNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F415C3B84CDA46F4EC5DA53 /* GridSelectionNavigatorTests.swift */; };
 		9E1117AC6FA0ACFA8D8BBCC4 /* ApplicationIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4DD9B562099FCB3AFBACDE /* ApplicationIdentity.swift */; };
 		A780A6DA3C9E839CCC62F01C /* LauncherDragCommitStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E229850957C5AD71D22DD37 /* LauncherDragCommitStateTests.swift */; };
+		AB23ABABD660E86FA8280D84 /* LauncherPageLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D61C240000189F8897C427 /* LauncherPageLayoutTests.swift */; };
 		ABF7D9DF7083E8E8F31AF65C /* OpenLaunchpadAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */; };
 		ACF411DEBB490DE553B05FEF /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AFB607DA6FAB5DAAA5F8A1ED /* LaunchpadVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408C803592FEE9AADE0D481D /* LaunchpadVisualStyle.swift */; };
@@ -233,6 +234,7 @@
 		2A2FEDF9B1040E2BC75BBC0C /* DisplayContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayContextTests.swift; sourceTree = "<group>"; };
 		2F415C3B84CDA46F4EC5DA53 /* GridSelectionNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridSelectionNavigatorTests.swift; sourceTree = "<group>"; };
 		30850971FE77D9F3C72CBD63 /* LaunchpadPresentationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadPresentationController.swift; sourceTree = "<group>"; };
+		32D61C240000189F8897C427 /* LauncherPageLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherPageLayoutTests.swift; sourceTree = "<group>"; };
 		331B4CEC80B332CBD4C548BC /* LauncherDragStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragStateMachine.swift; sourceTree = "<group>"; };
 		35FDED82180A56F6A542E724 /* FolderLayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderLayoutConstraintSolver.swift; sourceTree = "<group>"; };
 		3CD5D979B1C7F17EAD127F69 /* LauncherLayoutDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDraftTests.swift; sourceTree = "<group>"; };
@@ -355,6 +357,7 @@
 				3CD5D979B1C7F17EAD127F69 /* LauncherLayoutDraftTests.swift */,
 				FACCE0659ABCCEA957FB42AC /* LauncherLayoutReconcilerTests.swift */,
 				022176DEACD2A50A3D887207 /* LauncherLayoutStoreTests.swift */,
+				32D61C240000189F8897C427 /* LauncherPageLayoutTests.swift */,
 				7C2E689B95E0A1F4DCD985E9 /* PageMotionProfileTests.swift */,
 				1E1EB07541F69D0A31D137EF /* PageSwipeInputGateTests.swift */,
 				F3E3BBAB293B4C885807CBD7 /* PageTransitionStateTests.swift */,
@@ -740,6 +743,7 @@
 				554B253BC555D81ED3544343 /* LauncherLayoutDraftTests.swift in Sources */,
 				C04D59C36E7C233FFB4A7FCF /* LauncherLayoutReconcilerTests.swift in Sources */,
 				E38DB2D9C05247EC6C9E346C /* LauncherLayoutStoreTests.swift in Sources */,
+				AB23ABABD660E86FA8280D84 /* LauncherPageLayoutTests.swift in Sources */,
 				EF8FB1C8A1FD228F2E89F5DD /* PageMotionProfileTests.swift in Sources */,
 				576B2AD694B796D08BC9E257 /* PageSwipeInputGateTests.swift in Sources */,
 				83CF9D37C4C8FFDEFA6363C8 /* PageTransitionStateTests.swift in Sources */,

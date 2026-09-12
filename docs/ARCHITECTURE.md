@@ -74,6 +74,89 @@ Same-page reordering keeps one page surface as the visual owner. The dragged app
 
 Persistent changes are committed transactionally. Failure paths restore the pre-drag layout rather than leaving presentation state partially committed.
 
+### Page-Local Persistence
+
+`LauncherLayoutDocument` schema 2 stores `pages: [[LauncherLayoutItem]]`. A page
+may intentionally be short or an interior page may be empty. `items` remains a
+flattened compatibility projection for search and legacy consumers, not a
+representation from which persistent page boundaries may be reconstructed.
+`ResolvedLaunchpadPages` maps those boundaries to flat selection indices using
+explicit page ranges instead of `index / itemsPerPage`.
+
+`normalizedForPageCapacity(_:)` only pushes excess items forward, placing an
+overflow suffix at the front of the following page and creating pages as
+needed. It never draws items backward to fill a vacancy, even when a larger
+display increases grid capacity. Empty trailing pages are removed, while
+interior gaps and at least one page are retained.
+
+`LauncherLayoutDraft.moveRootItem(_:toPage:at:pageCapacity:)` removes the source,
+inserts at a final page-local index, then propagates overflow forward. Only the
+source page compacts after removal. For example, with capacity four, moving B
+into page 2 at index 1 changes `ABCD | EFGH | IJKL` into
+`ACD | EBFG | HIJK | L`; E does not move backward into page 1. A folder is one
+root item for these rules. Merging apps keeps the new folder on the target's
+page, and catalog reconciliation preserves page boundaries while appending
+new apps to the last page.
+
+Draft changes and store commits compare `pages`, not only flattened `items`.
+Moving the final app to a new page must persist even if its flattened order
+does not change. Stable application/folder identifiers remain authoritative
+when a partial catalog leaves unresolved references.
+
+### Schema Migration and Recovery
+
+The codec automatically migrates schema 1 to schema 2 without incrementing the
+document revision. The former flat list initially becomes one page, and runtime
+normalization applies the actual display capacity instead of guessing it in
+the file store. Folder identities, contents, titles, and item order are retained.
+Unknown future schemas are rejected without overwriting the source.
+
+Before writing migrated data, `AtomicLauncherLayoutFileIO` preserves the
+original bytes in `LauncherLayout.pre-pages.backup.json` next to the layout
+file. It never overwrites an existing backup, and a backup/write failure does
+not publish the migrated document to the store's in-memory cache. Restoration
+requires quitting both processes and preserving the current file before
+replacing it with a copy of the backup; subsequent arrangement edits are not
+part of the pre-migration backup.
+
+### Edge Paging and Release Ownership
+
+While dragging, an edge dwell turns one page, then re-arms after that animation
+finishes if the pointer is still at the edge. The gesture can traverse existing
+pages in either direction without requiring an exit/re-entry. One temporary
+trailing page is available for insertion; holding at the edge must not create
+an unbounded sequence of empty pages. Each projected layout is derived from
+the original drag snapshot, so merely visiting pages does not cumulatively
+commit reorders.
+
+The drag session and `LauncherDragStateMachine` receive the same page-local
+drop target through `setDragTarget`. The screen-edge strip lies outside the
+ordinary icon grid but retains the reached page's valid landing slot. This
+avoids accepting a visual target while the state machine still says `.outside`.
+
+Mouse-up immediately marks the session released and cancels the edge timer.
+If a page transition is active, its release point is retained and the drop is
+completed only when the incoming page becomes active; no further dwell may
+start. Generation checks reject stale transition completions after cancellation.
+The original pointer-tracking button remains alive through mouse-up even when
+its page layer has moved offscreen. Persistence and landing animation still
+finish as one coordinated drag commit.
+
+### Regression Coverage
+
+The 2026-09-12 page-local change passes 133 Swift core tests and the Debug
+application build. `LauncherPageLayoutTests` adds 19 deterministic cases for
+legacy migration, explicit page round-tripping, empty/partial pages, overflow,
+forward/reverse moves, folders, reconciliation, and boundary-only commits.
+Four additional state-machine cases cover page insertion, replacing an outside
+target, cancellation, and persistence rollback. `CrossPageDragCheck.swift`
+drives the real AppKit tile's pointer methods with an isolated store to cover
+stationary multi-page dwelling, reverse traversal, edge/mid-animation release,
+cancellation and retiring the exact transition layers, bounded new-page creation,
+and forward overflow. `ResolvedPageCheck.swift` checks compacted visible indices
+against unresolved persisted references. These checks do not measure compositor
+frame pacing or replace manual physical-device testing.
+
 ## Accessibility and Input
 
 The visual grid is rendered with Core Animation, while native controls provide accessibility and hit-test semantics. Keyboard navigation, right-to-left layout, multi-display behavior, and Reduce Motion are architectural requirements rather than optional visual polish.

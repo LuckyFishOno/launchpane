@@ -52,10 +52,29 @@ This extra step is required because the current release is distributed outside t
 - Calmer 0.56-second wheel/keyboard paging, with one page per continuous wheel burst.
 - Full-display frosted wallpaper with a visually replaced menu region and an interactive system Dock.
 - Persistent drag-and-drop reordering and folder creation.
+- Page-local app placement: moving an app out leaves room on that page; only overflow pushes apps into later pages.
+- Multi-page dragging by holding an app at the screen edge, including a new trailing page when needed.
 - Keyboard navigation and native accessibility hit targets.
 - Right-to-left layout support.
 - Respect for the macOS Reduce Motion setting.
 - No telemetry, account, or mandatory network connection.
+
+## App Placement and Layout Data
+
+Pages keep their own arrangement. Removing or moving an app compacts only its
+source page; it does not pull apps backward from later pages. Dropping into a
+full page pushes its overflow forward, creating another page if necessary.
+Keep holding the dragged app at an edge to continue through existing pages;
+you do not need to leave and re-enter the edge after every turn. If you release
+while a page is sliding, the drop finishes on that incoming page.
+
+The layout file at `~/Library/Application Support/OpenLaunchpad/LauncherLayout.json`
+now uses schema 2 with explicit pages. Older schema-1 layouts migrate
+automatically, retaining app/folder order and revision. Before migration, the
+original file is preserved as `LauncherLayout.pre-pages.backup.json` beside it;
+an existing backup is never overwritten. To roll back, quit both launcher
+processes, preserve the current layout separately, and restore a copy of that
+backup. The backup does not contain arrangement changes made after migration.
 
 ## Build and Run
 
@@ -229,6 +248,15 @@ search appearance using an isolated layout store.
 
 See [`docs/PAGING_PERFORMANCE.md`](docs/PAGING_PERFORMANCE.md) for paging fixes,
 before/after measurements, and the limits of those measurements.
+
+`LauncherPageLayoutTests` covers page-local gaps, forward overflow, multi-page
+and reverse moves, folders, reconciliation, page-boundary-only persistence,
+and schema migration/backup preservation. The cross-page change passes the
+133-test Swift core suite and the Debug application build. Standalone runtime
+checks cover held-edge traversal, reverse traversal, release at the edge and
+during animation, cancellation, new pages, and unresolved-app index mapping.
+See [`Tests/Runtime/README.md`](Tests/Runtime/README.md) to reproduce them; these
+checks do not measure compositor frame pacing on every display.
 
 ## Project Structure
 

@@ -75,11 +75,11 @@ public enum LauncherLayoutReconciler {
             catalog: catalog,
             completeness: completeness
         )
-        let reconciledItems = accumulator.reconcile(document.items)
+        let reconciledPages = accumulator.reconcile(document.pages)
 
         let reconciledDocument = LauncherLayoutDocument(
             revision: document.revision,
-            items: reconciledItems
+            pages: reconciledPages
         )
         return LauncherLayoutReconciliationResult(
             document: reconciledDocument,
@@ -113,10 +113,13 @@ private struct ReconciliationAccumulator {
         )
     }
 
-    mutating func reconcile(_ items: [LauncherLayoutItem]) -> [LauncherLayoutItem] {
-        var result = items.flatMap { reconcile($0) }
+    mutating func reconcile(_ pages: [[LauncherLayoutItem]]) -> [[LauncherLayoutItem]] {
+        // Reconcile each page in place. Uninstalls/dissolved folders must not
+        // compact later pages backward into the newly created vacancies.
+        var result = pages.map { page in page.flatMap { reconcile($0) } }
+        if result.isEmpty { result = [[]] }
         for application in catalog where claimedApplications.insert(application.id).inserted {
-            result.append(.application(LauncherApplicationReference(application: application)))
+            result[result.count - 1].append(.application(LauncherApplicationReference(application: application)))
             report.addedApplications.append(application.id)
         }
         return result

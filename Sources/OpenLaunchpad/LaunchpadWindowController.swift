@@ -344,6 +344,15 @@ private extension LaunchpadRootView {
         wallpaperView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
     }
 
+    func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil) -> ResolvedLaunchpadPages {
+        ResolvedLaunchpadItemFactory.makePages(
+            document: document ?? layoutDocument,
+            applications: applications,
+            query: searchField.stringValue,
+            pageCapacity: metrics.itemsPerPage
+        )
+    }
+
     func render() {
         guard
             !isPageTransitionActive,
@@ -383,7 +392,7 @@ private extension LaunchpadRootView {
             )
         }
 
-        let pageCount = metrics.pageCount(for: items.count)
+        let pageCount = pageProjection(metrics: metrics).pageCount
         currentPage = min(currentPage, max(0, pageCount - 1))
         let direction = pendingPageDirection
         pendingPageDirection = 0
@@ -459,7 +468,7 @@ private extension LaunchpadRootView {
         pageSurfaces.removeAll(keepingCapacity: true)
         activeSurface = nil
 
-        let pageCount = max(1, metrics.pageCount(for: items.count))
+        let pageCount = pageProjection(metrics: metrics).pageCount
         for pageIndex in 0 ..< pageCount {
             pageSurfaces[pageIndex] = makePageSurface(
                 pageIndex: pageIndex,
@@ -475,7 +484,8 @@ private extension LaunchpadRootView {
         pageIndex: Int,
         items: [ResolvedLaunchpadItem],
         metrics: GridMetrics,
-        scale: CGFloat
+        scale: CGFloat,
+        projection: ResolvedLaunchpadPages? = nil
     ) -> LaunchpadPageSurface {
         let layer = CALayer()
         layer.frame = bounds
@@ -491,8 +501,10 @@ private extension LaunchpadRootView {
             return surface
         }
 
-        let startIndex = pageIndex * metrics.itemsPerPage
-        let endIndex = min(startIndex + metrics.itemsPerPage, items.count)
+        let projection = projection ?? pageProjection(metrics: metrics)
+        let range = projection.range(forPage: pageIndex)
+        let startIndex = range.lowerBound
+        let endIndex = range.upperBound
         guard startIndex < endIndex else { return surface }
         let visibleCount = endIndex - startIndex
         let centersSearchResults = isSearchActive
@@ -872,7 +884,7 @@ private extension LaunchpadRootView {
     func moveSelection(_ movement: GridNavigationMovement) {
         guard !isPageTransitionActive, let metrics = currentMetrics else { return }
         let items = resolvedItems
-        let currentSelection = items.indices.contains(selectedIndex) ? selectedIndex : nil
+        let currentSelection = items.indices.contains(selectedIndex) ? selectedIndex : pageProjection(metrics: metrics).range(forPage: currentPage).first
         guard let index = GridSelectionNavigator.nextIndex(
             from: currentSelection,
             movement: movement,
@@ -890,7 +902,7 @@ private extension LaunchpadRootView {
         guard !items.isEmpty else { return }
         let previousPage = currentPage
         selectedIndex = min(max(index, 0), items.count - 1)
-        currentPage = selectedIndex / itemsPerPage
+        currentPage = currentMetrics.flatMap { pageProjection(metrics: $0).pageIndex(containing: selectedIndex) } ?? 0
         pendingPageDirection = currentPage == previousPage ? 0 : currentPage - previousPage
         updateSelectionAppearance()
         needsLayout = true
@@ -918,7 +930,7 @@ private extension LaunchpadRootView {
             return
         }
         guard let metrics = currentMetrics else { return }
-        let count = metrics.pageCount(for: resolvedItems.count)
+        let count = pageProjection(metrics: metrics).pageCount
         guard count > 0 else { return }
         let nextPage = min(max(currentPage + offset, 0), count - 1)
         guard nextPage != currentPage else { return }
@@ -1236,7 +1248,7 @@ private extension LaunchpadRootView {
             return false
         }
 
-        let pageCount = metrics.pageCount(for: resolvedItems.count)
+        let pageCount = pageProjection(metrics: metrics).pageCount
         let targetPage = currentPage + direction
         guard
             (0 ..< pageCount).contains(targetPage),
@@ -1506,7 +1518,7 @@ private extension LaunchpadRootView {
         updateSelectionAppearance()
 
         if let metrics = currentMetrics {
-            let pageCount = metrics.pageCount(for: resolvedItems.count)
+            let pageCount = pageProjection(metrics: metrics).pageCount
             updatePageIndicator(
                 pageCount: pageCount,
                 metrics: metrics,
@@ -1771,7 +1783,7 @@ private extension LaunchpadRootView {
             let originalSurface = activeSurface,
             dragStateMachine.beginDragging(),
             let draft = try? LauncherLayoutDraft(
-                document: layoutDocument
+                document: layoutDocument.normalizedForPageCapacity(currentMetrics?.itemsPerPage ?? 1)
             )
         else { return }
 
@@ -1794,7 +1806,8 @@ private extension LaunchpadRootView {
             draft: draft,
             proxyLayer: proxyLayer,
             pointerOffset: pointerOffset,
-            originalSurface: originalSurface
+            originalSurface: originalSurface,
+            sourcePage: currentPage
         )
 
         dragSession = session
@@ -1818,190 +1831,241 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func updateDragInteraction(at point: CGPoint) {
-        guard let dragSession else { return }
-
-        // 1:1 跟著滑鼠，不加 position smoothing，
-        // 避免拖曳 icon 落後 pointer。
+    func updateDragInteraction(at point: CGPoint, allowsEdgePaging: Bool = true) {
+        guard let session = dragSession else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-
-        dragSession.proxyLayer.position = CGPoint(
-            x: point.x
-                - dragSession.pointerOffset.dx,
-            y: point.y
-                - dragSession.pointerOffset.dy
+        session.proxyLayer.position = CGPoint(
+            x: point.x - session.pointerOffset.dx, y: point.y - session.pointerOffset.dy
         )
+        CATransaction.commit()
+        session.lastPointerPoint = point
+        guard !session.isEdgePageTransitionActive else { return }
+        if allowsEdgePaging && !session.hasReleased {
+            updateDragEdgePaging(at: point, session: session)
+        }
+        // An edge is outside the icon grid, but a page already reached by this
+        // drag has a valid landing slot. Keep it valid even on the first/last page.
+        if session.hasCrossedPages, let metrics = currentMetrics,
+           dragEdgeDirection(at: point, metrics: metrics) != nil {
+            if let location = session.previewLocation {
+                setDragTarget(.pageInsertion(page: location.page, index: location.index), session: session)
+            }
+            return
+        }
+        let target = dropTarget(at: point, source: session.sourceEntry)
+        if case let .pageInsertion(page, index) = target, let metrics = currentMetrics {
+            updateDragPreviewLayout(session, location: DragPageLocation(page: page, index: index),
+                                    animated: true, metrics: metrics)
+        }
+        setDragTarget(target, session: session)
+    }
 
+    func setDragTarget(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
+        session.target = target
+        _ = dragStateMachine.update(target: target)
+        updateDropHighlight(target)
+    }
+
+    private enum DragEdgeMetrics {
+        static let minimumWidth: CGFloat = 56
+        static let maximumWidth: CGFloat = 96
+        static let widthFraction: CGFloat = 0.04
+        static let dwell: Duration = .milliseconds(400)
+        static let pageDuration: CFTimeInterval = 0.45
+    }
+
+    func dragEdgeDirection(at point: CGPoint, metrics: GridMetrics) -> Int? {
+        let edgeWidth = min(DragEdgeMetrics.maximumWidth,
+                            max(DragEdgeMetrics.minimumWidth, bounds.width * DragEdgeMetrics.widthFraction))
+        guard point.y >= metrics.contentFrame.minY, point.y <= metrics.contentFrame.maxY,
+              point.x >= bounds.minX, point.x <= bounds.maxX else { return nil }
+        if point.x <= bounds.minX + edgeWidth { return metrics.isRightToLeft ? 1 : -1 }
+        if point.x >= bounds.maxX - edgeWidth { return metrics.isRightToLeft ? -1 : 1 }
+        return nil
+    }
+
+    func updateDragEdgePaging(at point: CGPoint, session: LaunchpadDragSession) {
+        guard let metrics = currentMetrics, !session.isEdgePageTransitionActive, !session.hasReleased else { return }
+        let direction = dragEdgeDirection(at: point, metrics: metrics)
+        // Existing pages may be traversed freely. Offer one temporary trailing
+        // page, not an unbounded train of empty pages while the pointer rests.
+        let existingCount = session.draft.snapshot.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
+        guard let direction, (0...existingCount).contains(currentPage + direction) else {
+            session.edgePagingTask?.cancel()
+            session.edgePagingTask = nil
+            session.edgePagingDirection = nil
+            return
+        }
+        guard session.edgePagingDirection != direction || session.edgePagingTask == nil else { return }
+        session.edgePagingTask?.cancel()
+        session.edgePagingDirection = direction
+        session.edgePagingTask = Task { @MainActor [weak self, weak session] in
+            try? await Task.sleep(for: DragEdgeMetrics.dwell)
+            guard !Task.isCancelled, let self, let session,
+                  self.dragSession === session, !session.hasReleased,
+                  !session.isEdgePageTransitionActive,
+                  session.edgePagingDirection == direction,
+                  let metrics = self.currentMetrics,
+                  self.dragEdgeDirection(at: session.lastPointerPoint, metrics: metrics) == direction else { return }
+            session.edgePagingTask = nil
+            self.performDragEdgePageTurn(direction: direction, session: session)
+        }
+    }
+
+    func projectedDocument(_ session: LaunchpadDragSession, location: DragPageLocation,
+                           metrics: GridMetrics) -> LauncherLayoutDocument? {
+        guard var draft = try? LauncherLayoutDraft(document: session.draft.snapshot) else { return nil }
+        do {
+            try draft.moveRootItem(session.sourceEntry.item.id, toPage: location.page,
+                                   at: location.index, pageCapacity: metrics.itemsPerPage)
+            return draft.document
+        } catch { return nil }
+    }
+
+    func performDragEdgePageTurn(direction: Int, session: LaunchpadDragSession) {
+        guard dragSession === session, !session.hasReleased,
+              !session.isEdgePageTransitionActive, let metrics = currentMetrics,
+              let outgoing = session.previewSurface ?? activeSurface else { return }
+        let baseline = session.draft.snapshot.normalizedForPageCapacity(metrics.itemsPerPage)
+        let targetPage = currentPage + direction
+        guard (0...baseline.pages.count).contains(targetPage) else { return }
+        let targetItems = baseline.pages.indices.contains(targetPage) ? baseline.pages[targetPage] : []
+        let sourceID = session.sourceEntry.item.id
+        let targetCount = targetItems.filter { item in
+            switch (item, sourceID) {
+            case let (.application(ref), .application(id)): return ref.identity != id
+            case let (.folder(folder), .folder(id)): return folder.id != id
+            default: return true
+            }
+        }.count
+        // Reserve an actual slot on a full page, so the dragged app stays here;
+        // the previous final app overflows forward. A partial page may append.
+        let location = DragPageLocation(
+            page: targetPage, index: direction > 0 ? min(targetCount, metrics.itemsPerPage - 1) : 0
+        )
+        guard let document = projectedDocument(session, location: location, metrics: metrics) else { return }
+        let projection = pageProjection(metrics: metrics, document: document)
+        let scale = window?.backingScaleFactor ?? 1
+        let incoming = makePageSurface(pageIndex: targetPage, items: projection.items,
+                                       metrics: metrics, scale: scale, projection: projection)
+        incoming.entries.first { $0.item.id == sourceID }?.tileLayer.removeFromSuperlayer()
+        session.mergeCandidate = nil
+        session.mergeCandidateBeganAt = nil
+        session.previewLocation = location
+        session.projectedDocument = document
+        session.hasCrossedPages = true
+        session.edgeGeneration &+= 1
+        let generation = session.edgeGeneration
+        session.isEdgePageTransitionActive = true
+        session.edgeIncomingSurface = incoming
+        session.edgeOutgoingSurface = outgoing
+        setDragTarget(.pageInsertion(page: location.page, index: location.index), session: session)
+
+        // Retire every other visible page tree before bringing in the projection.
+        // The source button stays attached until mouseUp even on a return visit.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for surface in pageSurfaces.values where surface !== outgoing {
+            surface.layer.removeAllAnimations()
+            surface.layer.removeFromSuperlayer()
+        }
+        let resting = CGPoint(x: bounds.midX, y: bounds.midY)
+        let visualDirection = CGFloat(metrics.isRightToLeft ? -direction : direction)
+        let distance = visualDirection * bounds.width
+        outgoing.layer.removeAllAnimations()
+        outgoing.layer.frame = bounds
+        outgoing.layer.opacity = 1
+        outgoing.layer.isHidden = false
+        incoming.layer.position = CGPoint(x: resting.x + distance, y: resting.y)
+        rootLayer.insertSublayer(incoming.layer, below: fixedOverlayLayer)
         CATransaction.commit()
 
-        let target = dropTarget(
-            at: point,
-            source: dragSession.sourceEntry
-        )
-
-        if case let .insertion(destination) = target,
-           let metrics = currentMetrics
-        {
-            updateDragPreviewLayout(
-                dragSession,
-                destinationIdentifier: destination,
-                animated: true,
-                metrics: metrics
-            )
+        let finish = { [weak self, weak session] in
+            guard let self, let session, self.dragSession === session,
+                  session.edgeGeneration == generation else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            outgoing.layer.removeAllAnimations()
+            outgoing.layer.removeFromSuperlayer()
+            incoming.layer.removeAllAnimations()
+            incoming.layer.position = resting
+            CATransaction.commit()
+            if let stale = self.pageSurfaces[targetPage], stale !== incoming {
+                if stale !== session.originalSurface { self.detachButtons(from: stale) }
+                stale.layer.removeFromSuperlayer()
+            }
+            self.currentPage = targetPage
+            self.activeSurface = incoming
+            self.pageContentLayer = incoming.layer
+            self.pageSurfaces[targetPage] = incoming
+            session.previewSurface = incoming
+            session.usesInPlacePreview = false
+            session.isEdgePageTransitionActive = false
+            session.edgeIncomingSurface = nil
+            session.edgeOutgoingSurface = nil
+            session.edgePagingDirection = nil
+            self.updatePageIndicator(pageCount: projection.pageCount, metrics: metrics, scale: scale)
+            if let point = session.pendingCompletionPoint {
+                session.pendingCompletionPoint = nil
+                self.completeDragInteraction(at: point)
+            } else {
+                // Re-arm from this page; no exit/re-entry requirement.
+                self.updateDragInteraction(at: session.lastPointerPoint)
+            }
         }
-
-        dragSession.target = target
-
-        _ = dragStateMachine.update(
-            target: target
-        )
-
-        updateDropHighlight(target)
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { finish(); return }
+        let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
+        func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
+            let result = CABasicAnimation(keyPath: "position")
+            result.fromValue = NSValue(point: start)
+            result.toValue = NSValue(point: end)
+            result.duration = DragEdgeMetrics.pageDuration
+            result.timingFunction = timing
+            return result
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        CATransaction.setCompletionBlock { Task { @MainActor in finish() } }
+        let outgoingEnd = CGPoint(x: resting.x - distance, y: resting.y)
+        outgoing.layer.position = outgoingEnd
+        incoming.layer.position = resting
+        outgoing.layer.add(animation(resting, outgoingEnd), forKey: "dragEdgePageOut")
+        incoming.layer.add(animation(CGPoint(x: resting.x + distance, y: resting.y), resting), forKey: "dragEdgePageIn")
+        CATransaction.commit()
     }
 
     func updateDragPreviewLayout(
         _ session: LaunchpadDragSession,
-        destinationIdentifier: LauncherLayoutItemIdentifier,
+        location: DragPageLocation,
         animated: Bool,
         metrics: GridMetrics
     ) {
-        // OPENLAUNCHPAD_INPLACE_DRAG_PREVIEW_FIX_V1
-
-        let previousDestination =
-            session.previewState.destination
-
-        guard session.previewState.request(
-            destination: destinationIdentifier
-        ) != .none else {
-            return
-        }
-
-        let scale =
-            window?.backingScaleFactor
-                ?? 1
-
-        let items =
-            reorderedItemsForDrag(
-                sourceID:
-                    session
-                        .sourceEntry
-                        .item
-                        .id,
-                destinationID:
-                    destinationIdentifier
-            )
-
-        let pageStart =
-            currentPage
-                * metrics.itemsPerPage
-
-        let pageEnd =
-            min(
-                pageStart
-                    + metrics.itemsPerPage,
-                items.count
-            )
-
-        var targetFrames:
-            [
-                LauncherLayoutItemIdentifier:
-                    GridItemFrames
-            ] = [:]
-
-        var targetIndices:
-            [
-                LauncherLayoutItemIdentifier:
-                    Int
-            ] = [:]
-
-        if pageStart < pageEnd {
-            for (
-                localIndex,
-                item
-            ) in items[
-                pageStart
-                    ..<
-                    pageEnd
-            ].enumerated() {
-                guard let frames =
-                    metrics.itemFrames(
-                        forItemAt:
-                            localIndex
-                    )
-                else {
-                    continue
-                }
-
-                targetFrames[
-                    item.id
-                ] = frames
-
-                targetIndices[
-                    item.id
-                ] =
-                    pageStart
-                        + localIndex
+        let previousLocation = session.previewLocation
+        guard previousLocation != location,
+              let document = projectedDocument(session, location: location, metrics: metrics) else { return }
+        session.previewLocation = location
+        session.projectedDocument = document
+        let projection = pageProjection(metrics: metrics, document: document)
+        let items = projection.items
+        let range = projection.range(forPage: currentPage)
+        var targetFrames: [LauncherLayoutItemIdentifier: GridItemFrames] = [:]
+        var targetIndices: [LauncherLayoutItemIdentifier: Int] = [:]
+        for (localIndex, item) in items[range].enumerated() {
+            if let frames = metrics.itemFrames(forItemAt: localIndex) {
+                targetFrames[item.id] = frames
+                targetIndices[item.id] = range.lowerBound + localIndex
             }
         }
+        let previousRank = (previousLocation?.page ?? session.sourcePage) * metrics.itemsPerPage
+            + (previousLocation?.index ?? 0)
+        let transition = LaunchpadVisualStyle.dragReflowTransition(
+            movedForward: location.page * metrics.itemsPerPage + location.index > previousRank
+        )
+        let scale = window?.backingScaleFactor ?? 1
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        let visibleIdentifiers =
-            resolvedItems.map(\.id)
 
-        let previousDestinationIndex =
-            visibleIdentifiers.firstIndex(
-                of:
-                    previousDestination
-            )
-                ?? 0
-
-        let nextDestinationIndex =
-            visibleIdentifiers.firstIndex(
-                of:
-                    destinationIdentifier
-            )
-                ?? previousDestinationIndex
-
-        let movedForward =
-            nextDestinationIndex
-                > previousDestinationIndex
-
-        let transition =
-            LaunchpadVisualStyle
-                .dragReflowTransition(
-                    movedForward:
-                        movedForward
-                )
-
-        let shouldAnimate =
-            animated
-                && !NSWorkspace
-                    .shared
-                    .accessibilityDisplayShouldReduceMotion
-
-        // ----------------------------------------------------
-        // CRITICAL:
-        //
-        // 同一頁 reorder 不建立第二棵 page tree。
-        //
-        // 舊版第一次 materialize preview 時：
-        //
-        // originalSurface
-        //          +
-        // new previewSurface
-        //
-        // 兩棵 surface 都包含 Wireshark / Webex / ...
-        //
-        // 即使 model layer 很快被 remove/hide，
-        // WindowServer 仍可能短暫保留舊 presentation tree。
-        //
-        // 結果就是影片裡：
-        //
-        // Wireshark + Wireshark
-        // label + label
-        //
-        // 現在直接移動原本的 CALayer。
-        // ----------------------------------------------------
 
         let workingSurface:
             LaunchpadPageSurface = {
@@ -2226,8 +2290,8 @@ private extension LaunchpadRootView {
                     items,
                 metrics:
                     metrics,
-                scale:
-                    scale
+                scale: scale,
+                projection: projection
             )
 
         var oldPositions:
@@ -2420,41 +2484,7 @@ private extension LaunchpadRootView {
             .usesInPlacePreview = false
     }
 
-    func reorderedItemsForDrag(
-        sourceID: LauncherLayoutItemIdentifier,
-        destinationID: LauncherLayoutItemIdentifier
-    ) -> [ResolvedLaunchpadItem] {
-        var items = resolvedItems
 
-        guard
-            let sourceIndex =
-            items.firstIndex(
-                where: {
-                    $0.id == sourceID
-                }
-            ),
-            let destinationIndex =
-            items.firstIndex(
-                where: {
-                    $0.id == destinationID
-                }
-            )
-        else {
-            return items
-        }
-
-        let source =
-            items.remove(
-                at: sourceIndex
-            )
-
-        items.insert(
-            source,
-            at: min(destinationIndex, items.count)
-        )
-
-        return items
-    }
 
     func dropTarget(
         at point: CGPoint,
@@ -2464,54 +2494,37 @@ private extension LaunchpadRootView {
             return .outside
         }
 
-        let visibleItems =
-            resolvedItems
-
-        let itemCount =
-            visibleItems.count
-
-        guard itemCount > 0 else {
-            return .outside
-        }
-
-        let insertionTarget:
-            LauncherDropTarget =
-        {
-            guard
-                metrics.contentFrame
-                    .contains(point)
-            else {
-                return .outside
+        let baseline = (dragSession?.draft.snapshot ?? layoutDocument)
+            .normalizedForPageCapacity(metrics.itemsPerPage)
+        let pageItems = baseline.pages.indices.contains(currentPage) ? baseline.pages[currentPage] : []
+        let countWithoutSource = pageItems.filter { item in
+            switch (item, source.item.id) {
+            case let (.application(ref), .application(id)): return ref.identity != id
+            case let (.folder(folder), .folder(id)): return folder.id != id
+            default: return true
             }
-
-            guard let localIndex =
-                (0 ..< metrics.itemsPerPage)
-                    .first(
-                        where: { index in
-                            metrics
-                                .cellFrame(
-                                    forItemAt:
-                                        index
-                                )?
-                                .contains(point)
-                                == true
-                        }
-                    )
-            else {
-                return .outside
+        }.count
+        let insertionTarget: LauncherDropTarget = {
+            guard metrics.contentFrame.contains(point),
+                  let localIndex = (0..<metrics.itemsPerPage).first(where: {
+                      metrics.cellFrame(forItemAt: $0)?.contains(point) == true
+                  }) else { return .outside }
+            let projection = pageProjection(metrics: metrics, document: baseline)
+            let visibleIDs = projection.pages.indices.contains(currentPage)
+                ? projection.pages[currentPage].map(\.id) : []
+            let pageIDs = pageItems.map { item -> LauncherLayoutItemIdentifier in
+                switch item {
+                case let .application(reference): return .application(reference.identity)
+                case let .folder(folder): return .folder(folder.id)
+                }
             }
-
-            let visibleIndex = min(
-                currentPage
-                    * metrics.itemsPerPage
-                    + localIndex,
-                itemCount - 1
-            )
-
-            return .insertion(
-                destination:
-                    visibleItems[visibleIndex].id
-            )
+            guard let index = ResolvedLaunchpadInsertionIndex.resolve(
+                visibleSlot: min(localIndex, countWithoutSource),
+                pageIdentifiers: pageIDs,
+                visibleIdentifiers: visibleIDs,
+                sourceIdentifier: source.item.id
+            ) else { return .outside }
+            return .pageInsertion(page: currentPage, index: index)
         }()
 
         guard
@@ -2599,10 +2612,9 @@ private extension LaunchpadRootView {
 
             // 不能一碰到 App 就把它推走，
             // 否則永遠無法形成 folder。
-            return .insertion(
-                destination:
-                    session.previewDestinationIdentifier
-            )
+            return session.previewLocation.map {
+                .pageInsertion(page: $0.page, index: $0.index)
+            } ?? insertionTarget
         }
 
         let beganAt =
@@ -2613,10 +2625,9 @@ private extension LaunchpadRootView {
             return candidate
         }
 
-        return .insertion(
-            destination:
-                session.previewDestinationIdentifier
-        )
+        return session.previewLocation.map {
+            .pageInsertion(page: $0.page, index: $0.index)
+        } ?? insertionTarget
     }
 
     func updateDropHighlight(
@@ -2668,7 +2679,7 @@ private extension LaunchpadRootView {
                             folderID
                         )
 
-            case .insertion, .outside:
+            case .insertion, .pageInsertion, .outside:
                 isMergeTarget = false
             }
 
@@ -2691,7 +2702,21 @@ private extension LaunchpadRootView {
             dragStateMachine.finish()
             return
         }
-        updateDragInteraction(at: point)
+
+        dragSession.hasReleased = true
+        dragSession.edgePagingTask?.cancel()
+        dragSession.edgePagingTask = nil
+        dragSession.edgePagingDirection = nil
+
+        // If mouse-up arrives while an edge page is still sliding, preserve the
+        // release point and complete the drop when that page becomes active.
+        if dragSession.isEdgePageTransitionActive {
+            dragSession.pendingCompletionPoint =
+                point
+            return
+        }
+
+        updateDragInteraction(at: point, allowsEdgePaging: false)
 
         do {
             try applyDropTarget(dragSession.target, to: dragSession)
@@ -2728,10 +2753,9 @@ private extension LaunchpadRootView {
             do {
                 layoutDocument = try await layoutStore.commit(draft)
                 selectedIndex = -1
-                currentPage = min(
-                    currentPage,
-                    max(0, (layoutDocument.items.count - 1) / max(1, currentMetrics?.itemsPerPage ?? 1))
-                )
+                if let metrics = currentMetrics {
+                    currentPage = min(currentPage, pageProjection(metrics: metrics).pageCount - 1)
+                }
                 if adoptCommittedInsertionPreviewIfPossible(
                     committingSession
                 ) {
@@ -2763,7 +2787,7 @@ private extension LaunchpadRootView {
         _ session: LaunchpadDragSession
     ) -> Bool {
         guard
-            case .insertion = session.target,
+            session.target.isInsertion,
             let previewSurface = session.previewSurface,
             let metrics = currentMetrics
         else {
@@ -2777,12 +2801,8 @@ private extension LaunchpadRootView {
         // edge cases on the safe full-rebuild path.
         let items = resolvedItems
 
-        let pageCount = max(
-            1,
-            metrics.pageCount(
-                for: items.count
-            )
-        )
+        let projection = pageProjection(metrics: metrics)
+        let pageCount = projection.pageCount
 
         guard pageSurfaces.count == pageCount else {
             return false
@@ -2801,16 +2821,9 @@ private extension LaunchpadRootView {
                 return false
             }
 
-            let startIndex =
-                pageIndex
-                    * metrics.itemsPerPage
-
-            let endIndex =
-                min(
-                    startIndex
-                        + metrics.itemsPerPage,
-                    items.count
-                )
+            let range = projection.range(forPage: pageIndex)
+            let startIndex = range.lowerBound
+            let endIndex = range.upperBound
 
             let expectedIDs:
                 [LauncherLayoutItemIdentifier]
@@ -3033,6 +3046,11 @@ private extension LaunchpadRootView {
 
     func applyDropTarget(_ target: LauncherDropTarget, to session: LaunchpadDragSession) throws {
         switch target {
+        case let .pageInsertion(page, index):
+            try session.draft.moveRootItem(
+                session.sourceEntry.item.id, toPage: page, at: index,
+                pageCapacity: currentMetrics?.itemsPerPage ?? 1
+            )
         case let .insertion(destination):
             try session.draft.moveRootItem(
                 session.sourceEntry.item.id,
@@ -3054,7 +3072,11 @@ private extension LaunchpadRootView {
     }
 
     func restoreSnapshotUI(afterFailedCommit session: LaunchpadDragSession) {
-        if session.usesInPlacePreview {
+        currentPage = session.sourcePage
+        session.originalSurface.layer.frame = bounds
+        session.originalSurface.layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        // Immutable source geometry also matters after crossing pages.
+        do {
             CATransaction.begin()
 
             CATransaction
@@ -3176,9 +3198,26 @@ private extension LaunchpadRootView {
             return
         }
 
+        dragSession.edgePagingTask?.cancel()
+        dragSession.edgePagingTask = nil
+        dragSession.pendingCompletionPoint = nil
+        dragSession.hasReleased = true
+        dragSession.edgeGeneration &+= 1
+
         _ = dragStateMachine.beginRollback()
         dragSession.draft.rollback()
         isFinishingDragVisuals = true
+        if dragSession.hasCrossedPages {
+            finishCrossPageRollback(dragSession, animated: animated) { [weak self] in
+                guard let self else { return }
+                isFinishingDragVisuals = false
+                dragStateMachine.finish()
+                setPageHitTargetsEnabled(true)
+                needsLayout = true
+            }
+            self.dragSession = nil
+            return
+        }
         setPageHitTargetsEnabled(false)
         finishDragVisuals(
             dragSession,
@@ -3192,6 +3231,70 @@ private extension LaunchpadRootView {
             needsLayout = true
         }
         self.dragSession = nil
+    }
+
+    func finishCrossPageRollback(_ session: LaunchpadDragSession, animated: Bool,
+                                 completion: @escaping () -> Void) {
+        session.edgeIncomingSurface?.layer.removeAllAnimations()
+        session.edgeIncomingSurface?.layer.removeFromSuperlayer()
+        session.edgeOutgoingSurface?.layer.removeAllAnimations()
+        session.edgeOutgoingSurface?.layer.removeFromSuperlayer()
+        session.previewSurface?.layer.removeFromSuperlayer()
+        session.originalSurface.layer.removeFromSuperlayer()
+        detachButtons(from: session.originalSurface)
+        session.isEdgePageTransitionActive = false
+        layoutDocument = session.draft.snapshot
+        currentPage = session.sourcePage
+        selectedIndex = -1
+        invalidatePageSurfaceCache()
+        guard let metrics = currentMetrics else {
+            session.proxyLayer.removeFromSuperlayer()
+            completion()
+            return
+        }
+        let scale = window?.backingScaleFactor ?? 1
+        let configuration = PageSurfaceConfiguration(bounds: bounds, scale: scale,
+                                                     contentRevision: contentRevision, metrics: metrics)
+        rebuildPageSurfaces(items: resolvedItems, metrics: metrics, scale: scale, configuration: configuration)
+        guard let restored = pageSurfaces[currentPage],
+              let source = restored.entries.first(where: { $0.item.id == session.sourceEntry.item.id }) else {
+            session.proxyLayer.removeFromSuperlayer()
+            completion()
+            return
+        }
+        activeSurface = restored
+        pageContentLayer = restored.layer
+        rootLayer.insertSublayer(restored.layer, below: fixedOverlayLayer)
+        source.tileLayer.removeFromSuperlayer()
+        updatePageIndicator(pageCount: pageProjection(metrics: metrics).pageCount, metrics: metrics, scale: scale)
+        let proxy = session.proxyLayer
+        refreshDragProxyForRelease(proxy, sourceEntry: session.sourceEntry)
+        let start = proxy.presentation()?.position ?? proxy.position
+        let end = source.frames.cell.center
+        let style = LaunchpadVisualStyle.dragCompletionTransition(kind: .rollback)
+        let duration = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? style.duration : 0
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        proxy.removeAllAnimations()
+        proxy.position = end
+        if duration > 0 {
+            let move = CABasicAnimation(keyPath: "position")
+            move.fromValue = NSValue(point: start)
+            move.toValue = NSValue(point: end)
+            move.duration = duration
+            move.timingFunction = style.timingFunction
+            proxy.add(move, forKey: "crossPageRollback")
+        }
+        CATransaction.commit()
+        Task { @MainActor in
+            if duration > 0 { try? await Task.sleep(for: .seconds(duration)) }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            proxy.removeFromSuperlayer()
+            restored.layer.addSublayer(source.tileLayer)
+            CATransaction.commit()
+            completion()
+        }
     }
 
     func makeDragProxy(
@@ -3493,7 +3596,7 @@ private extension LaunchpadRootView {
                 .rollback
         } else {
             switch session.target {
-            case .insertion,
+            case .insertion, .pageInsertion,
                  .outside:
                 completionKind =
                     .insertion
@@ -3533,7 +3636,7 @@ private extension LaunchpadRootView {
 
         if committed {
             switch session.target {
-            case .insertion:
+            case .insertion, .pageInsertion:
                 destination =
                     surface
                         .entries
@@ -4042,7 +4145,7 @@ private extension LaunchpadRootView {
             completionKind = .rollback
         } else {
             switch session.target {
-            case .insertion, .outside:
+            case .insertion, .pageInsertion, .outside:
                 completionKind = .insertion
             case .application, .folder:
                 completionKind = .merge
@@ -4061,7 +4164,7 @@ private extension LaunchpadRootView {
 
         if committed {
             switch session.target {
-            case .insertion:
+            case .insertion, .pageInsertion:
                 let previewSource =
                     previewSurface?
                         .entries
@@ -4231,7 +4334,7 @@ private extension LaunchpadRootView {
         // tiles are still allowed to finish their existing reflow animation, and
         // the normal completion path below still waits for the declared duration.
         if committed,
-           case .insertion = session.target,
+           session.target.isInsertion,
            let liveLayer = revealLayer,
            let liveSurface = revealSurface
         {
@@ -4939,6 +5042,11 @@ private struct PendingTilePress {
     let point: CGPoint
 }
 
+private struct DragPageLocation: Equatable {
+    let page: Int
+    let index: Int
+}
+
 @MainActor
 private final class LaunchpadDragSession {
     let sourceEntry: LaunchpadPageEntry
@@ -4948,6 +5056,28 @@ private final class LaunchpadDragSession {
     let proxyLayer: CALayer
     let pointerOffset: CGVector
     let originalSurface: LaunchpadPageSurface
+    let sourcePage: Int
+
+    var lastPointerPoint: CGPoint = .zero
+
+    var edgePagingDirection: Int?
+
+    var hasReleased = false
+    var hasCrossedPages = false
+    var edgeGeneration = 0
+    var edgeIncomingSurface: LaunchpadPageSurface?
+    var edgeOutgoingSurface: LaunchpadPageSurface?
+    var previewLocation: DragPageLocation?
+    var projectedDocument: LauncherLayoutDocument?
+
+    var edgePagingTask:
+        Task<Void, Never>?
+
+    var isEdgePageTransitionActive =
+        false
+
+    var pendingCompletionPoint:
+        CGPoint?
 
     // Immutable geometry captured before dragging begins.
     //
@@ -4995,7 +5125,8 @@ private final class LaunchpadDragSession {
         draft: LauncherLayoutDraft,
         proxyLayer: CALayer,
         pointerOffset: CGVector,
-        originalSurface: LaunchpadPageSurface
+        originalSurface: LaunchpadPageSurface,
+        sourcePage: Int
     ) {
         self.sourceEntry = sourceEntry
         self.draft = draft
@@ -5004,6 +5135,14 @@ private final class LaunchpadDragSession {
         self.originalSurface =
             originalSurface
 
+        self.sourcePage =
+            sourcePage
+
+        lastPointerPoint =
+            sourceEntry
+                .frames
+                .cell
+                .center
 
         originalFramesByIdentifier =
             Dictionary(

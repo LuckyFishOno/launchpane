@@ -7,9 +7,17 @@ public enum LauncherLayoutItemIdentifier: Equatable, Hashable, Sendable {
 
 public enum LauncherDropTarget: Equatable, Sendable {
     case insertion(destination: LauncherLayoutItemIdentifier)
+    case pageInsertion(page: Int, index: Int)
     case application(ApplicationIdentity)
     case folder(UUID)
     case outside
+
+    public var isInsertion: Bool {
+        switch self {
+        case .insertion, .pageInsertion: true
+        default: false
+        }
+    }
 }
 
 public enum LauncherDragState: Equatable, Sendable {

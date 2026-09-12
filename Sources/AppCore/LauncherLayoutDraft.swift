@@ -8,6 +8,9 @@ public enum LauncherLayoutDraftState: Equatable, Sendable {
 public enum LauncherLayoutMutationError: Error, Equatable, Sendable {
     case draftIsRolledBack
     case invalidRootIndex(Int)
+    case invalidPageIndex(Int)
+    case invalidPageInsertionIndex(Int)
+    case invalidPageCapacity(Int)
     case layoutItemIsNotAtRoot(LauncherLayoutItemIdentifier)
     case invalidFolderInsertionIndex(Int)
     case applicationIsNotAtRoot(ApplicationIdentity)
@@ -23,7 +26,7 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
     public private(set) var state: LauncherLayoutDraftState
 
     public var hasChanges: Bool {
-        document.items != snapshot.items
+        document.pages != snapshot.pages
     }
 
     public init(document: LauncherLayoutDocument) throws {
@@ -50,10 +53,9 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         }
         guard sourceIndex != destinationIndex else { return }
 
-        var candidate = document
-        let item = candidate.items.remove(at: sourceIndex)
-        candidate.items.insert(item, at: destinationIndex)
-        try publish(candidate)
+        let source = document.items[sourceIndex].identifier
+        let destination = document.items[destinationIndex].identifier
+        try moveRootItem(source, toPositionOf: destination)
     }
 
     /// Moves a root item to the final position currently occupied by another root item.
@@ -65,9 +67,39 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         toPositionOf destinationIdentifier: LauncherLayoutItemIdentifier
     ) throws {
         try requireActive()
-        let sourceIndex = try document.items.rootItemIndex(identifier: sourceIdentifier)
-        let destinationIndex = try document.items.rootItemIndex(identifier: destinationIdentifier)
-        try moveRootItem(from: sourceIndex, to: destinationIndex)
+        let source = try document.rootLocation(identifier: sourceIdentifier)
+        let destination = try document.rootLocation(identifier: destinationIdentifier)
+        var candidate = document
+        let item = candidate.pages[source.page].remove(at: source.index)
+        candidate.pages[destination.page].insert(item, at: destination.index)
+        try publish(candidate)
+    }
+
+    /// Moves to a final, page-local position, optionally creating the next page.
+    /// Only overflow moves forward; a vacancy on the source page stays there.
+    /// `index` is evaluated after removing the source, including same-page moves.
+    public mutating func moveRootItem(
+        _ sourceIdentifier: LauncherLayoutItemIdentifier,
+        toPage page: Int,
+        at index: Int,
+        pageCapacity: Int
+    ) throws {
+        try requireActive()
+        guard pageCapacity > 0 else {
+            throw LauncherLayoutMutationError.invalidPageCapacity(pageCapacity)
+        }
+        guard page >= 0, page <= document.pages.count else {
+            throw LauncherLayoutMutationError.invalidPageIndex(page)
+        }
+        let source = try document.rootLocation(identifier: sourceIdentifier)
+        var candidate = document
+        if page == candidate.pages.count { candidate.pages.append([]) }
+        let item = candidate.pages[source.page].remove(at: source.index)
+        guard index >= 0, index <= candidate.pages[page].count else {
+            throw LauncherLayoutMutationError.invalidPageInsertionIndex(index)
+        }
+        candidate.pages[page].insert(item, at: index)
+        try publish(candidate.normalizedForPageCapacity(pageCapacity))
     }
 
     /// Replaces two root applications with a folder at the target application's position.
@@ -86,15 +118,15 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         }
 
         var candidate = document
-        let source = try candidate.items.removeRootApplication(identity: sourceIdentity)
-        let targetIndex = try candidate.items.rootApplicationIndex(identity: targetIdentity)
-        let target = candidate.items.remove(at: targetIndex).applicationReference
+        let source = try candidate.removeRootApplication(identity: sourceIdentity)
+        let targetLocation = try candidate.rootApplicationLocation(identity: targetIdentity)
+        let target = candidate.pages[targetLocation.page][targetLocation.index].applicationReference
         let folder = LauncherFolder(
             id: folderID,
             customTitle: customTitle,
             applications: [target, source]
         )
-        candidate.items.insert(.folder(folder), at: targetIndex)
+        candidate.pages[targetLocation.page][targetLocation.index] = .folder(folder)
         try publish(candidate)
     }
 
@@ -107,11 +139,14 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         try requireActive()
 
         var candidate = document
-        let application = try candidate.items.removeRootApplication(identity: applicationIdentity)
-        guard let folderIndex = candidate.items.firstIndexOfFolder(id: folderID) else {
+        let application = try candidate.removeRootApplication(identity: applicationIdentity)
+        let folderLocation: (page: Int, index: Int)
+        do {
+            folderLocation = try candidate.rootLocation(identifier: .folder(folderID))
+        } catch {
             throw LauncherLayoutMutationError.folderNotFound(folderID)
         }
-        guard case var .folder(folder) = candidate.items[folderIndex] else {
+        guard case var .folder(folder) = candidate.pages[folderLocation.page][folderLocation.index] else {
             preconditionFailure("Folder lookup returned a non-folder layout item.")
         }
         let destination = insertionIndex ?? folder.applications.endIndex
@@ -120,7 +155,7 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         }
 
         folder.applications.insert(application, at: destination)
-        candidate.items[folderIndex] = .folder(folder)
+        candidate.pages[folderLocation.page][folderLocation.index] = .folder(folder)
         try publish(candidate)
     }
 
@@ -130,46 +165,48 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         }
     }
 
-    private mutating func publish(_ candidate: LauncherLayoutDocument) throws {
+    private mutating func publish(_ proposed: LauncherLayoutDocument) throws {
+        var candidate = proposed
+        while candidate.pages.count > 1, candidate.pages.last?.isEmpty == true {
+            candidate.pages.removeLast()
+        }
         try LauncherLayoutValidator.validate(candidate)
         document = candidate
     }
 }
 
-private extension [LauncherLayoutItem] {
-    func rootItemIndex(identifier: LauncherLayoutItemIdentifier) throws -> Int {
-        guard let index = firstIndex(where: { $0.identifier == identifier }) else {
-            throw LauncherLayoutMutationError.layoutItemIsNotAtRoot(identifier)
+private extension LauncherLayoutDocument {
+    func rootLocation(identifier: LauncherLayoutItemIdentifier) throws -> (page: Int, index: Int) {
+        for (pageIndex, page) in pages.enumerated() {
+            if let index = page.firstIndex(where: { $0.identifier == identifier }) {
+                return (pageIndex, index)
+            }
         }
-        return index
+        throw LauncherLayoutMutationError.layoutItemIsNotAtRoot(identifier)
     }
 
-    func containsFolder(id: UUID) -> Bool {
-        firstIndexOfFolder(id: id) != nil
-    }
-
-    func firstIndexOfFolder(id: UUID) -> Int? {
-        firstIndex {
-            guard case let .folder(folder) = $0 else { return false }
-            return folder.id == id
-        }
-    }
-
-    func rootApplicationIndex(identity: ApplicationIdentity) throws -> Int {
-        guard let index = firstIndex(where: {
-            guard case let .application(application) = $0 else { return false }
-            return application.identity == identity
-        }) else {
+    func rootApplicationLocation(identity: ApplicationIdentity) throws -> (page: Int, index: Int) {
+        do {
+            return try rootLocation(identifier: .application(identity))
+        } catch {
             throw LauncherLayoutMutationError.applicationIsNotAtRoot(identity)
         }
-        return index
     }
 
     mutating func removeRootApplication(
         identity: ApplicationIdentity
     ) throws -> LauncherApplicationReference {
-        let index = try rootApplicationIndex(identity: identity)
-        return remove(at: index).applicationReference
+        let location = try rootApplicationLocation(identity: identity)
+        return pages[location.page].remove(at: location.index).applicationReference
+    }
+}
+
+private extension [LauncherLayoutItem] {
+    func containsFolder(id: UUID) -> Bool {
+        contains {
+            guard case let .folder(folder) = $0 else { return false }
+            return folder.id == id
+        }
     }
 }
 

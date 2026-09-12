@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 final class LauncherLayoutStoreTests: XCTestCase {
-    func testMissingFileLoadsEmptyVersionOneDocument() async throws {
+    func testMissingFileLoadsEmptyCurrentVersionDocument() async throws {
         let fileIO = MemoryLayoutFileIO()
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
 
@@ -148,7 +148,7 @@ final class LauncherLayoutStoreTests: XCTestCase {
 
         let document = try await store.load()
 
-        XCTAssertEqual(document.schemaVersion, 1)
+        XCTAssertEqual(document.schemaVersion, 2)
         XCTAssertEqual(document.revision, 4)
         XCTAssertEqual(document.items, [
             .application(LauncherApplicationReference(identity: ApplicationIdentity.bundlePath(
@@ -161,7 +161,7 @@ final class LauncherLayoutStoreTests: XCTestCase {
     }
 
     func testFutureSchemaIsRejectedWithoutOverwritingSourceData() async throws {
-        let source = Data(#"{"schemaVersion":2,"revision":0,"items":[]}"#.utf8)
+        let source = Data(#"{"schemaVersion":3,"revision":0,"pages":[[]]}"#.utf8)
         let fileIO = MemoryLayoutFileIO(data: source)
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
 
@@ -169,7 +169,7 @@ final class LauncherLayoutStoreTests: XCTestCase {
             _ = try await store.load()
             XCTFail("Expected a future-schema error")
         } catch let error as LauncherLayoutCodingError {
-            XCTAssertEqual(error, .unsupportedSchemaVersion(2))
+            XCTAssertEqual(error, .unsupportedSchemaVersion(3))
         }
 
         XCTAssertEqual(fileIO.data, source)
@@ -258,9 +258,11 @@ private struct LegacyLayoutMigration: LauncherLayoutMigration {
                 identity: ApplicationIdentity.bundlePath(for: URL(fileURLWithPath: path))
             ))
         }
-        return try LauncherLayoutCodec().encode(LauncherLayoutDocument(
-            revision: legacy.revision,
-            items: items
-        ))
+        struct VersionOne: Encodable {
+            let schemaVersion = 1
+            let revision: UInt64
+            let items: [LauncherLayoutItem]
+        }
+        return try JSONEncoder().encode(VersionOne(revision: legacy.revision, items: items))
     }
 }

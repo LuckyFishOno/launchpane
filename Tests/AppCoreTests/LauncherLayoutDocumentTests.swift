@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 final class LauncherLayoutDocumentTests: XCTestCase {
-    func testVersionOneRoundTripPreservesRootAndFolderOrder() throws {
+    func testCurrentVersionRoundTripPreservesRootAndFolderOrder() throws {
         let safari = reference("com.apple.safari")
         let mail = reference("com.apple.mail")
         let notes = reference("com.apple.notes")
@@ -26,7 +26,7 @@ final class LauncherLayoutDocumentTests: XCTestCase {
         let json = try XCTUnwrap(String(data: data, encoding: .utf8))
 
         XCTAssertEqual(decoded, document)
-        XCTAssertEqual(decoded.schemaVersion, 1)
+        XCTAssertEqual(decoded.schemaVersion, 2)
         XCTAssertTrue(json.contains(#""kind":"folder""#))
     }
 

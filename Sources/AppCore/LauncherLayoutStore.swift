@@ -26,7 +26,7 @@ public struct LauncherLayoutCodec: Sendable {
     private let migrationsBySourceVersion: [Int: any LauncherLayoutMigration]
 
     public init(migrations: [any LauncherLayoutMigration] = []) {
-        var indexedMigrations: [Int: any LauncherLayoutMigration] = [:]
+        var indexedMigrations: [Int: any LauncherLayoutMigration] = [1: PageLayoutMigration()]
         for migration in migrations where indexedMigrations[migration.sourceVersion] == nil {
             indexedMigrations[migration.sourceVersion] = migration
         }
@@ -90,6 +90,12 @@ public struct LauncherLayoutCodec: Sendable {
 public protocol LauncherLayoutFileIO: Sendable {
     func readData(at url: URL) throws -> Data?
     func writeDataAtomically(_ data: Data, to url: URL) throws
+    func preservePreMigrationData(_ data: Data, at url: URL) throws
+}
+
+public extension LauncherLayoutFileIO {
+    /// Custom/in-memory stores may supply their own backup policy.
+    func preservePreMigrationData(_: Data, at _: URL) throws {}
 }
 
 public struct AtomicLauncherLayoutFileIO: LauncherLayoutFileIO {
@@ -106,6 +112,17 @@ public struct AtomicLauncherLayoutFileIO: LauncherLayoutFileIO {
             withIntermediateDirectories: true
         )
         try data.write(to: url, options: .atomic)
+    }
+
+    public func preservePreMigrationData(_ data: Data, at url: URL) throws {
+        let backupURL = url.deletingPathExtension()
+            .appendingPathExtension("pre-pages.backup.json")
+        guard !FileManager.default.fileExists(atPath: backupURL.path) else { return }
+        do {
+            try data.write(to: backupURL, options: .withoutOverwriting)
+        } catch let error as CocoaError where error.code == .fileWriteFileExists {
+            // Another reader already preserved the original. Never replace it.
+        }
     }
 }
 
@@ -160,6 +177,7 @@ public actor LauncherLayoutStore {
 
         let decoded = try codec.decodeDocument(data)
         if decoded.wasMigrated {
+            try fileIO.preservePreMigrationData(data, at: fileURL)
             try fileIO.writeDataAtomically(codec.encode(decoded.document), to: fileURL)
         }
         cachedDocument = decoded.document
@@ -186,7 +204,7 @@ public actor LauncherLayoutStore {
 
         var candidate = currentDocument
         let disposition = try mutation(&candidate)
-        guard disposition == .commit, candidate.items != currentDocument.items else {
+        guard disposition == .commit, candidate.pages != currentDocument.pages else {
             return currentDocument
         }
 
@@ -217,7 +235,7 @@ public actor LauncherLayoutStore {
             with: applications,
             completeness: completeness
         )
-        guard reconciliation.document.items != currentDocument.items else {
+        guard reconciliation.document.pages != currentDocument.pages else {
             return LauncherLayoutReconciliationResult(
                 document: currentDocument,
                 report: reconciliation.report
@@ -247,5 +265,17 @@ public actor LauncherLayoutStore {
         try fileIO.writeDataAtomically(data, to: fileURL)
         cachedDocument = committedDocument
         return committedDocument
+    }
+}
+
+/// The former flat order is retained as one logical page; actual display
+/// capacity is applied later by normalizedForPageCapacity, never guessed here.
+private struct PageLayoutMigration: LauncherLayoutMigration {
+    let sourceVersion = 1
+    let destinationVersion = 2
+
+    func migrate(_ data: Data) throws -> Data {
+        let document = try JSONDecoder().decode(LauncherLayoutDocument.self, from: data)
+        return try JSONEncoder().encode(document)
     }
 }

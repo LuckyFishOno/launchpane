@@ -69,16 +69,95 @@ extension LauncherLayoutItem: Codable {
 }
 
 public struct LauncherLayoutDocument: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public private(set) var schemaVersion: Int
     public private(set) var revision: UInt64
-    public var items: [LauncherLayoutItem]
+    /// Explicit page boundaries. A short (or empty interior) page is intentional;
+    /// removing an item never pulls a replacement from the next page.
+    public var pages: [[LauncherLayoutItem]]
+
+    /// Compatibility projection for discovery/search and legacy whole-array edits.
+    /// Page-aware mutations must edit `pages` or use `LauncherLayoutDraft`.
+    public var items: [LauncherLayoutItem] {
+        get { pages.flatMap { $0 } }
+        set {
+            guard pages.count > 1 else {
+                pages = [newValue]
+                return
+            }
+            var offset = 0
+            pages = pages.enumerated().map { pageIndex, page in
+                let end = pageIndex == pages.count - 1
+                    ? newValue.count
+                    : min(newValue.count, offset + page.count)
+                defer { offset = end }
+                return Array(newValue[offset..<end])
+            }
+        }
+    }
 
     public init(revision: UInt64 = 0, items: [LauncherLayoutItem] = []) {
+        self.init(revision: revision, pages: [items])
+    }
+
+    public init(revision: UInt64 = 0, pages: [[LauncherLayoutItem]]) {
         schemaVersion = Self.currentSchemaVersion
         self.revision = revision
-        self.items = items
+        self.pages = pages.isEmpty ? [[]] : pages
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, revision, items, pages
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let version = try container.decode(Int.self, forKey: .schemaVersion)
+        switch version {
+        case 1:
+            // Capacity depends on the display. Retain the old flat order in one
+            // page until the caller normalizes using its actual grid capacity.
+            pages = [try container.decode([LauncherLayoutItem].self, forKey: .items)]
+        case Self.currentSchemaVersion:
+            pages = try container.decode([[LauncherLayoutItem]].self, forKey: .pages)
+        default:
+            throw LauncherLayoutValidationError.unsupportedSchemaVersion(version)
+        }
+        schemaVersion = Self.currentSchemaVersion
+        revision = try container.decode(UInt64.self, forKey: .revision)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(revision, forKey: .revision)
+        try container.encode(pages, forKey: .pages)
+    }
+
+    /// Splits overflow forward without ever filling an earlier page's vacancy.
+    /// A legacy flat page is consequently split once in its existing order.
+    public func normalizedForPageCapacity(_ capacity: Int) -> Self {
+        guard capacity > 0 else { return self }
+        var result = self
+        if result.pages.isEmpty { result.pages = [[]] }
+        var pageIndex = 0
+        while pageIndex < result.pages.count {
+            if result.pages[pageIndex].count > capacity {
+                let overflow = Array(result.pages[pageIndex].dropFirst(capacity))
+                result.pages[pageIndex] = Array(result.pages[pageIndex].prefix(capacity))
+                if pageIndex + 1 == result.pages.count {
+                    result.pages.append(overflow)
+                } else {
+                    result.pages[pageIndex + 1].insert(contentsOf: overflow, at: 0)
+                }
+            }
+            pageIndex += 1
+        }
+        while result.pages.count > 1, result.pages.last?.isEmpty == true {
+            result.pages.removeLast()
+        }
+        return result
     }
 
     mutating func setRevision(_ revision: UInt64) {
@@ -88,6 +167,7 @@ public struct LauncherLayoutDocument: Codable, Equatable, Sendable {
 
 public enum LauncherLayoutValidationError: Error, Equatable, Sendable {
     case unsupportedSchemaVersion(Int)
+    case layoutHasNoPages
     case duplicateApplication(ApplicationIdentity)
     case duplicateFolder(UUID)
     case folderHasFewerThanTwoApplications(UUID)
@@ -97,6 +177,9 @@ public enum LauncherLayoutValidator {
     public static func validate(_ document: LauncherLayoutDocument) throws {
         guard document.schemaVersion == LauncherLayoutDocument.currentSchemaVersion else {
             throw LauncherLayoutValidationError.unsupportedSchemaVersion(document.schemaVersion)
+        }
+        guard !document.pages.isEmpty else {
+            throw LauncherLayoutValidationError.layoutHasNoPages
         }
 
         var applicationIdentities: Set<ApplicationIdentity> = []
