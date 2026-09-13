@@ -211,6 +211,9 @@ enum ResolvedLaunchpadItemFactory {
 
     private static func resolvedFolderTitle(_ customTitle: String?) -> String {
         let title = customTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return title.isEmpty ? "Folder" : title
+        if title.isEmpty || title.caseInsensitiveCompare("untitled") == .orderedSame {
+            return "Untitled"
+        }
+        return title
     }
 }

@@ -7,17 +7,20 @@ final class AppTilePresentation {
     let tileLayer: CALayer
     let selectionLayer: CALayer
     let iconLayer: CALayer
+    let labelLayer: CATextLayer
     let button: AppTileButton
 
     init(
         tileLayer: CALayer,
         selectionLayer: CALayer,
         iconLayer: CALayer,
+        labelLayer: CATextLayer,
         button: AppTileButton
     ) {
         self.tileLayer = tileLayer
         self.selectionLayer = selectionLayer
         self.iconLayer = iconLayer
+        self.labelLayer = labelLayer
         self.button = button
     }
 }
@@ -27,17 +30,20 @@ final class FolderTilePresentation {
     let tileLayer: CALayer
     let selectionLayer: CALayer
     let iconLayer: CALayer
+    let labelLayer: CATextLayer
     let button: FolderTileButton
 
     init(
         tileLayer: CALayer,
         selectionLayer: CALayer,
         iconLayer: CALayer,
+        labelLayer: CATextLayer,
         button: FolderTileButton
     ) {
         self.tileLayer = tileLayer
         self.selectionLayer = selectionLayer
         self.iconLayer = iconLayer
+        self.labelLayer = labelLayer
         self.button = button
     }
 }
@@ -91,6 +97,11 @@ enum AppTilePresentationFactory {
     private enum FolderMetrics {
         static let gridDimension = 3
         static let maximumVisibleChildren = gridDimension * gridDimension
+        // App artwork contains transparent optical padding inside the logical
+        // icon frame. The folder surface is drawn procedurally and otherwise
+        // fills that entire frame, making it look noticeably larger than apps.
+        // Match the visible footprint of modern macOS app icons instead.
+        static let surfaceScale: CGFloat = 0.80
         static let contentInsetFraction: CGFloat = 0.17
         static let itemSpacingFraction: CGFloat = 0.055
         static let cornerRadiusFraction: CGFloat = 0.22
@@ -136,12 +147,13 @@ enum AppTilePresentationFactory {
             scale: input.scale
         )
         tileLayer.addSublayer(iconLayer)
-        tileLayer.addSublayer(makeLabelLayer(
+        let labelLayer = makeLabelLayer(
             input.application.displayName,
             frame: input.labelFrame,
             cellFrame: input.cellFrame,
             scale: input.scale
-        ))
+        )
+        tileLayer.addSublayer(labelLayer)
 
         // Cache the fully composed tile (selection + icon shadow + label shadow)
         // as one small Retina surface. Paging then moves cached tile surfaces
@@ -158,6 +170,7 @@ enum AppTilePresentationFactory {
             tileLayer: tileLayer,
             selectionLayer: selectionLayer,
             iconLayer: iconLayer,
+            labelLayer: labelLayer,
             button: AppTileButton(application: input.application)
         )
     }
@@ -166,21 +179,23 @@ enum AppTilePresentationFactory {
         let tileLayer = CALayer()
         tileLayer.frame = input.cellFrame
 
+        let folderIconFrame = folderSurfaceFrame(input.iconFrame)
         let selectionLayer = LaunchpadVisualStyle.makeSelectionLayer(
             cellFrame: input.cellFrame,
-            iconFrame: input.iconFrame,
+            iconFrame: folderIconFrame,
             selected: input.selected
         )
         tileLayer.addSublayer(selectionLayer)
 
-        let iconLayer = makeFolderIconLayer(input)
+        let iconLayer = makeFolderIconLayer(input, iconFrame: folderIconFrame)
         tileLayer.addSublayer(iconLayer)
-        tileLayer.addSublayer(makeLabelLayer(
+        let labelLayer = makeLabelLayer(
             input.title,
             frame: input.labelFrame,
             cellFrame: input.cellFrame,
             scale: input.scale
-        ))
+        )
+        tileLayer.addSublayer(labelLayer)
 
         // Folder tiles have an even deeper layer tree because of the miniature
         // child icons. Cache the finished tile so page motion stays compositor-
@@ -194,6 +209,7 @@ enum AppTilePresentationFactory {
             tileLayer: tileLayer,
             selectionLayer: selectionLayer,
             iconLayer: iconLayer,
+            labelLayer: labelLayer,
             button: FolderTileButton(folderID: input.folderID, title: input.title)
         )
     }
@@ -275,8 +291,72 @@ enum AppTilePresentationFactory {
         CATransaction.commit()
     }
 
-    private static func makeFolderIconLayer(_ input: FolderTileRenderInput) -> CALayer {
-        let localFrame = input.iconFrame.offsetBy(
+    private static func folderSurfaceFrame(_ iconFrame: CGRect) -> CGRect {
+        let horizontalInset = iconFrame.width * (1 - FolderMetrics.surfaceScale) / 2
+        let verticalInset = iconFrame.height * (1 - FolderMetrics.surfaceScale) / 2
+        return iconFrame.insetBy(dx: horizontalInset, dy: verticalInset)
+    }
+
+    /// Scale of one closed-folder miniature icon relative to the normal
+    /// logical app icon frame. Merge landing reuses this exact ratio so the
+    /// dragged icon reaches the same visible size as its persisted miniature.
+    static var folderMiniatureIconScale: CGFloat {
+        let availableFraction = 1 - FolderMetrics.contentInsetFraction * 2
+        let miniIconFractionWithinSurface = (
+            availableFraction
+                - FolderMetrics.itemSpacingFraction
+                    * CGFloat(FolderMetrics.gridDimension - 1)
+        ) / CGFloat(FolderMetrics.gridDimension)
+        return FolderMetrics.surfaceScale * miniIconFractionWithinSurface
+    }
+
+    static var folderMaximumVisibleChildren: Int {
+        FolderMetrics.maximumVisibleChildren
+    }
+
+    /// Returns the exact center used by the closed-folder miniature grid.
+    /// Keeping merge landing geometry here prevents the animation target from
+    /// drifting away from the miniature icon that appears after the commit.
+    static func folderChildCenter(
+        iconFrame: CGRect,
+        logicalIndex: Int,
+        layoutDirection: NSUserInterfaceLayoutDirection
+    ) -> CGPoint? {
+        guard (0 ..< FolderMetrics.maximumVisibleChildren).contains(logicalIndex) else {
+            return nil
+        }
+
+        let surfaceFrame = folderSurfaceFrame(iconFrame)
+        let side = min(surfaceFrame.width, surfaceFrame.height)
+        let inset = side * FolderMetrics.contentInsetFraction
+        let spacing = side * FolderMetrics.itemSpacingFraction
+        let availableSide = side - inset * 2
+        let miniIconSide = (
+            availableSide - spacing * CGFloat(FolderMetrics.gridDimension - 1)
+        ) / CGFloat(FolderMetrics.gridDimension)
+        let origin = CGPoint(
+            x: surfaceFrame.midX - availableSide / 2,
+            y: surfaceFrame.midY - availableSide / 2
+        )
+
+        let logicalColumn = logicalIndex % FolderMetrics.gridDimension
+        let column = layoutDirection == .rightToLeft
+            ? FolderMetrics.gridDimension - logicalColumn - 1
+            : logicalColumn
+        let topDownRow = logicalIndex / FolderMetrics.gridDimension
+        let row = FolderMetrics.gridDimension - topDownRow - 1
+
+        return CGPoint(
+            x: origin.x + CGFloat(column) * (miniIconSide + spacing) + miniIconSide / 2,
+            y: origin.y + CGFloat(row) * (miniIconSide + spacing) + miniIconSide / 2
+        )
+    }
+
+    private static func makeFolderIconLayer(
+        _ input: FolderTileRenderInput,
+        iconFrame: CGRect
+    ) -> CALayer {
+        let localFrame = iconFrame.offsetBy(
             dx: -input.cellFrame.minX,
             dy: -input.cellFrame.minY
         )
@@ -312,6 +392,8 @@ enum AppTilePresentationFactory {
     private static func configureFolderSurface(_ folderLayer: CALayer, scale: CGFloat) {
         folderLayer.cornerRadius = min(folderLayer.bounds.width, folderLayer.bounds.height)
             * FolderMetrics.cornerRadiusFraction
+        folderLayer.cornerCurve = .continuous
+        folderLayer.allowsEdgeAntialiasing = true
         folderLayer.backgroundColor = NSColor.white
             .withAlphaComponent(FolderMetrics.backgroundOpacity)
             .cgColor

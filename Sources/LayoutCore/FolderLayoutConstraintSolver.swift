@@ -23,6 +23,7 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
         let dimensions = resolveFolderGridDimensions(
             in: constraint.maximumGridSize,
             requested: requested,
+            itemCount: itemCount,
             tokens: folderTokens
         )
         let frames = makeFolderFrames(
@@ -67,20 +68,27 @@ private extension LayoutConstraintSolver {
             max(0, tokens.displayMargin),
             max(0, min(safeBounds.width, safeBounds.height) / 4)
         )
+        // Native Launchpad keeps the folder panel at roughly four-fifths of
+        // the usable display width. The column lattice then contracts naturally
+        // on smaller displays instead of using a resolution-specific branch.
+        let nativePanelWidth = safeBounds.width * 0.80
         let maximumPanelSize = CGSize(
-            width: max(1, min(tokens.maximumPanelWidth, safeBounds.width - margin * 2)),
-            height: max(1, min(tokens.maximumPanelHeight, safeBounds.height - margin * 2))
+            width: max(
+                1,
+                min(tokens.maximumPanelWidth, safeBounds.width - margin * 2, nativePanelWidth)
+            ),
+            height: max(
+                1,
+                min(
+                    tokens.maximumPanelHeight,
+                    safeBounds.height - margin * 2 - tokens.titleHeight - tokens.titleToGridSpacing
+                )
+            )
         )
         let chrome = resolveFolderChrome(in: maximumPanelSize, tokens: tokens)
         let maximumGridSize = CGSize(
             width: max(1, maximumPanelSize.width - chrome.horizontalPadding * 2),
-            height: max(
-                1,
-                maximumPanelSize.height
-                    - chrome.verticalPadding * 2
-                    - chrome.titleHeight
-                    - chrome.titleToGridSpacing
-            )
+            height: max(1, maximumPanelSize.height - chrome.verticalPadding * 2)
         )
         return FolderConstraint(chrome: chrome, maximumGridSize: maximumGridSize)
     }
@@ -103,14 +111,16 @@ private extension LayoutConstraintSolver {
     func resolveFolderGridDimensions(
         in maximumGridSize: CGSize,
         requested: UserLayoutPreferences,
+        itemCount: Int,
         tokens: FolderLayoutTokens
     ) -> FolderGridDimensions {
         var columns = min(
             max(requested.requestedColumns ?? tokens.defaultColumns, 1),
             max(1, tokens.maximumColumns)
         )
+        let requestedRows = requested.requestedRows
         var rows = min(
-            max(requested.requestedRows ?? tokens.defaultRows, 1),
+            max(requestedRows ?? tokens.defaultRows, 1),
             max(1, tokens.maximumRows)
         )
         let minimumCellWidth = max(tokens.minimumIconSize, tokens.minimumInteractionTarget)
@@ -122,6 +132,14 @@ private extension LayoutConstraintSolver {
         while columns > 1, maximumGridSize.width / CGFloat(columns) < minimumCellWidth {
             columns -= 1
         }
+
+        // Native Launchpad keeps the full column lattice but grows the folder
+        // vertically only as many rows as the current page actually needs.
+        if requestedRows == nil {
+            let safeCount = max(1, itemCount)
+            rows = min(rows, max(1, Int(ceil(Double(safeCount) / Double(columns)))))
+        }
+
         while rows > 1, maximumGridSize.height / CGFloat(rows) < minimumCellHeight {
             rows -= 1
         }
@@ -147,14 +165,18 @@ private extension LayoutConstraintSolver {
         let chrome = constraint.chrome
         let panelSize = CGSize(
             width: gridSize.width + chrome.horizontalPadding * 2,
-            height: gridSize.height
-                + chrome.verticalPadding * 2
-                + chrome.titleHeight
-                + chrome.titleToGridSpacing
+            height: gridSize.height + chrome.verticalPadding * 2
         )
+        let minimumY = safeBounds.minY + max(0, tokens.displayMargin)
+        let maximumY = safeBounds.maxY
+            - max(0, tokens.displayMargin)
+            - chrome.titleHeight
+            - chrome.titleToGridSpacing
+            - panelSize.height
+        let centeredY = safeBounds.midY - panelSize.height / 2
         let panel = CGRect(
             x: safeBounds.midX - panelSize.width / 2,
-            y: safeBounds.midY - panelSize.height / 2,
+            y: min(max(centeredY, minimumY), max(minimumY, maximumY)),
             width: panelSize.width,
             height: panelSize.height
         )
@@ -165,9 +187,9 @@ private extension LayoutConstraintSolver {
             height: gridSize.height
         )
         let title = CGRect(
-            x: grid.minX,
-            y: grid.maxY + chrome.titleToGridSpacing,
-            width: grid.width,
+            x: panel.minX,
+            y: panel.maxY + chrome.titleToGridSpacing,
+            width: panel.width,
             height: chrome.titleHeight
         )
         return FolderFrames(panel: panel, title: title, grid: grid)

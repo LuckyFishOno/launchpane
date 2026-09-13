@@ -25,9 +25,9 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
                 let metrics = solver.solveFolder(display: display, itemCount: 100)
 
                 assertContained(metrics.panelFrame, in: display.safeBounds)
-                assertContained(metrics.titleFrame, in: metrics.panelFrame)
+                assertContained(metrics.titleFrame, in: display.safeBounds)
                 assertContained(metrics.gridFrame, in: metrics.panelFrame)
-                assertNoPositiveAreaOverlap(metrics.titleFrame, metrics.gridFrame)
+                assertNoPositiveAreaOverlap(metrics.titleFrame, metrics.panelFrame)
                 XCTAssertGreaterThan(metrics.rows, 0)
                 XCTAssertGreaterThan(metrics.columns, 0)
                 XCTAssertLessThanOrEqual(metrics.rows, LayoutTokens.standard.folder.maximumRows)
@@ -49,17 +49,17 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
         }
     }
 
-    func testTypicalDisplayUsesFiveByThreeFolderGrid() {
+    func testTypicalDisplayUsesSevenByFiveFolderGrid() {
         let metrics = LayoutConstraintSolver().solveFolder(
             display: makeDisplay(size: CGSize(width: 2560, height: 1440), scale: 2),
             itemCount: 100
         )
 
-        XCTAssertEqual(metrics.columns, 5)
-        XCTAssertEqual(metrics.rows, 3)
-        XCTAssertEqual(metrics.itemsPerPage, 15)
-        XCTAssertEqual(metrics.visibleItemCount, 15)
-        XCTAssertEqual(metrics.pageCount, 7)
+        XCTAssertEqual(metrics.columns, 7)
+        XCTAssertEqual(metrics.rows, 5)
+        XCTAssertEqual(metrics.itemsPerPage, 35)
+        XCTAssertEqual(metrics.visibleItemCount, 35)
+        XCTAssertEqual(metrics.pageCount, 3)
         XCTAssertEqual(metrics.panelFrame.midX, 1280, accuracy: 0.000_001)
         XCTAssertEqual(metrics.panelFrame.midY, 720, accuracy: 0.000_001)
     }
@@ -70,8 +70,8 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
             itemCount: 100
         )
 
-        XCTAssertLessThan(metrics.columns, 5)
-        XCTAssertLessThan(metrics.rows, 3)
+        XCTAssertLessThan(metrics.columns, 7)
+        XCTAssertLessThan(metrics.rows, 5)
         XCTAssertGreaterThan(metrics.itemsPerPage, 0)
     }
 
@@ -85,17 +85,15 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
             itemCount: 8
         )
 
-        for index in 0 ..< 5 {
-            let mirroredIndex = 4 - index
+        for index in 0 ..< 8 {
             let ltr = try XCTUnwrap(leftToRight.cellFrame(forItemAt: index))
-            let rtl = try XCTUnwrap(rightToLeft.cellFrame(forItemAt: mirroredIndex))
-            XCTAssertEqual(ltr, rtl)
-        }
-        for index in 5 ..< 8 {
-            let mirroredIndex = 12 - index
-            let ltr = try XCTUnwrap(leftToRight.cellFrame(forItemAt: index))
-            let rtl = try XCTUnwrap(rightToLeft.cellFrame(forItemAt: mirroredIndex))
-            XCTAssertEqual(ltr, rtl)
+            let rtl = try XCTUnwrap(rightToLeft.cellFrame(forItemAt: index))
+            XCTAssertEqual(
+                ltr.midX + rtl.midX,
+                leftToRight.gridFrame.minX + leftToRight.gridFrame.maxX,
+                accuracy: 0.000_001
+            )
+            XCTAssertEqual(ltr.midY, rtl.midY, accuracy: 0.000_001)
         }
     }
 
@@ -109,22 +107,41 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
         XCTAssertNil(empty.itemFrames(forItemAt: 0))
 
         let one = solver.solveFolder(display: display, itemCount: 1)
-        XCTAssertEqual(one.itemsPerPage, 15)
+        XCTAssertEqual(one.itemsPerPage, 7)
         XCTAssertEqual(one.visibleItemCount, 1)
         XCTAssertEqual(one.pageCount, 1)
-        XCTAssertEqual(one.cellFrame(forItemAt: 0)?.midX, one.gridFrame.midX)
+        XCTAssertEqual(one.cellFrame(forItemAt: 0)?.minX, one.gridFrame.minX)
         XCTAssertNil(one.itemFrames(forItemAt: 1))
 
-        let exactPage = solver.solveFolder(display: display, itemCount: 15)
+        let exactPage = solver.solveFolder(display: display, itemCount: 35)
         XCTAssertEqual(exactPage.pageCount, 1)
 
-        let overflow = solver.solveFolder(display: display, itemCount: 16)
-        XCTAssertEqual(overflow.visibleItemCount, 15)
+        let overflow = solver.solveFolder(display: display, itemCount: 36)
+        XCTAssertEqual(overflow.visibleItemCount, 35)
         XCTAssertEqual(overflow.pageCount, 2)
 
         let negative = solver.solveFolder(display: display, itemCount: -10)
         XCTAssertEqual(negative.totalItemCount, 0)
         XCTAssertEqual(negative.pageCount, 0)
+    }
+
+    func testNativeSizedDisplayUsesWideDynamicPanelAndLeadingRows() throws {
+        let display = makeDisplay(size: CGSize(width: 1524, height: 1024), scale: 2)
+        let solver = LayoutConstraintSolver()
+
+        let tools = solver.solveFolder(display: display, itemCount: 5)
+        let other = solver.solveFolder(display: display, itemCount: 33)
+
+        XCTAssertEqual(tools.columns, 7)
+        XCTAssertEqual(tools.rows, 1)
+        XCTAssertEqual(other.columns, 7)
+        XCTAssertEqual(other.rows, 5)
+        XCTAssertEqual(tools.panelFrame.width, display.safeBounds.width * 0.80, accuracy: 0.001)
+        XCTAssertEqual(other.panelFrame.width, display.safeBounds.width * 0.80, accuracy: 0.001)
+        XCTAssertLessThan(tools.panelFrame.height, other.panelFrame.height)
+
+        let finalRowFirst = try XCTUnwrap(other.cellFrame(forItemAt: 28))
+        XCTAssertEqual(finalRowFirst.minX, other.gridFrame.minX, accuracy: 0.001)
     }
 
     func testFolderSolverHonorsPreferencesWithinFolderLimits() {

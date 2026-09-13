@@ -28,21 +28,19 @@ public struct FolderGridMetrics: Equatable, Sendable {
         return Int(ceil(Double(totalItemCount) / Double(itemsPerPage)))
     }
 
-    /// Returns a page-local cell. A partially populated final row is centered.
+    /// Returns a page-local cell. Partial rows stay aligned to the leading edge.
     public func cellFrame(forItemAt index: Int) -> CGRect? {
         guard index >= 0, index < visibleItemCount else { return nil }
 
         let row = index / columns
-        let rowStartIndex = row * columns
-        let itemsInRow = min(columns, visibleItemCount - rowStartIndex)
-        let logicalColumn = index - rowStartIndex
-        let column = isRightToLeft ? itemsInRow - logicalColumn - 1 : logicalColumn
+        let logicalColumn = index % columns
+        let column = isRightToLeft ? columns - logicalColumn - 1 : logicalColumn
         let size = cellSize
-        let rowWidth = CGFloat(itemsInRow) * size.width
-        let rowOriginX = gridFrame.midX - rowWidth / 2
 
+        // Native Launchpad keeps a stable column lattice inside a folder.
+        // Partial rows start at the leading edge instead of being re-centered.
         return CGRect(
-            x: rowOriginX + CGFloat(column) * size.width,
+            x: gridFrame.minX + CGFloat(column) * size.width,
             y: gridFrame.maxY - CGFloat(row + 1) * size.height,
             width: size.width,
             height: size.height

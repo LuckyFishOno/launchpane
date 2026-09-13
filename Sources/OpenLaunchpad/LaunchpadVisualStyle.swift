@@ -45,7 +45,7 @@ enum LaunchpadVisualStyle {
 
     private enum FolderTransitionMetrics {
         static let openDuration: CFTimeInterval = 0.21
-        static let closeDuration: CFTimeInterval = 0.18
+        static let closeDuration: CFTimeInterval = 0.24
         static let minimumSourceScale: CGFloat = 0.08
         static let maximumSourceScale: CGFloat = 0.18
     }
@@ -63,7 +63,7 @@ enum LaunchpadVisualStyle {
     }
 
     private enum DragCompletionMetrics {
-        static let mergeDuration: CFTimeInterval = 0.17
+        static let mergeDuration: CFTimeInterval = 0.32
     }
 
     static func searchFieldSize(forDisplayWidth displayWidth: CGFloat) -> CGSize {
@@ -127,6 +127,8 @@ enum LaunchpadVisualStyle {
         let layer = CALayer()
         layer.frame = localIconFrame.insetBy(dx: -7, dy: -7)
         layer.cornerRadius = max(18, layer.bounds.width * 0.24)
+        layer.cornerCurve = .continuous
+        layer.allowsEdgeAntialiasing = true
         layer.backgroundColor = NSColor.white.withAlphaComponent(0.12).cgColor
         layer.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
         layer.borderWidth = 0.7

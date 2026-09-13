@@ -24,26 +24,26 @@ public struct FolderLayoutTokens: Equatable, Sendable {
     public var maximumColumns: Int
 
     public init(
-        preferredIconSize: CGFloat = 84,
+        preferredIconSize: CGFloat = 88,
         minimumIconSize: CGFloat = 40,
         maximumIconSize: CGFloat = 96,
-        preferredCellWidth: CGFloat = 144,
-        preferredCellHeight: CGFloat = 132,
-        minimumHorizontalGap: CGFloat = 16,
-        minimumVerticalGap: CGFloat = 14,
+        preferredCellWidth: CGFloat = 196,
+        preferredCellHeight: CGFloat = 170,
+        minimumHorizontalGap: CGFloat = 18,
+        minimumVerticalGap: CGFloat = 16,
         minimumInteractionTarget: CGFloat = 56,
-        labelHeight: CGFloat = 30,
-        titleHeight: CGFloat = 40,
+        labelHeight: CGFloat = 28,
+        titleHeight: CGFloat = 36,
         titleToGridSpacing: CGFloat = 16,
-        horizontalPadding: CGFloat = 40,
-        verticalPadding: CGFloat = 32,
-        displayMargin: CGFloat = 24,
-        maximumPanelWidth: CGFloat = 800,
-        maximumPanelHeight: CGFloat = 560,
-        defaultRows: Int = 3,
-        defaultColumns: Int = 5,
-        maximumRows: Int = 3,
-        maximumColumns: Int = 5
+        horizontalPadding: CGFloat = 16,
+        verticalPadding: CGFloat = 24,
+        displayMargin: CGFloat = 32,
+        maximumPanelWidth: CGFloat = 1600,
+        maximumPanelHeight: CGFloat = 1000,
+        defaultRows: Int = 5,
+        defaultColumns: Int = 7,
+        maximumRows: Int = 5,
+        maximumColumns: Int = 7
     ) {
         self.preferredIconSize = preferredIconSize
         self.minimumIconSize = minimumIconSize
