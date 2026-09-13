@@ -45,16 +45,19 @@ enum LaunchpadVisualStyle {
 
     private enum FolderTransitionMetrics {
         static let openDuration: CFTimeInterval = 0.21
-        static let closeDuration: CFTimeInterval = 0.24
+        // OPENLAUNCHPAD_FOLDER_CLOSE_DURATION_020_V1
+
+        static let closeDuration: CFTimeInterval = 0.20
         static let minimumSourceScale: CGFloat = 0.08
         static let maximumSourceScale: CGFloat = 0.18
     }
 
     private enum DragReflowMetrics {
-        // Deliberately calmer than click feedback. This gives the displaced tile
-        // enough time to visibly travel into its new slot without feeling delayed.
-        static let duration: CFTimeInterval = 0.48
-        static let enteringItemFadeDuration: CFTimeInterval = 0.28
+        // Shared positional timing for drag insertion/reflow. Keep every landing
+        // path on this one duration so ownership handoffs never change speed.
+        // OPENLAUNCHPAD_REFLOW_DURATION_025_V1
+        static let duration: CFTimeInterval = 0.25
+        static let enteringItemFadeDuration: CFTimeInterval = 0.15
         static let enteringItemOffset: CGFloat = 34
         static let firstControlPointX: Float = 0.42
         static let firstControlPointY: Float = 0
@@ -63,7 +66,12 @@ enum LaunchpadVisualStyle {
     }
 
     private enum DragCompletionMetrics {
-        static let mergeDuration: CFTimeInterval = 0.32
+        // OPENLAUNCHPAD_FOLDER_ABSORB_DURATION_040_V1
+
+        // OPENLAUNCHPAD_FOLDER_ABSORB_DURATION_044_V1
+
+
+        static let mergeDuration: CFTimeInterval = 0.44
     }
 
     static func searchFieldSize(forDisplayWidth displayWidth: CGFloat) -> CGSize {

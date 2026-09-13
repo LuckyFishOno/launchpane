@@ -84,10 +84,17 @@ final class ResetLaunchpadCheckDelegate: NSObject, NSApplicationDelegate {
                 return document.revision == fixture.revision + 1
             }
             let document = try storedDocument()
-            let expected = references.map { LauncherLayoutItem.application($0) }
-            check(document.pages == [expected], "reset restores one alphabetical application list")
-            check(document.items.allSatisfy { if case .application = $0 { true } else { false } },
-                  "reset removes every custom folder")
+            let expected = LauncherDefaultLayoutBuilder.makeDocument(
+                applications: discovery.applications,
+                revision: document.revision
+            )
+            check(document == expected, "reset restores the canonical default layout")
+            check(document.items.filter {
+                if case let .folder(folder) = $0 {
+                    return folder.id != LauncherDefaultLayoutBuilder.utilitiesFolderID
+                }
+                return false
+            }.isEmpty, "reset removes custom folders and retains only default Utilities")
         }
     }
 

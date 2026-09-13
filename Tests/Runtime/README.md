@@ -90,8 +90,8 @@ Success ends with `RESOLVED PAGES: 42 assertions passed`.
 `ResetLaunchpadCheck.swift` starts with a folder and explicit custom pages in an
 isolated layout file. It invokes the real search-field menu callback, verifies
 that cancelling the confirmation leaves the exact document unchanged, then
-confirms reset and checks the persisted alphabetical application list, folder
-removal, and single revision increment.
+confirms reset and checks the canonical default layout, replacement of custom
+folders by Utilities, and a single revision increment.
 
 Compile it using the same command as `CrossPageDragCheck.swift`, replacing that
 source filename and output name with `ResetLaunchpadCheck.swift` and

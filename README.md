@@ -2,11 +2,13 @@
 
 OpenLaunchpad is a native macOS application launcher built with Swift 6, AppKit, Core Animation, and documented system APIs.
 
-Version 1.0 focuses on a fast, responsive launcher experience with adaptive layout, native application discovery, local search, interactive paging, persistent reordering, and folders.
+Version 1.1 focuses on a fast, responsive launcher experience with adaptive layout, native application discovery, local search, interactive paging, persistent reordering, and folders.
 
 ## Download
 
-[Download OpenLaunchpad for macOS](https://github.com/LuckyFishOno/open-launchpad/releases/latest/download/OpenLaunchpad.dmg)
+[Download OpenLaunchpad for Apple silicon Mac](https://github.com/LuckyFishOno/open-launchpad/releases/latest/download/OpenLaunchpad.dmg)
+
+OpenLaunchpad supports Apple silicon Macs with an M1 chip or newer. Intel Macs are not supported.
 
 ## Installation
 
@@ -37,7 +39,8 @@ This extra step is required because the current release is distributed outside t
 ## System Requirements
 
 - macOS 15 or later
-- Apple silicon or Intel Mac
+- Apple silicon Mac with an M1 chip or newer
+- Intel Macs are not supported
 
 ## Features
 
@@ -52,9 +55,10 @@ This extra step is required because the current release is distributed outside t
 - Calmer 0.56-second wheel/keyboard paging, with one page per continuous wheel burst.
 - Full-display frosted wallpaper with a visually replaced menu region and an interactive system Dock.
 - Persistent drag-and-drop reordering and folder creation.
+- A first-page Utilities folder containing Apple's built-in system utilities on a new or reset layout.
 - Page-local app placement: moving an app out leaves room on that page; only overflow pushes apps into later pages.
 - Multi-page dragging by holding an app at the screen edge, including a new trailing page when needed.
-- A right-side search-field menu with a guarded `Reset Launchpad` action for restoring the alphabetical app layout.
+- A right-side search-field menu with a guarded `Reset Launchpad` action for restoring the default app layout.
 - Keyboard navigation and native accessibility hit targets.
 - Right-to-left layout support.
 - Respect for the macOS Reduce Motion setting.
@@ -90,6 +94,7 @@ SwiftPM builds and tests the reusable core libraries, not the application bundle
 
 ### Development Requirements
 
+- Apple silicon Mac with an M1 chip or newer
 - macOS 15 or later
 - Xcode 26 or later
 - Swift 6

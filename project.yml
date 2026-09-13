@@ -1,4 +1,5 @@
 name: OpenLaunchpad
+# OPENLAUNCHPAD_XCODE_LEGACY_RESOURCE_CLEANUP_V1
 
 options:
   minimumXcodeGenVersion: 2.42.0
@@ -18,7 +19,10 @@ targets:
     type: framework
     platform: macOS
     sources:
-      - Sources/AppCore
+      - path: Sources/AppCore
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.AppCore
@@ -28,7 +32,10 @@ targets:
     type: framework
     platform: macOS
     sources:
-      - Sources/DisplayCore
+      - path: Sources/DisplayCore
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.DisplayCore
@@ -38,7 +45,10 @@ targets:
     type: framework
     platform: macOS
     sources:
-      - Sources/LayoutCore
+      - path: Sources/LayoutCore
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     dependencies:
       - target: DisplayCore
     settings:
@@ -55,9 +65,11 @@ targets:
           - main.swift
           - Resources
           - "**/*.backup-*"
+          - "**/*.before-*"
       - path: Sources/OpenLaunchpadAgent
         excludes:
           - "**/*.backup-*"
+          - "**/*.before-*"
     dependencies:
       - target: AppCore
       - target: DisplayCore
@@ -66,8 +78,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.OpenLaunchpadAgent
         PRODUCT_NAME: OpenLaunchpadAgent
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: 2
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: OpenLaunchpadAgent
         INFOPLIST_KEY_LSUIElement: YES
@@ -94,8 +106,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.OpenLaunchpad
         PRODUCT_NAME: OpenLaunchpad
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: 2
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: OpenLaunchpad
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -108,7 +120,10 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - Tests/DisplayCoreTests
+      - path: Tests/DisplayCoreTests
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     dependencies:
       - target: DisplayCore
     settings:
@@ -120,7 +135,10 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - Tests/AppCoreTests
+      - path: Tests/AppCoreTests
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     dependencies:
       - target: AppCore
     settings:
@@ -132,7 +150,10 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - Tests/LayoutCoreTests
+      - path: Tests/LayoutCoreTests
+        excludes:
+          - "**/*.before-*"
+          - "**/*.backup-*"
     dependencies:
       - target: DisplayCore
       - target: LayoutCore

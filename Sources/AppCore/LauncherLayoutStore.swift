@@ -231,6 +231,41 @@ public actor LauncherLayoutStore {
         completeness: LauncherCatalogCompleteness = .complete
     ) throws -> LauncherLayoutReconciliationResult {
         let currentDocument = try load()
+
+        // An empty revision-zero document represents a missing persisted layout.
+        // Seed the native Utilities folder once; every later reconciliation keeps
+        // the user's saved pages, folders, and ordering authoritative.
+        if currentDocument.revision == 0, currentDocument.items.isEmpty {
+            if completeness == .partial {
+                // Show the partial catalog for this launch, but do not persist
+                // it as the default. A later complete scan can then create the
+                // complete Utilities folder.
+                return LauncherLayoutReconciler.reconcile(
+                    currentDocument,
+                    with: applications,
+                    completeness: completeness
+                )
+            }
+            let initialDocument = LauncherDefaultLayoutBuilder.makeDocument(
+                applications: applications,
+                revision: currentDocument.revision
+            )
+            let report = LauncherLayoutReconciliationReport(
+                addedApplications: applications.map(\.id)
+            )
+            guard initialDocument.pages != currentDocument.pages else {
+                return LauncherLayoutReconciliationResult(
+                    document: currentDocument,
+                    report: report
+                )
+            }
+            let committedDocument = try commit(initialDocument, replacing: currentDocument)
+            return LauncherLayoutReconciliationResult(
+                document: committedDocument,
+                report: report
+            )
+        }
+
         let reconciliation = LauncherLayoutReconciler.reconcile(
             currentDocument,
             with: applications,
@@ -250,7 +285,7 @@ public actor LauncherLayoutStore {
         )
     }
 
-    /// Replaces every customized page/folder with one canonical application list.
+    /// Replaces every customized page/folder with the canonical default layout.
     /// The caller must provide a complete discovery result: resetting from a
     /// partial catalog could permanently discard applications that are only
     /// temporarily unavailable.
@@ -262,14 +297,9 @@ public actor LauncherLayoutStore {
             throw LauncherLayoutStoreError.incompleteCatalogForReset
         }
         let currentDocument = try load()
-        var seen: Set<ApplicationIdentity> = []
-        let items = applications.compactMap { application -> LauncherLayoutItem? in
-            guard seen.insert(application.id).inserted else { return nil }
-            return .application(LauncherApplicationReference(application: application))
-        }
-        let candidate = LauncherLayoutDocument(
-            revision: currentDocument.revision,
-            pages: [items]
+        let candidate = LauncherDefaultLayoutBuilder.makeDocument(
+            applications: applications,
+            revision: currentDocument.revision
         )
         guard candidate.pages != currentDocument.pages else { return currentDocument }
         return try commit(candidate, replacing: currentDocument)

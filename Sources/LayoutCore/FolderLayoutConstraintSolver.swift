@@ -16,6 +16,27 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
         itemCount: Int
     ) -> FolderGridMetrics {
         let folderTokens = tokens.folder
+
+        // OPENLAUNCHPAD_FOLDER_MATCH_ROOT_ICON_V1
+        // Folder children must use the exact same *resolved* icon geometry as
+        // the root grid. Do not hard-code 96pt here: the root solver may resolve
+        // a smaller/larger value for another logical resolution, grid request,
+        // or external display.
+        // OPENLAUNCHPAD_FOLDER_MATCH_ROOT_VERTICAL_GEOMETRY_V1
+        // A Folder child and a root-grid App must share the same resolved
+        // vertical tile geometry, not only the same icon size. GridMetrics and
+        // FolderGridMetrics both place the icon at cell.midY + labelHeight / 2.
+        // Using the old 28pt Folder label height against the root's 34pt label
+        // height made a Folder-origin proxy land 3pt too low, then jump upward
+        // when the real root tile took ownership.
+        let rootMetrics = solve(
+            display: display,
+            requested: requested,
+            itemCount: itemCount
+        )
+        let rootIconSize = rootMetrics.iconSize
+        let rootLabelHeight = rootMetrics.labelHeight
+
         let constraint = resolveFolderConstraint(
             in: display.safeBounds,
             tokens: folderTokens
@@ -24,20 +45,24 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
             in: constraint.maximumGridSize,
             requested: requested,
             itemCount: itemCount,
+            requiredIconSize: rootIconSize,
+            requiredLabelHeight: rootLabelHeight,
             tokens: folderTokens
         )
         let frames = makeFolderFrames(
             in: display.safeBounds,
             constraint: constraint,
             dimensions: dimensions,
+            requiredIconSize: rootIconSize,
+            requiredLabelHeight: rootLabelHeight,
             tokens: folderTokens
         )
         let cellHeight = frames.grid.height / CGFloat(dimensions.rows)
-        let labelHeight = min(max(0, folderTokens.labelHeight), max(0, cellHeight - 1))
+        let labelHeight = min(max(0, rootLabelHeight), max(0, cellHeight - 1))
         let iconSize = resolveFolderIconSize(
             in: frames.grid,
             dimensions: dimensions,
-            requested: requested,
+            rootIconSize: rootIconSize,
             tokens: folderTokens,
             labelHeight: labelHeight
         )
@@ -112,6 +137,8 @@ private extension LayoutConstraintSolver {
         in maximumGridSize: CGSize,
         requested: UserLayoutPreferences,
         itemCount: Int,
+        requiredIconSize: CGFloat,
+        requiredLabelHeight: CGFloat,
         tokens: FolderLayoutTokens
     ) -> FolderGridDimensions {
         var columns = min(
@@ -123,10 +150,12 @@ private extension LayoutConstraintSolver {
             max(requestedRows ?? tokens.defaultRows, 1),
             max(1, tokens.maximumRows)
         )
-        let minimumCellWidth = max(tokens.minimumIconSize, tokens.minimumInteractionTarget)
+        // Column/row contraction is based on the root-resolved icon size, so a
+        // folder never chooses a lattice that later forces its child icon smaller.
+        let minimumCellWidth = max(requiredIconSize, tokens.minimumInteractionTarget)
             + max(0, tokens.minimumHorizontalGap)
-        let minimumCellHeight = max(tokens.minimumIconSize, tokens.minimumInteractionTarget)
-            + max(0, tokens.labelHeight)
+        let minimumCellHeight = max(requiredIconSize, tokens.minimumInteractionTarget)
+            + max(0, requiredLabelHeight)
             + max(0, tokens.minimumVerticalGap)
 
         while columns > 1, maximumGridSize.width / CGFloat(columns) < minimumCellWidth {
@@ -150,16 +179,24 @@ private extension LayoutConstraintSolver {
         in safeBounds: CGRect,
         constraint: FolderConstraint,
         dimensions: FolderGridDimensions,
+        requiredIconSize: CGFloat,
+        requiredLabelHeight: CGFloat,
         tokens: FolderLayoutTokens
     ) -> FolderFrames {
+        let requiredCellWidth = requiredIconSize + max(0, tokens.minimumHorizontalGap)
+        let requiredCellHeight = requiredIconSize
+            + max(0, requiredLabelHeight)
+            + max(0, tokens.minimumVerticalGap)
         let gridSize = CGSize(
             width: min(
                 constraint.maximumGridSize.width,
-                CGFloat(dimensions.columns) * max(1, tokens.preferredCellWidth)
+                CGFloat(dimensions.columns)
+                    * max(1, max(tokens.preferredCellWidth, requiredCellWidth))
             ),
             height: min(
                 constraint.maximumGridSize.height,
-                CGFloat(dimensions.rows) * max(1, tokens.preferredCellHeight)
+                CGFloat(dimensions.rows)
+                    * max(1, max(tokens.preferredCellHeight, requiredCellHeight))
             )
         )
         let chrome = constraint.chrome
@@ -198,22 +235,22 @@ private extension LayoutConstraintSolver {
     func resolveFolderIconSize(
         in gridFrame: CGRect,
         dimensions: FolderGridDimensions,
-        requested: UserLayoutPreferences,
+        rootIconSize: CGFloat,
         tokens: FolderLayoutTokens,
         labelHeight: CGFloat
     ) -> CGFloat {
         let cellWidth = gridFrame.width / CGFloat(dimensions.columns)
         let cellHeight = gridFrame.height / CGFloat(dimensions.rows)
-        let requestedSize = requested.requestedIconSize ?? tokens.preferredIconSize
         let maximumWidth = cellWidth - max(0, tokens.minimumHorizontalGap)
         let maximumHeight = cellHeight - labelHeight - max(0, tokens.minimumVerticalGap)
         let cellLimitedSize = max(1, min(maximumWidth, maximumHeight))
 
-        return min(
-            max(tokens.minimumIconSize, requestedSize),
-            tokens.maximumIconSize,
-            cellLimitedSize
-        )
+        // The lattice above is selected using rootIconSize, so the folder child
+        // uses the exact same resolved icon size as the root grid. Keep the
+        // geometry assertion explicit: if this ever fails, the folder lattice
+        // must be fixed rather than silently shrinking the icon again.
+        assert(cellLimitedSize + 0.5 >= rootIconSize)
+        return max(1, rootIconSize)
     }
 }
 

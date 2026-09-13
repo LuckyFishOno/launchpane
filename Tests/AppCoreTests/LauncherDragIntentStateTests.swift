@@ -24,7 +24,7 @@ final class LauncherDragIntentStateTests: XCTestCase {
             var state = LauncherDragIntentState()
             XCTAssertEqual(state.update(candidate: target, at: 10), .hold)
             let deadline = try XCTUnwrap(state.deadline)
-            XCTAssertEqual(deadline, 10.44, accuracy: 0.000_001)
+            XCTAssertEqual(deadline, 10.15, accuracy: 0.000_001)
             XCTAssertEqual(state.update(candidate: target, at: deadline.nextDown), .hold)
             XCTAssertFalse(state.isReady)
             XCTAssertEqual(state.update(candidate: target, at: deadline), .ready(target))
@@ -54,7 +54,7 @@ final class LauncherDragIntentStateTests: XCTestCase {
         state.update(candidate: target, at: 0)
         let generation = state.generation
 
-        for time in [0.05, 0.12, 0.2, 0.3, 0.43] {
+        for time in [0.03, 0.08, 0.14] {
             XCTAssertEqual(state.update(candidate: target, at: time), .hold)
             XCTAssertEqual(state.beganAt, 0)
             XCTAssertEqual(state.generation, generation)
@@ -86,9 +86,9 @@ final class LauncherDragIntentStateTests: XCTestCase {
         XCTAssertEqual(state.update(candidate: merge, at: 0.12), .hold)
         XCTAssertNotEqual(state.generation, insertionGeneration)
         XCTAssertEqual(state.update(candidate: merge, at: 0.18), .hold)
-        XCTAssertEqual(state.update(candidate: merge, at: 0.44), .hold)
+        XCTAssertEqual(state.update(candidate: merge, at: 0.14), .hold)
         let deadline = try XCTUnwrap(state.deadline)
-        XCTAssertEqual(deadline, 0.56, accuracy: 0.000_001)
+        XCTAssertEqual(deadline, 0.27, accuracy: 0.000_001)
         XCTAssertEqual(state.update(candidate: merge, at: deadline), .ready(merge))
     }
 
@@ -97,7 +97,7 @@ final class LauncherDragIntentStateTests: XCTestCase {
         let insertion = LauncherDropTarget.pageInsertion(page: 0, index: 1)
         var state = LauncherDragIntentState()
         state.update(candidate: merge, at: 0)
-        XCTAssertEqual(state.update(candidate: merge, at: 0.44), .ready(merge))
+        XCTAssertEqual(state.update(candidate: merge, at: 0.15), .ready(merge))
 
         XCTAssertEqual(state.update(candidate: insertion, at: 0.5), .hold)
         XCTAssertFalse(state.isReady)
@@ -113,7 +113,7 @@ final class LauncherDragIntentStateTests: XCTestCase {
                 var state = LauncherDragIntentState()
                 state.update(candidate: target, at: 0)
                 if cancelAfterReady {
-                    state.update(candidate: target, at: 0.44)
+                    state.update(candidate: target, at: 0.15)
                 }
                 let previousGeneration = state.generation
 
@@ -162,7 +162,7 @@ final class LauncherDragIntentStateTests: XCTestCase {
                           "Identity alone cannot distinguish the cancelled dwell from the new dwell.")
         XCTAssertEqual(state.update(candidate: first, at: firstTimerDeadline), .hold)
         let validDeadline = try XCTUnwrap(state.deadline)
-        XCTAssertEqual(validDeadline, 0.64, accuracy: 0.000_001)
+        XCTAssertEqual(validDeadline, 0.35, accuracy: 0.000_001)
         XCTAssertEqual(state.update(candidate: first, at: validDeadline), .ready(first))
     }
 

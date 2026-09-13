@@ -1,14 +1,17 @@
 import AppKit
 import QuartzCore
+import LayoutCore
 
 @MainActor
 final class LaunchpadWindow: NSWindow {
-    // OPENLAUNCHPAD_NATIVE_DOCK_TRANSITION_V2
+    // OPENLAUNCHPAD_NATIVE_DOCK_TRANSITION_V3_RADIAL
     //
     // Timing is derived from the supplied native Launchpad recording
-    // (58 fps). The reference does not visibly zoom or translate the
-    // Launchpad surface: it primarily cross-fades the already-composed
-    // launcher surface over the desktop.
+    // (58 fps). In addition to the background cross-fade, the foreground
+    // converges from outside toward the display center on open and disperses
+    // from the center on close. A full-screen counter-transform keeps the
+    // wallpaper spatially fixed while every foreground element shares one
+    // compositor-owned motion field.
     //
     // Open and close are intentionally asymmetric:
     //
@@ -32,6 +35,11 @@ final class LaunchpadWindow: NSWindow {
         let remainingTimeFraction: CFTimeInterval
     }
 
+    private struct SpatialSnapshot {
+        let foreground: CATransform3D
+        let background: CATransform3D?
+    }
+
     private enum TransitionMetrics {
         // The clean second opening in the supplied 58 fps recording reaches
         // the fully-resolved launcher in roughly 13 frames:
@@ -49,6 +57,13 @@ final class LaunchpadWindow: NSWindow {
 
         static let opacityAnimationKey =
             "OpenLaunchpad.nativeWindowVisibility"
+
+        static let spatialAnimationKey =
+            "OpenLaunchpad.nativeRadialMotion"
+
+        // A restrained overscan is enough to make edge items visibly travel
+        // farther than center items without cropping the final resting layout.
+        static let dispersedScale: CGFloat = 1.085
 
         // Measured visual progression from the supplied native reference.
         // Each value represents the launcher-visible fraction at one
@@ -137,12 +152,16 @@ final class LaunchpadWindow: NSWindow {
 
         let wasVisible = isVisible
         let startOpacity: Float
+        let startSpatial: SpatialSnapshot
 
         if wasVisible {
             startOpacity = freezeCurrentOpacity(of: layer)
+            startSpatial = freezeCurrentSpatialState(of: layer)
         } else {
             startOpacity = 0
             setOpacity(0, for: layer)
+            startSpatial = spatialSnapshot(scale: TransitionMetrics.dispersedScale)
+            setSpatialState(startSpatial, foregroundLayer: layer)
         }
 
         alphaValue = 1
@@ -158,12 +177,14 @@ final class LaunchpadWindow: NSWindow {
 
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
             setOpacity(1, for: layer)
+            setSpatialScale(1, foregroundLayer: layer)
             presentationState = .visible
             return
         }
 
         guard startOpacity < 0.999 else {
             setOpacity(1, for: layer)
+            setSpatialScale(1, foregroundLayer: layer)
             presentationState = .visible
             return
         }
@@ -181,10 +202,13 @@ final class LaunchpadWindow: NSWindow {
                 * segment.remainingTimeFraction
         )
 
-        animateOpacity(
+        animateVisibility(
             layer: layer,
             segment: segment,
             finalOpacity: 1,
+            startSpatial: startSpatial,
+            finalScale: 1,
+            isOpening: true,
             duration: duration,
             generation: generation
         ) { [weak self] in
@@ -209,15 +233,18 @@ final class LaunchpadWindow: NSWindow {
         }
 
         let startOpacity = freezeCurrentOpacity(of: layer)
+        let startSpatial = freezeCurrentSpatialState(of: layer)
 
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
             setOpacity(0, for: layer)
+            setSpatialScale(1, foregroundLayer: layer)
             completeDismissal()
             return
         }
 
         guard startOpacity > 0.001, isVisible else {
             setOpacity(0, for: layer)
+            setSpatialScale(1, foregroundLayer: layer)
             completeDismissal()
             return
         }
@@ -235,10 +262,13 @@ final class LaunchpadWindow: NSWindow {
                 * segment.remainingTimeFraction
         )
 
-        animateOpacity(
+        animateVisibility(
             layer: layer,
             segment: segment,
             finalOpacity: 0,
+            startSpatial: startSpatial,
+            finalScale: TransitionMetrics.dispersedScale,
+            isOpening: false,
             duration: duration,
             generation: generation
         ) { [weak self] in
@@ -254,6 +284,9 @@ final class LaunchpadWindow: NSWindow {
     }
 
     private func completeDismissal() {
+        if let layer = transitionLayer {
+            setSpatialScale(1, foregroundLayer: layer)
+        }
         orderOut(nil)
         presentationState = .hidden
         onDidHide?()
@@ -266,6 +299,10 @@ final class LaunchpadWindow: NSWindow {
 
         contentView.wantsLayer = true
         return contentView.layer
+    }
+
+    private var counterScaledBackgroundLayer: CALayer? {
+        (contentView as? LaunchpadRootView)?.presentationBackgroundLayer
     }
 
     @discardableResult
@@ -298,6 +335,66 @@ final class LaunchpadWindow: NSWindow {
         layer.opacity = opacity
         synchronizedBackdropLayer?.opacity = opacity
         CATransaction.commit()
+    }
+
+    private func spatialSnapshot(scale: CGFloat) -> SpatialSnapshot {
+        SpatialSnapshot(
+            foreground: centeredTransform(for: transitionLayer, scale: scale),
+            background: centeredTransform(for: counterScaledBackgroundLayer, scale: 1 / scale)
+        )
+    }
+
+    private func centeredTransform(for layer: CALayer?, scale: CGFloat) -> CATransform3D {
+        guard let layer else { return CATransform3DIdentity }
+        return CATransform3DMakeAffineTransform(CenteredPresentationTransform.make(
+            bounds: layer.bounds, anchorPoint: layer.anchorPoint, scale: scale
+        ))
+    }
+
+    private func setSpatialScale(
+        _ scale: CGFloat,
+        foregroundLayer: CALayer
+    ) {
+        setSpatialState(
+            spatialSnapshot(scale: scale),
+            foregroundLayer: foregroundLayer
+        )
+    }
+
+    private func setSpatialState(
+        _ snapshot: SpatialSnapshot,
+        foregroundLayer: CALayer
+    ) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        foregroundLayer.transform = snapshot.foreground
+        if let background = snapshot.background {
+            counterScaledBackgroundLayer?.transform = background
+        }
+        CATransaction.commit()
+    }
+
+    private func freezeCurrentSpatialState(
+        of foregroundLayer: CALayer
+    ) -> SpatialSnapshot {
+        let foreground =
+            foregroundLayer.presentation()?.transform
+                ?? foregroundLayer.transform
+        let background = counterScaledBackgroundLayer.map {
+            $0.presentation()?.transform ?? $0.transform
+        }
+
+        foregroundLayer.removeAnimation(forKey: TransitionMetrics.spatialAnimationKey)
+        counterScaledBackgroundLayer?.removeAnimation(
+            forKey: TransitionMetrics.spatialAnimationKey
+        )
+
+        let snapshot = SpatialSnapshot(
+            foreground: foreground,
+            background: background
+        )
+        setSpatialState(snapshot, foregroundLayer: foregroundLayer)
+        return snapshot
     }
 
     private func curveSegment(
@@ -464,10 +561,13 @@ final class LaunchpadWindow: NSWindow {
         )
     }
 
-    private func animateOpacity(
+    private func animateVisibility(
         layer: CALayer,
         segment: OpacityCurveSegment,
         finalOpacity: Float,
+        startSpatial: SpatialSnapshot,
+        finalScale: CGFloat,
+        isOpening: Bool,
         duration: CFTimeInterval,
         generation: Int,
         completion: @escaping @MainActor () -> Void
@@ -476,11 +576,17 @@ final class LaunchpadWindow: NSWindow {
             forKey: TransitionMetrics.opacityAnimationKey
         )
         synchronizedBackdropLayer?.removeAnimation(forKey: TransitionMetrics.opacityAnimationKey)
+        layer.removeAnimation(forKey: TransitionMetrics.spatialAnimationKey)
+        counterScaledBackgroundLayer?.removeAnimation(
+            forKey: TransitionMetrics.spatialAnimationKey
+        )
 
         setOpacity(
             finalOpacity,
             for: layer
         )
+        let finalSpatial = spatialSnapshot(scale: finalScale)
+        setSpatialState(finalSpatial, foregroundLayer: layer)
 
         let animation =
             CAKeyframeAnimation(
@@ -502,6 +608,20 @@ final class LaunchpadWindow: NSWindow {
 
         animation.isRemovedOnCompletion =
             true
+
+        let foregroundMotion = CABasicAnimation(keyPath: "transform")
+        foregroundMotion.fromValue = NSValue(caTransform3D: startSpatial.foreground)
+        foregroundMotion.toValue = NSValue(caTransform3D: finalSpatial.foreground)
+        foregroundMotion.duration = duration
+        foregroundMotion.timingFunction = radialTimingFunction(isOpening: isOpening)
+        foregroundMotion.isRemovedOnCompletion = true
+
+        let backgroundMotion = CABasicAnimation(keyPath: "transform")
+        backgroundMotion.fromValue = startSpatial.background.map(NSValue.init(caTransform3D:))
+        backgroundMotion.toValue = finalSpatial.background.map(NSValue.init(caTransform3D:))
+        backgroundMotion.duration = duration
+        backgroundMotion.timingFunction = radialTimingFunction(isOpening: isOpening)
+        backgroundMotion.isRemovedOnCompletion = true
 
         CATransaction.begin()
 
@@ -530,7 +650,26 @@ final class LaunchpadWindow: NSWindow {
                     .opacityAnimationKey
         )
         synchronizedBackdropLayer?.add(animation, forKey: TransitionMetrics.opacityAnimationKey)
+        layer.add(foregroundMotion, forKey: TransitionMetrics.spatialAnimationKey)
+        if startSpatial.background != nil, finalSpatial.background != nil {
+            counterScaledBackgroundLayer?.add(
+                backgroundMotion,
+                forKey: TransitionMetrics.spatialAnimationKey
+            )
+        }
 
         CATransaction.commit()
+    }
+
+    private func radialTimingFunction(isOpening: Bool) -> CAMediaTimingFunction {
+        if isOpening {
+            return CAMediaTimingFunction(
+                controlPoints: 0.18, 0.72, 0.22, 1
+            )
+        }
+
+        return CAMediaTimingFunction(
+            controlPoints: 0.55, 0, 0.84, 0.30
+        )
     }
 }

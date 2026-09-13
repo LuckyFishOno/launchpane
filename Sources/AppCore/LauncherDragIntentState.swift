@@ -20,7 +20,10 @@ public struct LauncherDragIntentState: Equatable, Sendable {
     public private(set) var isReady = false
     public private(set) var generation: UInt64 = 0
 
-    public init(mergeDwell: TimeInterval = 0.44, reorderDwell: TimeInterval = 0.18) {
+    // OPENLAUNCHPAD_MERGE_DWELL_015_V1
+
+
+    public init(mergeDwell: TimeInterval = 0.15, reorderDwell: TimeInterval = 0.18) {
         precondition(mergeDwell.isFinite && mergeDwell >= 0)
         precondition(reorderDwell.isFinite && reorderDwell >= 0)
         self.mergeDwell = mergeDwell

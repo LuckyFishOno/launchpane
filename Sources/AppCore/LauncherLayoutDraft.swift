@@ -14,6 +14,7 @@ public enum LauncherLayoutMutationError: Error, Equatable, Sendable {
     case layoutItemIsNotAtRoot(LauncherLayoutItemIdentifier)
     case invalidFolderInsertionIndex(Int)
     case applicationIsNotAtRoot(ApplicationIdentity)
+    case applicationIsNotInFolder(ApplicationIdentity, UUID)
     case folderNotFound(UUID)
     case duplicateFolder(UUID)
     case cannotMergeApplicationWithItself
@@ -159,8 +160,78 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         try publish(candidate)
     }
 
-    private func requireActive() throws {
-        guard state == .active else {
+    /// Updates the persisted custom folder title without changing folder identity
+        /// or application order.
+        public mutating func renameFolder(_ folderID: UUID, to title: String?) throws {
+            try requireActive()
+            var candidate = document
+            let location: (page: Int, index: Int)
+            do {
+                location = try candidate.rootLocation(identifier: .folder(folderID))
+            } catch {
+                throw LauncherLayoutMutationError.folderNotFound(folderID)
+            }
+            guard case var .folder(folder) = candidate.pages[location.page][location.index] else {
+                throw LauncherLayoutMutationError.folderNotFound(folderID)
+            }
+            let normalized = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            folder.customTitle = (normalized?.isEmpty == false) ? normalized : nil
+            candidate.pages[location.page][location.index] = .folder(folder)
+            try publish(candidate)
+        }
+
+        /// Pulls one child out of a root folder and materializes it as a root app.
+        /// If two children become one, the folder dissolves and the remaining child
+        /// takes the folder's exact root slot, matching native Launchpad semantics.
+        public mutating func extractApplication(
+            _ applicationIdentity: ApplicationIdentity,
+            fromFolder folderID: UUID,
+            pageCapacity: Int
+        ) throws {
+            try requireActive()
+            guard pageCapacity > 0 else {
+                throw LauncherLayoutMutationError.invalidPageCapacity(pageCapacity)
+            }
+
+            var candidate = document
+            let location: (page: Int, index: Int)
+            do {
+                location = try candidate.rootLocation(identifier: .folder(folderID))
+            } catch {
+                throw LauncherLayoutMutationError.folderNotFound(folderID)
+            }
+            guard case var .folder(folder) = candidate.pages[location.page][location.index] else {
+                throw LauncherLayoutMutationError.folderNotFound(folderID)
+            }
+            guard let childIndex = folder.applications.firstIndex(where: {
+                $0.identity == applicationIdentity
+            }) else {
+                throw LauncherLayoutMutationError.applicationIsNotInFolder(
+                    applicationIdentity,
+                    folderID
+                )
+            }
+
+            let extracted = folder.applications.remove(at: childIndex)
+            switch folder.applications.count {
+            case 2...:
+                candidate.pages[location.page][location.index] = .folder(folder)
+            case 1:
+                candidate.pages[location.page][location.index] = .application(folder.applications[0])
+            default:
+                candidate.pages[location.page].remove(at: location.index)
+            }
+
+            let insertionIndex = min(
+                location.index + 1,
+                candidate.pages[location.page].endIndex
+            )
+            candidate.pages[location.page].insert(.application(extracted), at: insertionIndex)
+            try publish(candidate.normalizedForPageCapacity(pageCapacity))
+        }
+
+        private func requireActive() throws {
+            guard state == .active else {
             throw LauncherLayoutMutationError.draftIsRolledBack
         }
     }

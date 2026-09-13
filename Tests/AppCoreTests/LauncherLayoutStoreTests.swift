@@ -136,6 +136,57 @@ final class LauncherLayoutStoreTests: XCTestCase {
         XCTAssertEqual(fileIO.writeCount, 1)
     }
 
+    func testFirstCompleteReconciliationSeedsUtilitiesFolderOnlyOnce() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let terminal = application("Terminal", path: "/System/Applications/Utilities/Terminal.app")
+        let console = application("Console", path: "/System/Applications/Utilities/Console.app")
+        let safari = application("Safari", path: "/System/Applications/Safari.app")
+
+        let first = try await store.reconcileAndCommit(
+            applications: [safari, terminal, console]
+        )
+        let second = try await store.reconcileAndCommit(
+            applications: [safari, terminal, console]
+        )
+
+        XCTAssertEqual(first.document.revision, 1)
+        XCTAssertEqual(second.document, first.document)
+        XCTAssertEqual(fileIO.writeCount, 1)
+        guard case let .folder(folder) = first.document.items[0] else {
+            return XCTFail("Expected seeded Utilities folder")
+        }
+        XCTAssertEqual(folder.customTitle, "Utilities")
+        XCTAssertEqual(folder.applications.map(\.identity), [terminal.id, console.id])
+    }
+
+    func testPartialFirstReconciliationDoesNotSeedIncompleteUtilitiesFolder() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let terminal = application("Terminal", path: "/System/Applications/Utilities/Terminal.app")
+        let console = application("Console", path: "/System/Applications/Utilities/Console.app")
+
+        let result = try await store.reconcileAndCommit(
+            applications: [terminal, console],
+            completeness: .partial
+        )
+
+        XCTAssertTrue(result.document.items.allSatisfy {
+            if case .application = $0 { return true }
+            return false
+        })
+        XCTAssertEqual(fileIO.writeCount, 0)
+
+        let complete = try await store.reconcileAndCommit(
+            applications: [terminal, console],
+            completeness: .complete
+        )
+        XCTAssertEqual(fileIO.writeCount, 1)
+        guard case .folder = complete.document.items.first else {
+            return XCTFail("Expected complete retry to seed Utilities")
+        }
+    }
+
     func testResetReplacesFoldersAndPagesWithProvidedApplicationOrder() async throws {
         let fileIO = MemoryLayoutFileIO()
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
@@ -181,6 +232,30 @@ final class LauncherLayoutStoreTests: XCTestCase {
             .application(LauncherApplicationReference(application: alpha)),
         ])
         XCTAssertEqual(fileIO.writeCount, 1)
+    }
+
+    func testResetRestoresUtilitiesAsFirstItem() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let terminal = application("Terminal", path: "/System/Applications/Utilities/Terminal.app")
+        let console = application("Console", path: "/System/Applications/Utilities/Console.app")
+        let safari = application("Safari", path: "/System/Applications/Safari.app")
+        _ = try await store.reconcileAndCommit(applications: [safari])
+
+        let reset = try await store.reset(
+            applications: [safari, terminal, console],
+            completeness: .complete
+        )
+
+        guard case let .folder(folder) = reset.items.first else {
+            return XCTFail("Expected Utilities in the first Launchpad position")
+        }
+        XCTAssertEqual(folder.id, LauncherDefaultLayoutBuilder.utilitiesFolderID)
+        XCTAssertEqual(folder.applications.map(\.identity), [terminal.id, console.id])
+        XCTAssertEqual(
+            Array(reset.items.dropFirst()),
+            [.application(LauncherApplicationReference(application: safari))]
+        )
     }
 
     func testResetOfAlreadyCanonicalLayoutDoesNotWriteAgain() async throws {
@@ -259,11 +334,11 @@ final class LauncherLayoutStoreTests: XCTestCase {
         ))
     }
 
-    private func application(_ name: String) -> ApplicationRecord {
+    private func application(_ name: String, path: String? = nil) -> ApplicationRecord {
         ApplicationRecord(
             displayName: name,
             bundleIdentifier: "org.example.\(name.lowercased())",
-            bundleURL: URL(fileURLWithPath: "/Applications/\(name).app")
+            bundleURL: URL(fileURLWithPath: path ?? "/Applications/\(name).app")
         )
     }
 }

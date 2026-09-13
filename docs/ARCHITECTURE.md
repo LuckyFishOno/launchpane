@@ -40,9 +40,11 @@ Visual constants are centralized in typed style or metrics values. Interactive a
 
 `WallpaperLayout` maps the wallpaper onto the complete display in backing pixels using the desktop's scaling and clipping options. Menu-bar, Dock, and notch reservations constrain controls, not the wallpaper canvas. `DesktopWallpaperProvider` blurs and tones that canvas once, caching the plain and frosted images by file metadata, display geometry, and desktop options.
 
-The main window and `MenuBarBackdropWindow` share the same frosted image. The latter exposes only the top rows in full-screen coordinates; it has no independent visual-effect material or tint. Its opacity animation follows the main window, with the plain desktop underneath to prevent menus showing through during a fade.
+The main window and `MenuBarBackdropWindow` share the same frosted image. The latter exposes only the top rows in full-screen coordinates; it has no independent visual-effect material or tint. Its opacity animation follows the main window, with the plain desktop underneath to prevent menus showing through during a fade. Presentation also applies one display-centered compositor transform to the main content: foreground controls and tiles converge from a restrained 1.085× dispersed state on open and expand back to it on close. The full-screen wallpaper receives the exact inverse transform, so only the launcher foreground moves and the desktop remains spatially fixed across the menu-window seam.
 
 This is a visual replacement of the menu region while preserving the system Dock. AppKit's actual `hideMenuBar` presentation mode requires `hideDock`, so it cannot provide an interactive Dock. The main window remains below Dock and the top continuation closes when the app deactivates. No global menu/Dock settings are changed.
+
+The radial transform explicitly compensates for each layer's actual `anchorPoint` using `CenteredPresentationTransform`. AppKit-owned layers can have corner anchors; a bare scale would therefore send all icons diagonally. The compensated transform fixes the full display center while moving opposite sides equally in opposite directions, without changing AppKit-owned anchors or positions.
 
 ## Paging
 
@@ -161,12 +163,19 @@ frame pacing or replace manual physical-device testing.
 
 The visual grid is rendered with Core Animation, while native controls provide accessibility and hit-test semantics. Keyboard navigation, right-to-left layout, multi-display behavior, and Reduce Motion are architectural requirements rather than optional visual polish.
 
+On a new complete catalog, `LauncherDefaultLayoutBuilder` places one deterministic
+`Utilities` folder in the first slot of page one. Only direct children of
+`/System/Applications/Utilities` enter it, so similarly named third-party apps
+remain at root. Existing persisted layouts remain authoritative; an incomplete
+first scan is displayed without being persisted so a later complete scan can
+still construct the full default. Reset uses the same builder.
+
 The search field's trailing ellipsis is a native button with one menu command,
 `Reset Launchpad`. The button is outside the translated search-content layer, so
 it cannot shift the centered magnifier/placeholder. Reset requires confirmation,
 refreshes discovery, and is refused when discovery is partial. A successful
-transaction removes custom folders and page boundaries, persists the complete
-alphabetical catalog as one canonical list, then returns the UI to page one.
+transaction removes custom folders and page boundaries, rebuilds the canonical
+default including Utilities, then returns the UI to page one.
 
 ## Project Generation
 
