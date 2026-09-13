@@ -31,6 +31,7 @@ If this happens:
 4. Find the message stating that OpenLaunchpad was blocked and click **Open Anyway**.
 5. Authenticate with your password or Touch ID if requested.
 6. Confirm by clicking **Open**.
+<img width="716" height="425" alt="setting" src="https://github.com/user-attachments/assets/d42ebbfc-6beb-4f20-82a5-d6173db66315" />
 
 After OpenLaunchpad has been allowed once, macOS will remember this choice and the application can be opened normally afterward.
 
