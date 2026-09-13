@@ -2016,17 +2016,16 @@ private extension LaunchpadRootView {
 
         let hits = dragHitTargets(session)
         let candidate = hits.merge ?? (hits.insertion == .outside ? nil : hits.insertion)
-        let iconCenter = draggedIconFrame(for: session).center
-        let movementThreshold = (currentMetrics?.iconSize ?? 1) * DragIntentMetrics.movementFraction
-        let moved = hypot(iconCenter.x - session.intentAnchorPoint.x,
-                          iconCenter.y - session.intentAnchorPoint.y) >= movementThreshold
         let generation = session.intentState.generation
         let decision = session.intentState.update(
-            candidate: candidate, at: CACurrentMediaTime(),
-            restartDwell: candidate?.isInsertion == true && moved && !session.hasReleased
+            candidate: candidate,
+            at: CACurrentMediaTime(),
+            // Spatial hysteresis now decides whether an insertion is valid.
+            // Continuous pointer movement inside that valid zone must NOT keep
+            // restarting the reorder timer.
+            restartDwell: false
         )
         if generation != session.intentState.generation {
-            session.intentAnchorPoint = iconCenter
             session.intentTask?.cancel()
             session.intentTask = nil
             session.folderSpringOpenTask?.cancel()
@@ -2237,10 +2236,6 @@ private extension LaunchpadRootView {
         static let widthFraction: CGFloat = 0.04
         static let dwell: Duration = .milliseconds(400)
         static let pageDuration: CFTimeInterval = 0.45
-    }
-
-    private enum DragIntentMetrics {
-        static let movementFraction: CGFloat = 0.025
     }
 
     private enum FolderSpringOpenMetrics {
@@ -2534,6 +2529,10 @@ private extension LaunchpadRootView {
                     true
                 )
 
+            // One wall-clock start for the complete reflow batch. Every displaced
+            // tile converts this exact media time into its own layer time.
+            let reflowBatchMediaTime = CACurrentMediaTime()
+
             workingSurface
                 .layer
                 .opacity = 1
@@ -2669,6 +2668,12 @@ private extension LaunchpadRootView {
                     transition
                         .timingFunction
 
+                move.beginTime =
+                    entry.tileLayer.convertTime(
+                        reflowBatchMediaTime,
+                        from: nil
+                    )
+
                 entry
                     .tileLayer
                     .add(
@@ -2733,6 +2738,8 @@ private extension LaunchpadRootView {
             .setDisableActions(
                 true
             )
+
+        let fallbackReflowBatchMediaTime = CACurrentMediaTime()
 
         newSurface.layer.frame =
             bounds
@@ -2813,6 +2820,12 @@ private extension LaunchpadRootView {
                     transition
                         .timingFunction
 
+                fade.beginTime =
+                    entry.tileLayer.convertTime(
+                        fallbackReflowBatchMediaTime,
+                        from: nil
+                    )
+
                 entry
                     .tileLayer
                     .add(
@@ -2853,6 +2866,12 @@ private extension LaunchpadRootView {
             move.timingFunction =
                 transition
                     .timingFunction
+
+            move.beginTime =
+                entry.tileLayer.convertTime(
+                    fallbackReflowBatchMediaTime,
+                    from: nil
+                )
 
             entry
                 .tileLayer
@@ -2918,6 +2937,74 @@ private extension LaunchpadRootView {
         return frames.icon.offsetBy(dx: center.x - frames.cell.midX,
                                     dy: center.y - frames.cell.midY)
     }
+    // OPENLAUNCHPAD_NATIVE_REORDER_FAST_SYNC_V4
+    //
+    // Fixed-cell, direction-aware reorder hysteresis.
+    //
+    // The center of a neighboring cell remains a stable/dead region. Reorder
+    // activates only after the dragged icon center has moved 60% through the
+    // cell in the direction of travel (40% when travelling left).
+    //
+    // Unlike V3, this function does NOT force one-slot-at-a-time progression.
+    // If a coarse/fast pointer update legitimately lands several cells away,
+    // return the furthest spatially-valid slot in one decision. That lets every
+    // displaced app reflow in one animation batch instead of stair-stepping.
+    //
+    // The gate is always derived from GridMetrics model cells. Presentation
+    // animation never moves the hit-test boundary.
+    func stabilizedReorderVisibleSlot(
+        rawSlot: Int,
+        draggedFrame: CGRect,
+        session: LaunchpadDragSession,
+        metrics: GridMetrics
+    ) -> Int {
+        let surface = session.previewSurface ?? session.originalSurface
+        let activeDragPage = session.previewLocation?.page ?? session.sourcePage
+
+        guard
+            activeDragPage == currentPage,
+            let layoutSource = surface.entries.first(where: {
+                $0.item.id == session.sourceEntry.item.id
+            }),
+            let currentSlot = (0 ..< metrics.itemsPerPage).first(where: {
+                metrics.cellFrame(forItemAt: $0)?.contains(layoutSource.frames.cell.center) == true
+            }),
+            rawSlot != currentSlot
+        else {
+            return rawSlot
+        }
+
+        // Keep existing vertical-row semantics. V4 only changes horizontal
+        // reorder behavior.
+        guard rawSlot / metrics.columns == currentSlot / metrics.columns,
+              let rawCell = metrics.cellFrame(forItemAt: rawSlot)
+        else {
+            return rawSlot
+        }
+
+        let activationFraction: CGFloat = 0.60
+
+        if rawSlot > currentSlot {
+            let activationX = rawCell.minX + rawCell.width * activationFraction
+
+            if draggedFrame.midX >= activationX {
+                return rawSlot
+            }
+
+            // The pointer may have jumped over several complete cells in one
+            // event. Every fully-crossed slot is already spatially valid, so
+            // resolve to the slot immediately before the current raw cell.
+            return max(currentSlot, rawSlot - 1)
+        }
+
+        let activationX = rawCell.maxX - rawCell.width * activationFraction
+
+        if draggedFrame.midX <= activationX {
+            return rawSlot
+        }
+
+        return min(currentSlot, rawSlot + 1)
+    }
 
     func dragHitTargets(
         _ session: LaunchpadDragSession
@@ -2937,9 +3024,12 @@ private extension LaunchpadRootView {
         let countWithoutSource = pageIDs.filter { $0 != source.item.id }.count
         let insertion: LauncherDropTarget = {
             guard metrics.contentFrame.contains(point),
-                  let slot = (0..<metrics.itemsPerPage).first(where: {
+                  let rawSlot = (0..<metrics.itemsPerPage).first(where: {
                       metrics.cellFrame(forItemAt: $0)?.contains(point) == true
                   }) else { return .outside }
+            let slot = stabilizedReorderVisibleSlot(
+                rawSlot: rawSlot, draggedFrame: draggedFrame, session: session, metrics: metrics
+            )
             let projection = pageProjection(metrics: metrics, document: baseline)
             let visibleIDs = projection.pages.indices.contains(currentPage)
                 ? projection.pages[currentPage].map(\.id) : []
@@ -6937,10 +7027,12 @@ private final class LaunchpadDragSession {
         previewState.destination
     }
 
-    var intentState = LauncherDragIntentState()
+    // OPENLAUNCHPAD_REORDER_RESPONSE_080_V4
+    // The spatial gate prevents accidental swaps; keep the temporal confirmation
+    // short so a deliberate crossing feels immediate.
+    var intentState = LauncherDragIntentState(mergeDwell: 0.15, reorderDwell: 0.08)
     var intentTask: Task<Void, Never>?
     var folderSpringOpenTask: Task<Void, Never>?
-    var intentAnchorPoint: CGPoint = .zero
     var folderCreationPreview: FolderCreationPreview?
     var isSourceLabelHiddenForMerge = false
 
