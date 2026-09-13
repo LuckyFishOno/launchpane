@@ -71,7 +71,7 @@ enum LaunchpadVisualStyle {
         // OPENLAUNCHPAD_FOLDER_ABSORB_DURATION_044_V1
 
 
-        static let mergeDuration: CFTimeInterval = 0.44
+        static let mergeDuration: CFTimeInterval = 0.25
     }
 
     static func searchFieldSize(forDisplayWidth displayWidth: CGFloat) -> CGSize {
