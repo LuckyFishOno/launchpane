@@ -16,7 +16,12 @@ private final class LaunchpadCanvasView: NSView {
 @MainActor
 final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let solver = LayoutConstraintSolver()
-    private let catalog = AppCatalogActor()
+    private let catalog = AppCatalogActor(
+        excludedBundleIdentifiers: [
+            "org.openlaunchpad.OpenLaunchpad",
+            "org.openlaunchpad.OpenLaunchpadAgent",
+        ]
+    )
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
     private let iconCache = AppIconCache()
     private let wallpaperView = NSImageView()

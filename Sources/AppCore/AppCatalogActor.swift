@@ -2,10 +2,17 @@ import Foundation
 
 public actor AppCatalogActor {
     private let sources: [any AppDiscoverySource]
+    private let excludedBundleIdentifiers: Set<String>
     private var cachedApplications: [ApplicationRecord] = []
 
-    public init(sources: [any AppDiscoverySource] = [StandardApplicationDiscoverySource()]) {
+    public init(
+        sources: [any AppDiscoverySource] = [StandardApplicationDiscoverySource()],
+        excludedBundleIdentifiers: Set<String> = []
+    ) {
         self.sources = sources
+        self.excludedBundleIdentifiers = Set(
+            excludedBundleIdentifiers.map { $0.lowercased() }
+        )
     }
 
     @discardableResult
@@ -25,6 +32,16 @@ public actor AppCatalogActor {
                     completeness = .partial
                 }
                 for application in outcome.applications {
+                    // OPENLAUNCHPAD_SELF_CATALOG_EXCLUSION_V1
+                    // Product-specific callers may remove applications from the
+                    // canonical catalog by bundle identifier. Filtering here,
+                    // before caching, keeps grid/search/reset behavior consistent.
+                    if let bundleIdentifier = application.bundleIdentifier?.lowercased(),
+                       excludedBundleIdentifiers.contains(bundleIdentifier)
+                    {
+                        continue
+                    }
+
                     guard applicationsByIdentity[application.id] == nil else { continue }
                     applicationsByIdentity[application.id] = application
                 }

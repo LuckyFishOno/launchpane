@@ -14,6 +14,30 @@ final class AppCatalogActorTests: XCTestCase {
         XCTAssertEqual(applications, [alpha, beta])
     }
 
+    func testRefreshExcludesConfiguredBundleIdentifiers() async {
+        let openLaunchpad = makeApplication(
+            name: "OpenLaunchpad",
+            path: "/Applications/OpenLaunchpad.app",
+            bundleIdentifier: "org.openlaunchpad.OpenLaunchpad"
+        )
+        let safari = makeApplication(
+            name: "Safari",
+            path: "/Applications/Safari.app",
+            bundleIdentifier: "com.apple.Safari"
+        )
+        let catalog = AppCatalogActor(
+            sources: [StubSource(applications: [openLaunchpad, safari])],
+            // Bundle identifiers are matched case-insensitively.
+            excludedBundleIdentifiers: ["ORG.OPENLAUNCHPAD.OPENLAUNCHPAD"]
+        )
+
+        let applications = await catalog.refresh()
+        let searchResults = await catalog.applications(matching: "OpenLaunchpad")
+
+        XCTAssertEqual(applications, [safari])
+        XCTAssertTrue(searchResults.isEmpty)
+    }
+
     func testRefreshUsesStableIdentityAcrossMovesAndRenames() async {
         let original = makeApplication(
             name: "Original Name",
