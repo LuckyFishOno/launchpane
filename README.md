@@ -35,6 +35,7 @@ If macOS shows an **“OpenLaunchpad” Not Opened** warning:
 3. Scroll to **Security**.
 4. Click **Open Anyway** for OpenLaunchpad.
 <img width="716" height="425" alt="setting" src="https://github.com/user-attachments/assets/d42ebbfc-6beb-4f20-82a5-d6173db66315" />
+
 5. Authenticate if requested.
 6. Click **Open**.
 7. Drag OpenLaunchpad.app from the Applications folder to the Dock for quick access.
