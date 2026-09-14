@@ -78,8 +78,8 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         let button = descendants(root).compactMap { $0 as? AppTileButton }
             .first { $0.application.id == sourceID }!
         let point = root.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY), from: button)
-        button.mouseDown(with: event(.leftMouseDown, at: point))
-        button.mouseDragged(with: event(.leftMouseDragged, at: edge(1)))
+        controller.window!.sendEvent(event(.leftMouseDown, at: point))
+        controller.window!.sendEvent(event(.leftMouseDragged, at: edge(1)))
         check(session != nil && button.isTrackingPointer, "real source button owns active drag")
         return button
     }
@@ -122,7 +122,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         let held = start()
         if await until("stationary edge reaches third page", { page == 2 && !transitioning }) {
             check(held.isTrackingPointer && held.window != nil, "pointer owner survives two page changes")
-            held.mouseUp(with: event(.leftMouseUp, at: edge(1)))
+            controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))
             await settled()
             try verifyCommit(page: 2, "edge mouseUp commits on third page")
             check(try persisted().pages[1] == fixture.pages[1], "intermediate page remains unchanged")
@@ -131,9 +131,9 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         }
 
         try await openFixture()
-        let mid = start()
+        _ = start()
         if await until("edge transition began", { transitioning }) {
-            mid.mouseUp(with: event(.leftMouseUp, at: edge(1)))
+            controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))
             check(session != nil, "mouseUp deferred during transition")
             await settled()
             try verifyCommit(page: 1, "mid-animation release commits incoming page")
@@ -142,11 +142,11 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         try await openFixture()
         let returning = start()
         if await until("reached second page for reverse traversal", { page == 1 && !transitioning }) {
-            returning.mouseDragged(with: event(.leftMouseDragged, at: edge(-1)))
+            controller.window!.sendEvent(event(.leftMouseDragged, at: edge(-1)))
             if await until("can return to original page", { page == 0 && !transitioning }) {
                 check(returning.isTrackingPointer && returning.window != nil,
                       "return visit does not detach source pointer owner")
-                returning.mouseUp(with: event(.leftMouseUp, at: edge(-1)))
+                controller.window!.sendEvent(event(.leftMouseUp, at: edge(-1)))
                 await settled()
                 check(try persisted().pages == fixture.pages, "round trip to original slot is a no-op")
             }
@@ -172,11 +172,11 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         // one new page and then stops, rather than generating infinite empties.
         try await openFixture()
         let trailingPage = fixture.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
-        let trailing = start()
+        _ = start()
         if await until("held edge reaches a new trailing page", timeout: 12, { page == trailingPage && !transitioning }) {
             await pause(1.2)
             check(page == trailingPage && !transitioning, "holding on new last page stays bounded")
-            trailing.mouseUp(with: event(.leftMouseUp, at: edge(1)))
+            controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))
             await settled()
             try verifyCommit(page: trailingPage, "drop persists newly created page")
         }
@@ -192,9 +192,9 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
             fixture = LauncherLayoutDocument(revision: 200, pages: pages)
             try await openFixture()
             let destination = pages.count - 1
-            let overflow = start()
+            _ = start()
             if await until("drag reaches full final page", timeout: 12, { page == destination && !transitioning }) {
-                overflow.mouseUp(with: event(.leftMouseUp, at: edge(1)))
+                controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))
                 await settled()
                 try verifyCommit(page: destination, "dragged app remains on full destination page")
                 let document = try persisted()

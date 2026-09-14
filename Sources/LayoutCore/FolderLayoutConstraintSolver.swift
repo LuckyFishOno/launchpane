@@ -37,9 +37,22 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
         let rootIconSize = rootMetrics.iconSize
         let rootLabelHeight = rootMetrics.labelHeight
 
+        // OPENLAUNCHPAD_ADAPTIVE_FOLDER_PANEL_SCALE_V12
+        // Root icons already scale continuously from 108pt on the MacBook
+        // baseline to 136pt on a native 3840pt-wide 4K canvas. Reuse that
+        // resolved ratio for the open-folder panel so the panel, cell lattice,
+        // chrome, and title no longer stay visually undersized on large displays.
+        // Never shrink below the established 108pt baseline geometry here;
+        // small-display safety is still handled by the existing constraints.
+        let folderVisualScale = max(
+            1,
+            rootIconSize / max(1, tokens.preferredIconSize)
+        )
+
         let constraint = resolveFolderConstraint(
             in: display.safeBounds,
-            tokens: folderTokens
+            tokens: folderTokens,
+            visualScale: folderVisualScale
         )
         let dimensions = resolveFolderGridDimensions(
             in: constraint.maximumGridSize,
@@ -47,7 +60,8 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
             itemCount: itemCount,
             requiredIconSize: rootIconSize,
             requiredLabelHeight: rootLabelHeight,
-            tokens: folderTokens
+            tokens: folderTokens,
+            visualScale: folderVisualScale
         )
         let frames = makeFolderFrames(
             in: display.safeBounds,
@@ -55,7 +69,8 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
             dimensions: dimensions,
             requiredIconSize: rootIconSize,
             requiredLabelHeight: rootLabelHeight,
-            tokens: folderTokens
+            tokens: folderTokens,
+            visualScale: folderVisualScale
         )
         let cellHeight = frames.grid.height / CGFloat(dimensions.rows)
         let labelHeight = min(max(0, rootLabelHeight), max(0, cellHeight - 1))
@@ -64,7 +79,8 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
             dimensions: dimensions,
             rootIconSize: rootIconSize,
             tokens: folderTokens,
-            labelHeight: labelHeight
+            labelHeight: labelHeight,
+            visualScale: folderVisualScale
         )
         let safeItemCount = max(0, itemCount)
         let itemsPerPage = dimensions.rows * dimensions.columns
@@ -87,10 +103,11 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
 private extension LayoutConstraintSolver {
     func resolveFolderConstraint(
         in safeBounds: CGRect,
-        tokens: FolderLayoutTokens
+        tokens: FolderLayoutTokens,
+        visualScale: CGFloat
     ) -> FolderConstraint {
         let margin = min(
-            max(0, tokens.displayMargin),
+            max(0, tokens.displayMargin * visualScale),
             max(0, min(safeBounds.width, safeBounds.height) / 4)
         )
         // Native Launchpad keeps the folder panel at roughly four-fifths of
@@ -100,17 +117,28 @@ private extension LayoutConstraintSolver {
         let maximumPanelSize = CGSize(
             width: max(
                 1,
-                min(tokens.maximumPanelWidth, safeBounds.width - margin * 2, nativePanelWidth)
+                min(
+                    tokens.maximumPanelWidth * visualScale,
+                    safeBounds.width - margin * 2,
+                    nativePanelWidth
+                )
             ),
             height: max(
                 1,
                 min(
-                    tokens.maximumPanelHeight,
-                    safeBounds.height - margin * 2 - tokens.titleHeight - tokens.titleToGridSpacing
+                    tokens.maximumPanelHeight * visualScale,
+                    safeBounds.height
+                        - margin * 2
+                        - tokens.titleHeight * visualScale
+                        - tokens.titleToGridSpacing * visualScale
                 )
             )
         )
-        let chrome = resolveFolderChrome(in: maximumPanelSize, tokens: tokens)
+        let chrome = resolveFolderChrome(
+            in: maximumPanelSize,
+            tokens: tokens,
+            visualScale: visualScale
+        )
         let maximumGridSize = CGSize(
             width: max(1, maximumPanelSize.width - chrome.horizontalPadding * 2),
             height: max(1, maximumPanelSize.height - chrome.verticalPadding * 2)
@@ -120,14 +148,24 @@ private extension LayoutConstraintSolver {
 
     func resolveFolderChrome(
         in maximumPanelSize: CGSize,
-        tokens: FolderLayoutTokens
+        tokens: FolderLayoutTokens,
+        visualScale: CGFloat
     ) -> FolderChrome {
         FolderChrome(
-            horizontalPadding: min(max(0, tokens.horizontalPadding), maximumPanelSize.width / 4),
-            verticalPadding: min(max(0, tokens.verticalPadding), maximumPanelSize.height / 8),
-            titleHeight: min(max(0, tokens.titleHeight), maximumPanelSize.height / 5),
+            horizontalPadding: min(
+                max(0, tokens.horizontalPadding * visualScale),
+                maximumPanelSize.width / 4
+            ),
+            verticalPadding: min(
+                max(0, tokens.verticalPadding * visualScale),
+                maximumPanelSize.height / 8
+            ),
+            titleHeight: min(
+                max(0, tokens.titleHeight * visualScale),
+                maximumPanelSize.height / 5
+            ),
             titleToGridSpacing: min(
-                max(0, tokens.titleToGridSpacing),
+                max(0, tokens.titleToGridSpacing * visualScale),
                 maximumPanelSize.height / 10
             )
         )
@@ -139,7 +177,8 @@ private extension LayoutConstraintSolver {
         itemCount: Int,
         requiredIconSize: CGFloat,
         requiredLabelHeight: CGFloat,
-        tokens: FolderLayoutTokens
+        tokens: FolderLayoutTokens,
+        visualScale: CGFloat
     ) -> FolderGridDimensions {
         var columns = min(
             max(requested.requestedColumns ?? tokens.defaultColumns, 1),
@@ -152,11 +191,15 @@ private extension LayoutConstraintSolver {
         )
         // Column/row contraction is based on the root-resolved icon size, so a
         // folder never chooses a lattice that later forces its child icon smaller.
-        let minimumCellWidth = max(requiredIconSize, tokens.minimumInteractionTarget)
-            + max(0, tokens.minimumHorizontalGap)
-        let minimumCellHeight = max(requiredIconSize, tokens.minimumInteractionTarget)
-            + max(0, requiredLabelHeight)
-            + max(0, tokens.minimumVerticalGap)
+        let minimumCellWidth = max(
+            requiredIconSize,
+            tokens.minimumInteractionTarget * visualScale
+        ) + max(0, tokens.minimumHorizontalGap * visualScale)
+        let minimumCellHeight = max(
+            requiredIconSize,
+            tokens.minimumInteractionTarget * visualScale
+        ) + max(0, requiredLabelHeight)
+            + max(0, tokens.minimumVerticalGap * visualScale)
 
         while columns > 1, maximumGridSize.width / CGFloat(columns) < minimumCellWidth {
             columns -= 1
@@ -181,22 +224,30 @@ private extension LayoutConstraintSolver {
         dimensions: FolderGridDimensions,
         requiredIconSize: CGFloat,
         requiredLabelHeight: CGFloat,
-        tokens: FolderLayoutTokens
+        tokens: FolderLayoutTokens,
+        visualScale: CGFloat
     ) -> FolderFrames {
-        let requiredCellWidth = requiredIconSize + max(0, tokens.minimumHorizontalGap)
+        let requiredCellWidth = requiredIconSize
+            + max(0, tokens.minimumHorizontalGap * visualScale)
         let requiredCellHeight = requiredIconSize
             + max(0, requiredLabelHeight)
-            + max(0, tokens.minimumVerticalGap)
+            + max(0, tokens.minimumVerticalGap * visualScale)
         let gridSize = CGSize(
             width: min(
                 constraint.maximumGridSize.width,
                 CGFloat(dimensions.columns)
-                    * max(1, max(tokens.preferredCellWidth, requiredCellWidth))
+                    * max(
+                        1,
+                        max(tokens.preferredCellWidth * visualScale, requiredCellWidth)
+                    )
             ),
             height: min(
                 constraint.maximumGridSize.height,
                 CGFloat(dimensions.rows)
-                    * max(1, max(tokens.preferredCellHeight, requiredCellHeight))
+                    * max(
+                        1,
+                        max(tokens.preferredCellHeight * visualScale, requiredCellHeight)
+                    )
             )
         )
         let chrome = constraint.chrome
@@ -237,12 +288,16 @@ private extension LayoutConstraintSolver {
         dimensions: FolderGridDimensions,
         rootIconSize: CGFloat,
         tokens: FolderLayoutTokens,
-        labelHeight: CGFloat
+        labelHeight: CGFloat,
+        visualScale: CGFloat
     ) -> CGFloat {
         let cellWidth = gridFrame.width / CGFloat(dimensions.columns)
         let cellHeight = gridFrame.height / CGFloat(dimensions.rows)
-        let maximumWidth = cellWidth - max(0, tokens.minimumHorizontalGap)
-        let maximumHeight = cellHeight - labelHeight - max(0, tokens.minimumVerticalGap)
+        let maximumWidth = cellWidth
+            - max(0, tokens.minimumHorizontalGap * visualScale)
+        let maximumHeight = cellHeight
+            - labelHeight
+            - max(0, tokens.minimumVerticalGap * visualScale)
         let cellLimitedSize = max(1, min(maximumWidth, maximumHeight))
 
         // The lattice above is selected using rootIconSize, so the folder child

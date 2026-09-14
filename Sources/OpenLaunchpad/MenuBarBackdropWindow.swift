@@ -75,5 +75,16 @@ final class MenuBarBackdropWindow: NSWindow {
         orderFrontRegardless()
     }
 
-    func dismiss() { orderOut(nil) }
+    func dismiss() {
+        orderOut(nil)
+
+        // Ordering a window out does not guarantee Core Animation immediately
+        // drops the layer contents. Release the menu continuation textures while
+        // hidden; DesktopWallpaperProvider can supply them again on next show.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        desktopLayer.contents = nil
+        wallpaperLayer.contents = nil
+        CATransaction.commit()
+    }
 }

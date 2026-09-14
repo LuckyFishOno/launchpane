@@ -35,8 +35,8 @@ app bundle or the user's saved launcher layout.
 
 ## Cross-page drag
 
-`CrossPageDragCheck.swift` drives `AppTileButton.mouseDown`, `mouseDragged`,
-`mouseUp`, and cancellation directly. Read-only reflection observes the actual
+`CrossPageDragCheck.swift` sends mouse events through `NSWindow.sendEvent`
+and invokes cancellation on the pointer owner. Read-only reflection observes the actual
 controller state; no alternate drag implementation or production test hook is
 used. Fixtures include all discovered apps and explicit partial/full pages.
 
@@ -65,6 +65,22 @@ OPENLAUNCHPAD_LAYOUT_PATH="$drag_check_dir/layout.json" \
 
 Success ends with `CROSS PAGE DRAG: 0 failures`. This verifies event ordering
 and persistence, not physical trackpad timing or GPU frame pacing.
+
+## Pointer ownership during folder reorder
+
+`PointerOwnershipCheck.swift` sends events through `NSWindow.sendEvent`, which
+exercises AppKit dispatch instead of calling the source button directly. It checks
+hidden/disabled source views, continued dragging, release outside the window,
+exactly one release, and cancellation on detachment. Folder fixtures cover local
+reorder, cross-page release, release during paging, persisted order, live hit
+targets, and immediately starting another drag without Escape.
+It also verifies that landing preserves the existing folder panel and icon
+presentations, and that reused buttons drag from their newly committed slots.
+
+Compile/run using the cross-page command above, substituting
+`PointerOwnershipCheck.swift` and `pointer-ownership-check`. It requires 40
+installed apps and an isolated layout path under `/private/tmp/`. Success ends
+with `POINTER OWNERSHIP: 0 failures`.
 
 ## Page projection and unresolved references
 

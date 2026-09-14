@@ -87,6 +87,7 @@ class PointerTrackingTileButton: NSButton {
 
         pointerDownLocationInWindow = event.locationInWindow
         hasExceededDragActivationDistance = false
+        (window as? LaunchpadWindow)?.beginTilePointerTracking(self)
         highlight(true)
         onPointerDown?(event)
     }
@@ -149,6 +150,16 @@ class PointerTrackingTileButton: NSButton {
         guard isTrackingPointer else { return }
         resetPointerTracking()
         onPointerCancelled?()
+    }
+
+    // OPENLAUNCHPAD_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+    //
+    // Programmatic drag teardown already owns the cancellation path. Clear the
+    // private mouse-down state without invoking onPointerCancelled a second time
+    // when removeFromSuperview() calls viewWillMove(toWindow: nil).
+    func endPointerTrackingWithoutCallback() {
+        guard isTrackingPointer else { return }
+        resetPointerTracking()
     }
 
     override func mouseEntered(with _: NSEvent) {
@@ -226,6 +237,7 @@ private extension PointerTrackingTileButton {
     }
 
     func resetPointerTracking() {
+        (window as? LaunchpadWindow)?.endTilePointerTracking(self)
         pointerDownLocationInWindow = nil
         hasExceededDragActivationDistance = false
         highlight(false)

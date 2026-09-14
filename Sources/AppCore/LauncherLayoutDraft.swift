@@ -160,6 +160,82 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         try publish(candidate)
     }
 
+    // OPENLAUNCHPAD_FOLDER_CHILD_REORDER_V8
+    /// Moves one application to the position currently occupied by another
+    /// application in the same folder. The destination uses the same final-slot
+    /// semantics as root reordering: intervening children shift by one slot.
+    public mutating func moveApplication(
+        _ sourceIdentity: ApplicationIdentity,
+        inFolder folderID: UUID,
+        toPositionOf destinationIdentity: ApplicationIdentity
+    ) throws {
+        try requireActive()
+        guard sourceIdentity != destinationIdentity else { return }
+
+        var candidate = document
+        let folderLocation: (page: Int, index: Int)
+        do {
+            folderLocation = try candidate.rootLocation(identifier: .folder(folderID))
+        } catch {
+            throw LauncherLayoutMutationError.folderNotFound(folderID)
+        }
+        guard case var .folder(folder) = candidate.pages[folderLocation.page][folderLocation.index] else {
+            throw LauncherLayoutMutationError.folderNotFound(folderID)
+        }
+        guard let sourceIndex = folder.applications.firstIndex(where: {
+            $0.identity == sourceIdentity
+        }) else {
+            throw LauncherLayoutMutationError.applicationIsNotInFolder(sourceIdentity, folderID)
+        }
+        guard let destinationIndex = folder.applications.firstIndex(where: {
+            $0.identity == destinationIdentity
+        }) else {
+            throw LauncherLayoutMutationError.applicationIsNotInFolder(destinationIdentity, folderID)
+        }
+
+        let application = folder.applications.remove(at: sourceIndex)
+        folder.applications.insert(application, at: destinationIndex)
+        candidate.pages[folderLocation.page][folderLocation.index] = .folder(folder)
+        try publish(candidate)
+    }
+
+    // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+    /// Moves one application to an exact final child index after removing the
+    /// source. This mirrors root `moveRootItem(...toPage:at:)` insertion
+    /// semantics and lets Folder drag paging project/commit the same slot that
+    /// the user saw, including full-page overflow into the following page.
+    public mutating func moveApplication(
+        _ sourceIdentity: ApplicationIdentity,
+        inFolder folderID: UUID,
+        toIndex insertionIndex: Int
+    ) throws {
+        try requireActive()
+
+        var candidate = document
+        let folderLocation: (page: Int, index: Int)
+        do {
+            folderLocation = try candidate.rootLocation(identifier: .folder(folderID))
+        } catch {
+            throw LauncherLayoutMutationError.folderNotFound(folderID)
+        }
+        guard case var .folder(folder) = candidate.pages[folderLocation.page][folderLocation.index] else {
+            throw LauncherLayoutMutationError.folderNotFound(folderID)
+        }
+        guard let sourceIndex = folder.applications.firstIndex(where: {
+            $0.identity == sourceIdentity
+        }) else {
+            throw LauncherLayoutMutationError.applicationIsNotInFolder(sourceIdentity, folderID)
+        }
+
+        let application = folder.applications.remove(at: sourceIndex)
+        guard insertionIndex >= 0, insertionIndex <= folder.applications.endIndex else {
+            throw LauncherLayoutMutationError.invalidFolderInsertionIndex(insertionIndex)
+        }
+        folder.applications.insert(application, at: insertionIndex)
+        candidate.pages[folderLocation.page][folderLocation.index] = .folder(folder)
+        try publish(candidate)
+    }
+
     /// Updates the persisted custom folder title without changing folder identity
         /// or application order.
         public mutating func renameFolder(_ folderID: UUID, to title: String?) throws {

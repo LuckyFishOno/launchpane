@@ -97,6 +97,11 @@ final class LaunchpadWindowController: NSWindowController {
 
             self.menuBarBackdrop.dismiss()
 
+            // The window is fully ordered out at this point. Drop decoded
+            // Retina icons and compositor page trees while the agent is idle.
+            (self.window?.contentView as? LaunchpadRootView)?
+                .releasePresentationResourcesForIdle()
+
             self
                 .restorePreviousFrontmostApplicationIfNeeded()
         }
@@ -207,6 +212,24 @@ final class LaunchpadWindowController: NSWindowController {
     }
 
     @objc private func applicationDidResignActive() {
+        // OPENLAUNCHPAD_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
+        // OPENLAUNCHPAD_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
+        //
+        // Folder drag can replace/rebuild its AppKit hit-target surface while the
+        // physical pointer gesture or its landing commit still owns the original
+        // button. On an accessory/LSUIElement app, that internal ownership handoff
+        // can produce a transient didResignActive even though the user did not
+        // click the Dock or Command-Tab. Treat only the root view's explicitly
+        // reported internal handoff interval as non-dismissal; ordinary external
+        // deactivation behavior remains unchanged.
+        if let rootView = window?.contentView as? LaunchpadRootView,
+           rootView.suppressesResignActiveDismissal
+        {
+            NSApplication.shared.activate()
+            window?.makeKey()
+            return
+        }
+
         // Dock clicks / Command-Tab must give the destination application its
         // menu immediately. Never leave the top surface attached to another app.
         menuBarBackdrop.dismiss()
@@ -261,8 +284,9 @@ final class LaunchpadWindowController: NSWindowController {
             return
         }
 
-        updateDisplay(targetScreen)
-
+        // Screen notifications can arrive while the launcher is hidden.
+        // Do not rehydrate a full Retina render tree in the background; the
+        // next presentation resolves the mouse screen and display scale again.
         guard
             let launchpadWindow =
                 window as? LaunchpadWindow,
@@ -272,6 +296,7 @@ final class LaunchpadWindowController: NSWindowController {
             return
         }
 
+        updateDisplay(targetScreen)
         presentMenuBarBackdrop(on: targetScreen)
     }
 }

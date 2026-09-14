@@ -106,6 +106,43 @@ final class LaunchpadWindow: NSWindow {
     private var presentationState: PresentationState = .hidden
     private var transitionGeneration = 0
 
+    // Page/folder previews can hide the transparent hit target while its drag
+    // proxy remains visible. NSWindow's normal dispatch skips a hidden view,
+    // even if it still owns mouseDown and remains in the hierarchy. Keep the
+    // physical gesture owner independent of the presentation's visibility.
+    private weak var pointerTrackingTileButton: PointerTrackingTileButton?
+
+    func beginTilePointerTracking(_ button: PointerTrackingTileButton) {
+        if let previous = pointerTrackingTileButton, previous !== button {
+            previous.cancelPointerTracking()
+        }
+        pointerTrackingTileButton = button
+    }
+
+    func endTilePointerTracking(_ button: PointerTrackingTileButton) {
+        if pointerTrackingTileButton === button {
+            pointerTrackingTileButton = nil
+        }
+    }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDragged || event.type == .leftMouseUp,
+           let owner = pointerTrackingTileButton {
+            if owner.window === self, owner.isTrackingPointer {
+                if event.type == .leftMouseDragged {
+                    owner.mouseDragged(with: event)
+                } else {
+                    owner.mouseUp(with: event)
+                }
+                // Deliver exactly once; mouseUp resets ownership before its
+                // callback can commit a layout or replace the source surface.
+                return
+            }
+            pointerTrackingTileButton = nil
+        }
+        super.sendEvent(event)
+    }
+
     // OPENLAUNCHPAD_DOCK_AGENT_ARCHITECTURE_V1
     //
     // The UI lives in an LSUIElement/accessory agent. No menu-bar

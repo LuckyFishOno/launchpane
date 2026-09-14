@@ -135,6 +135,91 @@ final class LauncherLayoutDraftTests: XCTestCase {
         ])
     }
 
+    func testMoveApplicationWithinFolderUsesFinalChildPosition() throws {
+        let alpha = reference("org.example.alpha")
+        let beta = reference("org.example.beta")
+        let canvas = reference("org.example.canvas")
+        let draw = reference("org.example.draw")
+        let folderID = try XCTUnwrap(UUID(uuidString: "71000000-0000-0000-0000-000000000001"))
+        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(items: [
+            .folder(LauncherFolder(
+                id: folderID,
+                applications: [alpha, beta, canvas, draw]
+            )),
+        ]))
+
+        try draft.moveApplication(
+            alpha.identity,
+            inFolder: folderID,
+            toPositionOf: canvas.identity
+        )
+
+        guard case let .folder(folder) = draft.document.items[0] else {
+            return XCTFail("Expected folder")
+        }
+        XCTAssertEqual(folder.applications, [beta, canvas, alpha, draw])
+    }
+
+    func testMoveApplicationWithinFolderSupportsBackwardMove() throws {
+        let alpha = reference("org.example.alpha")
+        let beta = reference("org.example.beta")
+        let canvas = reference("org.example.canvas")
+        let folderID = try XCTUnwrap(UUID(uuidString: "71000000-0000-0000-0000-000000000002"))
+        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(items: [
+            .folder(LauncherFolder(id: folderID, applications: [alpha, beta, canvas])),
+        ]))
+
+        try draft.moveApplication(
+            canvas.identity,
+            inFolder: folderID,
+            toPositionOf: alpha.identity
+        )
+
+        guard case let .folder(folder) = draft.document.items[0] else {
+            return XCTFail("Expected folder")
+        }
+        XCTAssertEqual(folder.applications, [canvas, alpha, beta])
+    }
+
+    // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+    func testMoveApplicationWithinFolderToExactIndexMatchesProjectedSlot() throws {
+        let alpha = reference("org.example.alpha")
+        let beta = reference("org.example.beta")
+        let canvas = reference("org.example.canvas")
+        let draw = reference("org.example.draw")
+        let folderID = try XCTUnwrap(UUID(uuidString: "71000000-0000-0000-0000-000000000003"))
+        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(items: [
+            .folder(LauncherFolder(
+                id: folderID,
+                applications: [alpha, beta, canvas, draw]
+            )),
+        ]))
+
+        try draft.moveApplication(alpha.identity, inFolder: folderID, toIndex: 2)
+
+        guard case let .folder(folder) = draft.document.items[0] else {
+            return XCTFail("Expected folder")
+        }
+        XCTAssertEqual(folder.applications, [beta, canvas, alpha, draw])
+    }
+
+    func testMoveApplicationWithinFolderExactIndexSupportsAppendAfterRemoval() throws {
+        let alpha = reference("org.example.alpha")
+        let beta = reference("org.example.beta")
+        let canvas = reference("org.example.canvas")
+        let folderID = try XCTUnwrap(UUID(uuidString: "71000000-0000-0000-0000-000000000004"))
+        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(items: [
+            .folder(LauncherFolder(id: folderID, applications: [alpha, beta, canvas])),
+        ]))
+
+        try draft.moveApplication(alpha.identity, inFolder: folderID, toIndex: 2)
+
+        guard case let .folder(folder) = draft.document.items[0] else {
+            return XCTFail("Expected folder")
+        }
+        XCTAssertEqual(folder.applications, [beta, canvas, alpha])
+    }
+
     func testRollbackRestoresSnapshotAndClosesDraft() throws {
         let alpha = reference("org.example.alpha")
         let beta = reference("org.example.beta")

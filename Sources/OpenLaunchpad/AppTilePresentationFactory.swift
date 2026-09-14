@@ -102,8 +102,16 @@ enum AppTilePresentationFactory {
         // fills that entire frame, making it look noticeably larger than apps.
         // Match the visible footprint of modern macOS app icons instead.
         static let surfaceScale: CGFloat = 0.80
-        static let contentInsetFraction: CGFloat = 0.17
-        static let itemSpacingFraction: CGFloat = 0.055
+
+        // OPENLAUNCHPAD_FOLDER_MINIATURE_GEOMETRY_108_V6
+        // Keep the established 3x3 optical proportions while the root icon
+        // settles at 108pt. Normal 108pt geometry resolves to:
+        //   miniature icon = 15.84pt
+        //   miniature gap  =  4.752pt
+        // The ratios remain adaptive for smaller displays.
+        static let miniatureIconToRootScale: CGFloat = 15.84 / 108.0
+        static let miniatureSpacingToRootScale: CGFloat = 4.752 / 108.0
+
         static let cornerRadiusFraction: CGFloat = 0.22
         static let borderWidth: CGFloat = 0.75
         static let backgroundOpacity: CGFloat = 0.42
@@ -263,26 +271,11 @@ enum AppTilePresentationFactory {
         folderLayer.sublayers?.forEach { $0.removeFromSuperlayer() }
         configureFolderSurface(folderLayer, scale: scale)
 
-        let side = min(folderLayer.bounds.width, folderLayer.bounds.height)
-        let inset = side * FolderMetrics.contentInsetFraction
-        let spacing = side * FolderMetrics.itemSpacingFraction
-        let availableSide = side - inset * 2
-        let miniIconSide = (
-            availableSide - spacing * CGFloat(FolderMetrics.gridDimension - 1)
-        ) / CGFloat(FolderMetrics.gridDimension)
-
-        let origin = CGPoint(
-            x: (folderLayer.bounds.width - availableSide) / 2,
-            y: (folderLayer.bounds.height - availableSide) / 2
-        )
-
         addChildIcons(
             childIcons,
             to: folderLayer,
-            layout: FolderChildLayout(
-                origin: origin,
-                iconSide: miniIconSide,
-                spacing: spacing,
+            layout: folderChildLayout(
+                in: folderLayer.bounds,
                 scale: scale,
                 layoutDirection: layoutDirection
             )
@@ -297,17 +290,17 @@ enum AppTilePresentationFactory {
         return iconFrame.insetBy(dx: horizontalInset, dy: verticalInset)
     }
 
-    /// Scale of one closed-folder miniature icon relative to the normal
-    /// logical app icon frame. Merge landing reuses this exact ratio so the
-    /// dragged icon reaches the same visible size as its persisted miniature.
-    static var folderMiniatureIconScale: CGFloat {
-        let availableFraction = 1 - FolderMetrics.contentInsetFraction * 2
-        let miniIconFractionWithinSurface = (
-            availableFraction
-                - FolderMetrics.itemSpacingFraction
-                    * CGFloat(FolderMetrics.gridDimension - 1)
-        ) / CGFloat(FolderMetrics.gridDimension)
-        return FolderMetrics.surfaceScale * miniIconFractionWithinSurface
+    /// Logical point size of one closed-folder miniature. The miniature cluster
+    /// follows the resolved root icon size so 144pt roots produce 21.12pt
+    /// miniatures, while smaller adaptive layouts preserve the same proportions.
+    static func folderMiniatureIconPointSize(forRootIconSize rootIconSize: CGFloat) -> CGFloat {
+        max(1, rootIconSize) * FolderMetrics.miniatureIconToRootScale
+    }
+
+    /// Merge landing uses the exact same ratio as the persisted 3x3 miniature.
+    static func folderMiniatureIconScale(forRootIconSize rootIconSize: CGFloat) -> CGFloat {
+        let safeRootSide = max(1, rootIconSize)
+        return folderMiniatureIconPointSize(forRootIconSize: safeRootSide) / safeRootSide
     }
 
     static var folderMaximumVisibleChildren: Int {
@@ -327,16 +320,18 @@ enum AppTilePresentationFactory {
         }
 
         let surfaceFrame = folderSurfaceFrame(iconFrame)
-        let side = min(surfaceFrame.width, surfaceFrame.height)
-        let inset = side * FolderMetrics.contentInsetFraction
-        let spacing = side * FolderMetrics.itemSpacingFraction
-        let availableSide = side - inset * 2
-        let miniIconSide = (
-            availableSide - spacing * CGFloat(FolderMetrics.gridDimension - 1)
-        ) / CGFloat(FolderMetrics.gridDimension)
+        let layout = folderChildLayout(
+            in: CGRect(origin: .zero, size: surfaceFrame.size),
+            scale: 1,
+            layoutDirection: layoutDirection
+        )
+        let miniIconSide = layout.iconSide
+        let spacing = layout.spacing
+        let gridSide = miniIconSide * CGFloat(FolderMetrics.gridDimension)
+            + spacing * CGFloat(FolderMetrics.gridDimension - 1)
         let origin = CGPoint(
-            x: surfaceFrame.midX - availableSide / 2,
-            y: surfaceFrame.midY - availableSide / 2
+            x: surfaceFrame.midX - gridSide / 2,
+            y: surfaceFrame.midY - gridSide / 2
         )
 
         let logicalColumn = logicalIndex % FolderMetrics.gridDimension
@@ -364,29 +359,50 @@ enum AppTilePresentationFactory {
         folderLayer.frame = localFrame
         configureFolderSurface(folderLayer, scale: input.scale)
 
-        let side = min(folderLayer.bounds.width, folderLayer.bounds.height)
-        let inset = side * FolderMetrics.contentInsetFraction
-        let spacing = side * FolderMetrics.itemSpacingFraction
-        let availableSide = side - inset * 2
-        let miniIconSide = (
-            availableSide - spacing * CGFloat(FolderMetrics.gridDimension - 1)
-        ) / CGFloat(FolderMetrics.gridDimension)
-        let origin = CGPoint(
-            x: (folderLayer.bounds.width - availableSide) / 2,
-            y: (folderLayer.bounds.height - availableSide) / 2
-        )
         addChildIcons(
             input.childIcons,
             to: folderLayer,
-            layout: FolderChildLayout(
-                origin: origin,
-                iconSide: miniIconSide,
-                spacing: spacing,
+            layout: folderChildLayout(
+                in: folderLayer.bounds,
                 scale: input.scale,
                 layoutDirection: input.layoutDirection
             )
         )
         return folderLayer
+    }
+
+    private static func folderChildLayout(
+        in bounds: CGRect,
+        scale: CGFloat,
+        layoutDirection: NSUserInterfaceLayoutDirection
+    ) -> FolderChildLayout {
+        let surfaceSide = max(0, min(bounds.width, bounds.height))
+        let rootIconSide = surfaceSide / max(0.001, FolderMetrics.surfaceScale)
+        let requestedIconSide = rootIconSide * FolderMetrics.miniatureIconToRootScale
+        let requestedSpacing = rootIconSide * FolderMetrics.miniatureSpacingToRootScale
+        let requestedGridSide = requestedIconSide * CGFloat(FolderMetrics.gridDimension)
+            + requestedSpacing * CGFloat(FolderMetrics.gridDimension - 1)
+
+        // This is normally 1.0. Keep a final fit guard so extreme adaptive
+        // layouts cannot overflow the procedural folder surface.
+        let fitScale = requestedGridSide > 0
+            ? min(1, surfaceSide / requestedGridSide)
+            : 1
+        let iconSide = requestedIconSide * fitScale
+        let spacing = requestedSpacing * fitScale
+        let gridSide = iconSide * CGFloat(FolderMetrics.gridDimension)
+            + spacing * CGFloat(FolderMetrics.gridDimension - 1)
+
+        return FolderChildLayout(
+            origin: CGPoint(
+                x: (bounds.width - gridSide) / 2,
+                y: (bounds.height - gridSide) / 2
+            ),
+            iconSide: iconSide,
+            spacing: spacing,
+            scale: scale,
+            layoutDirection: layoutDirection
+        )
     }
 
     private static func configureFolderSurface(_ folderLayer: CALayer, scale: CGFloat) {

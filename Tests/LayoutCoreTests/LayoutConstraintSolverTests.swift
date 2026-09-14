@@ -69,6 +69,41 @@ final class LayoutConstraintSolverTests: XCTestCase {
         XCTAssertEqual(metrics.pageCount(for: 80), 2)
     }
 
+    func testAutomaticLayoutScalesSmoothlyForLargeLogicalDisplays() {
+        let solver = LayoutConstraintSolver()
+        let macBook = solver.solve(
+            display: makeDisplay(size: CGSize(width: 1710, height: 1112), scale: 2),
+            itemCount: 35
+        )
+        let qhd = solver.solve(
+            display: makeDisplay(size: CGSize(width: 2560, height: 1440), scale: 1),
+            itemCount: 35
+        )
+        let native4K = solver.solve(
+            display: makeDisplay(size: CGSize(width: 3840, height: 2160), scale: 1),
+            itemCount: 35
+        )
+
+        XCTAssertEqual(macBook.iconSize, 108, accuracy: 0.001)
+        XCTAssertEqual(macBook.contentFrame.width, 1520, accuracy: 0.001)
+        XCTAssertGreaterThan(qhd.iconSize, macBook.iconSize)
+        XCTAssertLessThan(qhd.iconSize, native4K.iconSize)
+        XCTAssertGreaterThan(qhd.contentFrame.width, macBook.contentFrame.width)
+        XCTAssertLessThan(qhd.contentFrame.width, native4K.contentFrame.width)
+        XCTAssertEqual(native4K.iconSize, 136, accuracy: 0.001)
+        XCTAssertEqual(native4K.contentFrame.width, 2160, accuracy: 0.001)
+    }
+
+    func testExplicitIconSizeBypassesAutomaticLargeDisplayScaling() {
+        let metrics = LayoutConstraintSolver().solve(
+            display: makeDisplay(size: CGSize(width: 3840, height: 2160), scale: 1),
+            requested: UserLayoutPreferences(requestedIconSize: 112),
+            itemCount: 35
+        )
+
+        XCTAssertEqual(metrics.iconSize, 112, accuracy: 0.001)
+    }
+
     func testGridContractsToProtectMinimumCellGeometry() {
         let tokens = LayoutTokens(
             minimumIconSize: 72,

@@ -1,5 +1,21 @@
 import CoreGraphics
 
+/// Stable insertion boundary shared by root and folder grids. Use model cells,
+/// never animated tile positions, so displaced artwork cannot move the boundary.
+public enum GridReorderInsertion {
+    public static func resolve(
+        rawSlot: Int, currentSlot: Int, draggedCenterX: CGFloat,
+        targetCell: CGRect, isRightToLeft: Bool
+    ) -> Int {
+        guard rawSlot != currentSlot else { return currentSlot }
+        let logicalOffset = (draggedCenterX - targetCell.midX) * (isRightToLeft ? -1 : 1)
+        if rawSlot > currentSlot {
+            return logicalOffset > 0 ? rawSlot : max(currentSlot, rawSlot - 1)
+        }
+        return logicalOffset < 0 ? rawSlot : min(currentSlot, rawSlot + 1)
+    }
+}
+
 public struct GridItemFrames: Equatable, Sendable {
     public let cell: CGRect
     public let icon: CGRect

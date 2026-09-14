@@ -26,6 +26,7 @@
 		2F41671EA778A1981C5EA746 /* AppMetadataResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7888236C5D76843001275B /* AppMetadataResolver.swift */; };
 		3328C97485BAF06F60CA59B6 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; };
 		38338CE141DF7A401F741EB8 /* DisplayInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA93710BB6535845908D4F8 /* DisplayInsets.swift */; };
+		3A36A02F5AB57F277057F1D5 /* GridReorderInsertionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D41BB7C00AA4DFFCE6A04925 /* GridReorderInsertionTests.swift */; };
 		3FCF8F204ADC6A3F01EEEB92 /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */; };
 		40EDD0DC6379C1C217123FE1 /* FolderMergeGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93F39D01E91C829ED607909 /* FolderMergeGeometryTests.swift */; };
 		4247153B8892FDD2C15E40D1 /* LaunchpadSearchComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87E6A740240D9B0D3535A82 /* LaunchpadSearchComponents.swift */; };
@@ -287,6 +288,7 @@
 		C2E76D8081A6820D69A1B8E1 /* LauncherDefaultLayoutBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDefaultLayoutBuilderTests.swift; sourceTree = "<group>"; };
 		C6704EE704752E1B700379D8 /* LaunchpadWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadWindow.swift; sourceTree = "<group>"; };
 		C93F39D01E91C829ED607909 /* FolderMergeGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderMergeGeometryTests.swift; sourceTree = "<group>"; };
+		D41BB7C00AA4DFFCE6A04925 /* GridReorderInsertionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridReorderInsertionTests.swift; sourceTree = "<group>"; };
 		D42F69A84F543CACEA2F40F3 /* FolderMergeGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderMergeGeometry.swift; sourceTree = "<group>"; };
 		D453BE91D8AC9209C1579803 /* AppIconCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconCache.swift; sourceTree = "<group>"; };
 		D45B035DE8628F65130BE4BA /* PageSwipeInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeInputGate.swift; sourceTree = "<group>"; };
@@ -356,6 +358,7 @@
 				86DE595F08FF1A8539FBEFA9 /* CenteredPresentationTransformTests.swift */,
 				1C32D26B5C679828632E513F /* FolderLayoutConstraintSolverTests.swift */,
 				C93F39D01E91C829ED607909 /* FolderMergeGeometryTests.swift */,
+				D41BB7C00AA4DFFCE6A04925 /* GridReorderInsertionTests.swift */,
 				2F415C3B84CDA46F4EC5DA53 /* GridSelectionNavigatorTests.swift */,
 				009C277962A3AE13A61CCE8F /* LayoutConstraintSolverTests.swift */,
 				A1CA8F789646A63824B35CE8 /* WallpaperLayoutTests.swift */,
@@ -825,6 +828,7 @@
 				C79B23A4A9BC0F91230F0BA3 /* CenteredPresentationTransformTests.swift in Sources */,
 				27F24BD6F3FEBB68F9B638C2 /* FolderLayoutConstraintSolverTests.swift in Sources */,
 				40EDD0DC6379C1C217123FE1 /* FolderMergeGeometryTests.swift in Sources */,
+				3A36A02F5AB57F277057F1D5 /* GridReorderInsertionTests.swift in Sources */,
 				9D84044BCC7785CC301C78C2 /* GridSelectionNavigatorTests.swift in Sources */,
 				E248EBE2D852A55B5EDBB646 /* LayoutConstraintSolverTests.swift in Sources */,
 				B60E2E45077A95F095CAEEEC /* WallpaperLayoutTests.swift in Sources */,
@@ -988,7 +992,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -998,7 +1002,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
 				PRODUCT_NAME = OpenLaunchpadAgent;
 				SDKROOT = macosx;
@@ -1028,7 +1032,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1038,7 +1042,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
 				PRODUCT_NAME = OpenLaunchpadAgent;
 				SDKROOT = macosx;
@@ -1162,7 +1166,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpad;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1172,7 +1176,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpad;
 				PRODUCT_NAME = OpenLaunchpad;
 				SDKROOT = macosx;
@@ -1352,7 +1356,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpad;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1362,7 +1366,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpad;
 				PRODUCT_NAME = OpenLaunchpad;
 				SDKROOT = macosx;

@@ -64,6 +64,22 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
         XCTAssertEqual(metrics.panelFrame.midY, 720, accuracy: 0.000_001)
     }
 
+    func testNative4KFolderChildrenMatchAdaptiveRootIconSize() {
+        let display = makeDisplay(size: CGSize(width: 3840, height: 2160), scale: 1)
+        let solver = LayoutConstraintSolver()
+        let root = solver.solve(display: display, itemCount: 35)
+        let folder = solver.solveFolder(display: display, itemCount: 35)
+
+        XCTAssertEqual(root.iconSize, 136, accuracy: 0.001)
+        XCTAssertEqual(folder.iconSize, root.iconSize, accuracy: 0.001)
+
+        // OPENLAUNCHPAD_ADAPTIVE_FOLDER_PANEL_SCALE_V12
+        // A native 4K folder should grow with the same 136/108 visual ratio
+        // instead of staying near the baseline ~1404pt panel width.
+        XCTAssertGreaterThan(folder.panelFrame.width, 1700)
+        XCTAssertGreaterThan(folder.panelFrame.height, 1100)
+    }
+
     func testSmallDisplayContractsGridWithoutResolutionBranching() {
         let metrics = LayoutConstraintSolver().solveFolder(
             display: makeDisplay(size: CGSize(width: 480, height: 320), scale: 1),

@@ -24,7 +24,12 @@ public struct LayoutConstraintSolver: LayoutSolving, Sendable {
         let safeBounds = display.safeBounds
         let frames = makeFrames(in: safeBounds)
         let dimensions = resolveGridDimensions(in: frames.content, requested: requested)
-        let iconSize = resolveIconSize(in: frames.content, dimensions: dimensions, requested: requested)
+        let iconSize = resolveIconSize(
+            in: frames.content,
+            dimensions: dimensions,
+            requested: requested,
+            logicalDisplayWidth: safeBounds.width
+        )
 
         return GridMetrics(
             rows: dimensions.rows,
@@ -42,7 +47,10 @@ public struct LayoutConstraintSolver: LayoutSolving, Sendable {
         let horizontalMargin = min(tokens.horizontalMargin, safeBounds.width / 4)
         let verticalMargin = min(tokens.verticalMargin, safeBounds.height / 4)
         let uncappedWidth = max(1, safeBounds.width - horizontalMargin * 2)
-        let contentWidth = max(1, min(uncappedWidth, tokens.maximumContentWidth))
+        let contentWidth = max(
+            1,
+            min(uncappedWidth, adaptiveContentWidthCap(forLogicalWidth: safeBounds.width))
+        )
         let contentHeight = max(
             1,
             safeBounds.height - verticalMargin * 2 - tokens.searchReservation - tokens.pageIndicatorReservation
@@ -100,16 +108,56 @@ public struct LayoutConstraintSolver: LayoutSolving, Sendable {
     private func resolveIconSize(
         in contentFrame: CGRect,
         dimensions: GridDimensions,
-        requested: UserLayoutPreferences
+        requested: UserLayoutPreferences,
+        logicalDisplayWidth: CGFloat
     ) -> CGFloat {
         let cellWidth = contentFrame.width / CGFloat(dimensions.columns)
         let cellHeight = contentFrame.height / CGFloat(dimensions.rows)
-        let requestedSize = requested.requestedIconSize ?? tokens.preferredIconSize
+        let requestedSize = requested.requestedIconSize
+            ?? adaptiveAutomaticIconSize(forLogicalWidth: logicalDisplayWidth)
         let maximumWidth = cellWidth - tokens.minimumHorizontalGap
         let maximumHeight = cellHeight - tokens.labelHeight - tokens.minimumVerticalGap
         let cellLimitedSize = max(1, min(maximumWidth, maximumHeight))
 
         return min(max(tokens.minimumIconSize, requestedSize), tokens.maximumIconSize, cellLimitedSize)
+    }
+
+    // OPENLAUNCHPAD_ADAPTIVE_LARGE_DISPLAY_LAYOUT_V7
+    // Interpolate continuously instead of branching on a specific monitor model
+    // or backing scale. A 1710pt logical canvas keeps the 108pt v6 geometry;
+    // a native 3840pt logical canvas reaches 136pt. Intermediate resolutions
+    // naturally land between those values. Explicit user icon-size requests are
+    // intentionally handled above and bypass this automatic preference.
+    private func adaptiveAutomaticIconSize(forLogicalWidth logicalWidth: CGFloat) -> CGFloat {
+        let progress = largeDisplayProgress(forLogicalWidth: logicalWidth)
+        let largeDisplayIconSize = min(
+            tokens.maximumIconSize,
+            tokens.preferredIconSize * (136.0 / 108.0)
+        )
+        return tokens.preferredIconSize
+            + (largeDisplayIconSize - tokens.preferredIconSize) * progress
+    }
+
+    // Keep the 1710pt/MacBook composition at the familiar 1520pt content width,
+    // then open the seven-column lattice gradually until it reaches 2160pt at
+    // a 3840pt logical canvas. This changes horizontal spacing only; icon size,
+    // rows, labels, and vertical geometry remain untouched. Custom token sets
+    // with a smaller maximum remain fully respected.
+    private func adaptiveContentWidthCap(forLogicalWidth logicalWidth: CGFloat) -> CGFloat {
+        let baselineContentWidth = min(tokens.maximumContentWidth, 1520)
+        let progress = largeDisplayProgress(forLogicalWidth: logicalWidth)
+        return baselineContentWidth
+            + (tokens.maximumContentWidth - baselineContentWidth) * progress
+    }
+
+    private func largeDisplayProgress(forLogicalWidth logicalWidth: CGFloat) -> CGFloat {
+        let baselineLogicalWidth: CGFloat = 1710
+        let largeLogicalWidth: CGFloat = 3840
+        guard largeLogicalWidth > baselineLogicalWidth else { return 0 }
+        return min(
+            1,
+            max(0, (logicalWidth - baselineLogicalWidth) / (largeLogicalWidth - baselineLogicalWidth))
+        )
     }
 
     private func clamped(_ value: Int, lowerBound: Int, upperBound: Int) -> Int {
