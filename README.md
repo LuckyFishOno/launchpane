@@ -13,7 +13,7 @@ Version 1.0 focuses on a fast, responsive launcher experience with adaptive layo
 
 ## Download
 
-[Download OpenLaunchpad for Apple silicon Mac](https://github.com/LuckyFishOno/open-launchpad/releases/latest/download/OpenLaunchpad.dmg)
+[Download OpenLaunchpad v1.1 for Mac](https://github.com/LuckyFishOno/open-launchpad/releases/download/v1.1/OpenLaunchpad.dmg)
 
 OpenLaunchpad supports Apple silicon Macs with an M1 chip or newer. Intel Macs are not supported.
 

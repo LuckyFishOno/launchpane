@@ -24,7 +24,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     )
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
     private let iconCache = AppIconCache()
-    private let wallpaperView = NSImageView()
+    private let wallpaperView = NSView()
     private let canvasView = LaunchpadCanvasView()
     private let rootLayer = CALayer()
     private let fixedBackgroundLayer = CALayer()
@@ -106,7 +106,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
 
     // Both window levels display this exact, already-composited desktop image.
     // Independent visual-effect backdrops cannot agree at their shared edge.
-    var desktopBackdropImage: NSImage? { wallpaperView.image }
+    private(set) var desktopBackdropImage: NSImage?
     private(set) var desktopImage: NSImage?
 
     /// The window transition scales the complete foreground around the display
@@ -370,12 +370,13 @@ private extension LaunchpadRootView {
     }
 
     func configureCanvas() {
-        wallpaperView.imageFrameStyle = .none
-        wallpaperView.imageAlignment = .alignCenter
-        // Provider has already applied the desktop's placement on a full-screen
-        // canvas. Do not fit/crop the wallpaper a second time inside this view.
-        wallpaperView.imageScaling = .scaleAxesIndependently
+        // Host the provider's cached material pixels directly. NSImageView
+        // draws the same image into an additional full-screen backing store.
+        // Set the layer BEFORE wantsLayer to opt into AppKit layer hosting.
+        wallpaperView.layer = CALayer()
         wallpaperView.wantsLayer = true
+        wallpaperView.layerContentsRedrawPolicy = .never
+        wallpaperView.layer?.contentsGravity = .resize
         wallpaperView.layer?.masksToBounds = true
         wallpaperView.setAccessibilityHidden(true)
         addSubview(wallpaperView)
@@ -402,8 +403,15 @@ private extension LaunchpadRootView {
     func updateWallpaper() {
         let images = DesktopWallpaperProvider.images(for: displayContext.displayID)
         desktopImage = images?.desktop
-        wallpaperView.image = images?.frosted
+        desktopBackdropImage = images?.frosted
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        wallpaperView.layer?.contents = images?.frosted.cgImage(
+            forProposedRect: nil, context: nil, hints: nil
+        )
+        wallpaperView.layer?.contentsScale = displayContext.backingScaleFactor
         wallpaperView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
+        CATransaction.commit()
     }
 
     func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil) -> ResolvedLaunchpadPages {
@@ -482,6 +490,17 @@ private extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         wallpaperView.frame = bounds
+        if let wallpaperLayer = wallpaperView.layer {
+            // Relayout can occur during an opening/closing reversal. Assigning
+            // frame while the inverse scale is active changes the layer bounds
+            // and breaks the shared wallpaper coordinates at the menu seam.
+            wallpaperLayer.bounds = wallpaperView.bounds
+            wallpaperLayer.position = CGPoint(
+                x: wallpaperView.frame.minX + wallpaperView.frame.width * wallpaperLayer.anchorPoint.x,
+                y: wallpaperView.frame.minY + wallpaperView.frame.height * wallpaperLayer.anchorPoint.y
+            )
+            wallpaperLayer.contentsScale = displayContext.backingScaleFactor
+        }
         canvasView.frame = bounds
         rootLayer.frame = bounds
         rootLayer.contentsScale = scale

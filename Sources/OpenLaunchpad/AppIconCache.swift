@@ -14,7 +14,17 @@ final class AppIconCache {
         let pixelSize: Int
 
         var cacheKey: NSString {
-            "\(identity)|\(pixelSize)" as NSString
+            "\(identity)|\(path)" as NSString
+        }
+    }
+
+    private final class CachedIcon {
+        let requestedPixelSize: Int
+        let image: CGImage
+
+        init(requestedPixelSize: Int, image: CGImage) {
+            self.requestedPixelSize = requestedPixelSize
+            self.image = image
         }
     }
 
@@ -29,10 +39,14 @@ final class AppIconCache {
         static let defaultMaximumConcurrentLoads = 3
     }
 
-    private let cache = NSCache<NSString, CGImage>()
+    private let cache = NSCache<NSString, CachedIcon>()
     private var inFlightLoads: [Request: InFlightLoad] = [:]
+    private let decode: @Sendable (String, Int) -> CGImage?
 
-    init() {
+    init(decode: @escaping @Sendable (String, Int) -> CGImage? = { path, pixelSize in
+        AppIconDecoder.decode(path: path, pixelSize: pixelSize)
+    }) {
+        self.decode = decode
         cache.countLimit = Metrics.countLimit
         cache.totalCostLimit = Metrics.totalCostLimit
     }
@@ -48,7 +62,7 @@ final class AppIconCache {
             pointSize: pointSize,
             scale: scale
         )
-        return cache.object(forKey: request.cacheKey)
+        return cachedImage(for: request)
     }
 
     /// Loads and decodes an icon away from the main actor, sharing identical in-flight work.
@@ -62,7 +76,7 @@ final class AppIconCache {
             pointSize: pointSize,
             scale: scale
         )
-        if let cachedImage = cache.object(forKey: request.cacheKey) {
+        if let cachedImage = cachedImage(for: request) {
             return cachedImage
         }
         guard !Task.isCancelled else { return nil }
@@ -117,6 +131,16 @@ final class AppIconCache {
 }
 
 private extension AppIconCache {
+    private func cachedImage(for request: Request) -> CGImage? {
+        guard let cached = cache.object(forKey: request.cacheKey),
+              cached.requestedPixelSize >= request.pixelSize else { return nil }
+        // Reuse the exact higher-resolution source image for smaller requests.
+        // Do not compare its actual width against the requested point-derived
+        // size: AppKit may return a larger representation than requested, and
+        // that comparison could incorrectly reuse a 1x image for a 2x request.
+        return cached.image
+    }
+
     private func makeRequest(
         for application: ApplicationRecord,
         pointSize: CGFloat,
@@ -140,11 +164,8 @@ private extension AppIconCache {
 
         let load = InFlightLoad(
             id: UUID(),
-            task: Task.detached(priority: .utility) {
-                AppIconDecoder.decode(
-                    path: request.path,
-                    pixelSize: request.pixelSize
-                )
+            task: Task.detached(priority: .utility) { [decode] in
+                decode(request.path, request.pixelSize)
             }
         )
         inFlightLoads[request] = load
@@ -160,8 +181,18 @@ private extension AppIconCache {
         inFlightLoads[request] = nil
         guard let image else { return }
 
+        // A slower small request must not replace a larger one which completed
+        // first. Keep one original representation per app, with no resampling
+        // or bit-depth/color conversion, across backing-scale changes.
+        if let cached = cache.object(forKey: request.cacheKey),
+           cached.requestedPixelSize >= request.pixelSize { return }
+
         let cost = image.bytesPerRow * image.height
-        cache.setObject(image, forKey: request.cacheKey, cost: cost)
+        cache.setObject(
+            CachedIcon(requestedPixelSize: request.pixelSize, image: image),
+            forKey: request.cacheKey,
+            cost: cost
+        )
     }
 }
 

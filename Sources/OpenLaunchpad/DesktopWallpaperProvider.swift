@@ -10,8 +10,29 @@ enum DesktopWallpaperProvider {
     static let fallbackColor = NSColor(calibratedRed: 0.10, green: 0.22, blue: 0.37, alpha: 1)
 
     struct Images {
+        // Only the menu-bar fade needs the unmodified desktop. Keep that narrow
+        // strip, rather than a second native-resolution display-sized raster.
         let desktop: NSImage
         let frosted: NSImage
+    }
+
+    struct MenuBarRasterGeometry {
+        let topRows: CGRect
+        let coreImageBounds: CGRect
+        let logicalSize: CGSize
+
+        init(displaySize: CGSize, canvasSize: CGSize, height: CGFloat) {
+            // Round outwards, then retain the original pixel-to-point mapping.
+            // A fractional last row is clipped by the menu window, not scaled.
+            let pixelHeight = min(canvasSize.height, (height * canvasSize.height / displaySize.height).rounded(.up))
+            topRows = CGRect(x: 0, y: 0, width: canvasSize.width, height: pixelHeight)
+            coreImageBounds = CGRect(
+                x: 0, y: canvasSize.height - pixelHeight, width: canvasSize.width, height: pixelHeight
+            )
+            logicalSize = CGSize(
+                width: displaySize.width, height: pixelHeight * displaySize.height / canvasSize.height
+            )
+        }
     }
 
     private struct CacheKey: Equatable {
@@ -20,6 +41,7 @@ enum DesktopWallpaperProvider {
         let fileSize: Int?
         let displaySize: CGSize
         let backingScale: CGFloat
+        let menuBarHeight: CGFloat
         let scalingValue: UInt
         let allowsClipping: Bool
         let fillComponents: [CGFloat]
@@ -58,12 +80,14 @@ enum DesktopWallpaperProvider {
         let fillColor = (options[.fillColor] as? NSColor)?.usingColorSpace(.deviceRGB)
             ?? fallbackColor
         let metadata = try? imageURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+        let menuBarHeight = menuBarHeight(on: screen)
         let key = CacheKey(
             imageURL: imageURL,
             modificationDate: metadata?.contentModificationDate,
             fileSize: metadata?.fileSize,
             displaySize: display.frame.size,
             backingScale: display.backingScaleFactor,
+            menuBarHeight: menuBarHeight,
             scalingValue: scalingValue,
             allowsClipping: allowsClipping,
             fillComponents: [fillColor.redComponent, fillColor.greenComponent, fillColor.blueComponent]
@@ -77,14 +101,39 @@ enum DesktopWallpaperProvider {
             return cached.images
         }
 
-        guard
-            let source = sourceImage(at: imageURL),
-            let layout = WallpaperLayout(
-                sourceExtent: source.extent,
-                display: display,
-                scaling: wallpaperScaling(for: scaling),
-                allowsClipping: allowsClipping
+        // Drain the source decode and filter graph before clearing GPU scratch
+        // resources. Cache hits need neither a render nor a context cache purge.
+        defer { context.clearCaches() }
+        let result = autoreleasepool { () -> Images? in
+            guard let source = sourceImage(at: imageURL) else { return nil }
+            return renderImages(
+                source: source, display: display, scaling: wallpaperScaling(for: scaling),
+                allowsClipping: allowsClipping, fillColor: fillColor, menuBarHeight: menuBarHeight
             )
+        }
+        guard let result else { return nil }
+        cachedWallpapers[display.displayID] = CachedWallpaper(key: key, images: result)
+        return result
+    }
+
+    static func menuBarHeight(on screen: NSScreen) -> CGFloat {
+        max(
+            NSStatusBar.system.thickness,
+            screen.frame.maxY - screen.visibleFrame.maxY,
+            screen.safeAreaInsets.top,
+            screen.auxiliaryTopLeftArea?.height ?? 0,
+            screen.auxiliaryTopRightArea?.height ?? 0
+        )
+    }
+
+    static func renderImages(
+        source: CIImage, display: DisplayContext, scaling: WallpaperScaling,
+        allowsClipping: Bool, fillColor: NSColor, menuBarHeight: CGFloat
+    ) -> Images? {
+        guard let layout = WallpaperLayout(
+            sourceExtent: source.extent, display: display,
+            scaling: scaling, allowsClipping: allowsClipping
+        ), let frostedLayout = FrostedWallpaperRasterLayout(nativeCanvas: layout.canvasBounds)
         else { return nil }
 
         let fill = CIImage(color: CIColor(
@@ -103,12 +152,17 @@ enum DesktopWallpaperProvider {
             .cropped(to: layout.canvasBounds)
 
         let blurred = desktop
+            // Reduce only the intentionally frosted material. Placement is
+            // resolved in native pixels first, so fill/fit/center do not change.
+            .transformed(by: frostedLayout.imageTransform)
+            .cropped(to: frostedLayout.canvasBounds)
             .clampedToExtent()
             .applyingFilter(
                 "CIGaussianBlur",
-                parameters: [kCIInputRadiusKey: Metrics.blurRadius * display.backingScaleFactor]
+                parameters: [kCIInputRadiusKey:
+                    Metrics.blurRadius * display.backingScaleFactor * frostedLayout.blurScale]
             )
-            .cropped(to: layout.canvasBounds)
+            .cropped(to: frostedLayout.canvasBounds)
 
         // Make the material part of this single image. Independent live visual
         // effect views in different windows sample different backdrops and can
@@ -128,19 +182,37 @@ enum DesktopWallpaperProvider {
             ])
             .applyingFilter("CISRGBToneCurveToLinear")
 
+        let menuGeometry = MenuBarRasterGeometry(
+            displaySize: display.frame.size, canvasSize: layout.canvasBounds.size, height: menuBarHeight
+        )
+        // These match createCGImage's default sRGB / 8-bit output. Eager output
+        // retains final pixels without keeping the source/filter graph alive.
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)
         guard
-            let frostedImage = context.createCGImage(output, from: layout.canvasBounds),
-            let desktopImage = context.createCGImage(desktop, from: layout.canvasBounds)
+            let frostedImage = context.createCGImage(
+                output, from: frostedLayout.canvasBounds, format: .RGBA8, colorSpace: colorSpace, deferred: false
+            ),
+            let desktopImage = context.createCGImage(
+                desktop, from: menuGeometry.coreImageBounds, format: .RGBA8, colorSpace: colorSpace, deferred: false
+            )
         else { return nil }
 
         // The returned image already has the display's aspect ratio. The view
         // should map this canvas edge-to-edge without fitting the source again.
-        let result = Images(
-            desktop: NSImage(cgImage: desktopImage, size: display.frame.size),
-            frosted: NSImage(cgImage: frostedImage, size: display.frame.size)
+        return Images(
+            desktop: bitmapImage(desktopImage, size: menuGeometry.logicalSize),
+            frosted: bitmapImage(frostedImage, size: display.frame.size)
         )
-        cachedWallpapers[display.displayID] = CachedWallpaper(key: key, images: result)
-        return result
+    }
+
+    private static func bitmapImage(_ raster: CGImage, size: CGSize) -> NSImage {
+        // An explicit bitmap representation preserves native pixels even when
+        // the requested display scale differs from the current drawing context.
+        let representation = NSBitmapImageRep(cgImage: raster)
+        representation.size = size
+        let image = NSImage(size: size)
+        image.addRepresentation(representation)
+        return image
     }
 
     private static func sourceImage(at url: URL) -> CIImage? {

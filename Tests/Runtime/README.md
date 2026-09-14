@@ -96,3 +96,44 @@ folders by Utilities, and a single revision increment.
 Compile it using the same command as `CrossPageDragCheck.swift`, replacing that
 source filename and output name with `ResetLaunchpadCheck.swift` and
 `reset-launchpad-check`. Success ends with `RESET LAUNCHPAD: 0 failures`.
+
+## Wallpaper and memory
+
+These checks work with the Release frameworks built into `Builds`. They never
+activate the launcher or display a window. `AgentMemoryCheck` creates a hidden
+window and discovers applications using a fresh temporary layout, then reports
+physical footprint after warming. This is an offscreen comparison, not a measure
+of visible compositor surfaces. Both other checks avoid discovery and persistence.
+
+From the repository root in **zsh**:
+
+```zsh
+memory_check_dir=$(mktemp -d /private/tmp/openlaunchpad-memory-checks.XXXXXX)
+runtime_sources=("${(@f)$(rg --files Sources/OpenLaunchpad -g '*.swift' -g '!main.swift')}")
+for check_name in WallpaperRasterCheck WallpaperCanvasCheck IconCacheScaleCheck AgentMemoryCheck; do
+  swiftc -O -swift-version 6 -parse-as-library \
+    -F "$PWD/Builds" \
+    -framework AppCore -framework DisplayCore -framework LayoutCore \
+    -Xlinker -rpath -Xlinker "$PWD/Builds" \
+    "${runtime_sources[@]}" "Tests/Runtime/$check_name.swift" \
+    -o "$memory_check_dir/$check_name" || break
+  "$memory_check_dir/$check_name" || break
+done
+```
+
+Raster verification expects 298 passing assertions; icon scale-cache verification
+expects 16. The latter uses synthetic 64-bit P3 images and checks original image
+identity, retained dimensions/bit depth, scale upgrades, reversed completion
+order, and invalidation without touching real application icons. Canvas assertion count
+depends on connected displays and wallpaper availability; failures must be zero.
+It also checks relayout while the wallpaper's inverse transition scale is active.
+See [memory findings and manual acceptance](../../docs/MEMORY.md).
+
+Run `"$memory_check_dir/AgentMemoryCheck" --cycle-displays` to exercise two passes
+through all connected display sizes and backing scales with the window hidden.
+Each step waits for the real icon-prewarm task, then records physical footprint.
+
+For the actual visible 4K case, run `zsh Tests/Runtime/SampleAgentMemory.zsh`,
+then open Launchpad on that display within eight seconds and leave it visible.
+The report is saved in `Builds`; the script neither launches nor kills the app.
+Capturing after returning to Terminal would instead measure the hidden state.

@@ -8,6 +8,40 @@ public enum WallpaperScaling: Equatable, Sendable {
     case center
 }
 
+/// The deliberately blurred material needs far fewer pixels than app artwork.
+/// Keep this budget independent of named monitor resolutions or UI backing scale.
+public enum WallpaperRasterMetrics {
+    public static let maximumLongEdge: CGFloat = 1280
+}
+
+public struct FrostedWallpaperRasterLayout: Equatable, Sendable {
+    public let canvasBounds: CGRect
+    public let imageTransform: CGAffineTransform
+    public let blurScale: CGFloat
+
+    public init?(
+        nativeCanvas: CGRect,
+        maximumLongEdge: CGFloat = WallpaperRasterMetrics.maximumLongEdge
+    ) {
+        guard !nativeCanvas.isInfinite, !nativeCanvas.isNull,
+              nativeCanvas.origin.x.isFinite, nativeCanvas.origin.y.isFinite,
+              nativeCanvas.width.isFinite, nativeCanvas.width > 0,
+              nativeCanvas.height.isFinite, nativeCanvas.height > 0,
+              maximumLongEdge.isFinite, maximumLongEdge >= 1 else { return nil }
+        let reduction = min(1, maximumLongEdge / max(nativeCanvas.width, nativeCanvas.height))
+        let width = max(1, (nativeCanvas.width * reduction).rounded(.down))
+        let height = max(1, (nativeCanvas.height * reduction).rounded(.down))
+        canvasBounds = CGRect(x: 0, y: 0, width: width, height: height)
+        let scaleX = width / nativeCanvas.width
+        let scaleY = height / nativeCanvas.height
+        imageTransform = CGAffineTransform(
+            a: scaleX, b: 0, c: 0, d: scaleY,
+            tx: -nativeCanvas.minX * scaleX, ty: -nativeCanvas.minY * scaleY
+        )
+        blurScale = sqrt(scaleX * scaleY)
+    }
+}
+
 /// Placement of the desktop image on the complete display, in backing pixels.
 /// Menu-bar, Dock and notch reservations affect controls, not wallpaper framing.
 public struct WallpaperLayout: Equatable, Sendable {

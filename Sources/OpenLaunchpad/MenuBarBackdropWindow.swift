@@ -7,10 +7,10 @@ import AppKit
 @MainActor
 final class MenuBarBackdropWindow: NSWindow {
     private let clippingView = NSView(frame: .zero)
-    private let desktopView = NSImageView(frame: .zero)
-    private let wallpaperView = NSImageView(frame: .zero)
+    private let desktopLayer = CALayer()
+    private let wallpaperLayer = CALayer()
 
-    var transitionLayer: CALayer? { wallpaperView.layer }
+    var transitionLayer: CALayer? { wallpaperLayer }
 
     init() {
         super.init(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
@@ -30,13 +30,9 @@ final class MenuBarBackdropWindow: NSWindow {
         clippingView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
         clippingView.setAccessibilityHidden(true)
 
-        for view in [desktopView, wallpaperView] {
-            view.imageFrameStyle = .none
-            view.imageAlignment = .alignCenter
-            view.imageScaling = .scaleAxesIndependently
-            view.wantsLayer = true
-            view.setAccessibilityHidden(true)
-            clippingView.addSubview(view)
+        for layer in [desktopLayer, wallpaperLayer] {
+            layer.contentsGravity = .resize
+            clippingView.layer?.addSublayer(layer)
         }
         contentView = clippingView
     }
@@ -51,13 +47,7 @@ final class MenuBarBackdropWindow: NSWindow {
 
     func present(on screen: NSScreen, desktopImage: NSImage?, wallpaperImage: NSImage?) {
         let screenFrame = screen.frame
-        let height = max(
-            NSStatusBar.system.thickness,
-            screenFrame.maxY - screen.visibleFrame.maxY,
-            screen.safeAreaInsets.top,
-            screen.auxiliaryTopLeftArea?.height ?? 0,
-            screen.auxiliaryTopRightArea?.height ?? 0
-        )
+        let height = DesktopWallpaperProvider.menuBarHeight(on: screen)
         setFrame(CGRect(
             x: screenFrame.minX, y: screenFrame.maxY - height,
             width: screenFrame.width, height: height
@@ -66,15 +56,21 @@ final class MenuBarBackdropWindow: NSWindow {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         clippingView.frame = CGRect(origin: .zero, size: frame.size)
-        desktopView.image = desktopImage
-        wallpaperView.image = wallpaperImage
-        // Use the full-screen image and exactly the main window's coordinates.
-        // The clip exposes only its top rows, without a second scale or blur.
-        wallpaperView.frame = CGRect(
-            x: 0, y: height - screenFrame.height,
-            width: screenFrame.width, height: screenFrame.height
+        desktopLayer.contents = desktopImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        wallpaperLayer.contents = wallpaperImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        let desktopSize = desktopImage?.size ?? frame.size
+        desktopLayer.frame = CGRect(
+            x: 0, y: height - desktopSize.height, width: desktopSize.width, height: desktopSize.height
         )
-        desktopView.frame = wallpaperView.frame
+        // Share the entire small frosted raster using the main window's exact
+        // full-display coordinates. Cropping the low-resolution bitmap first
+        // changes interpolation at the seam. A direct CALayer contents image
+        // does not allocate a second full-screen image-view backing store.
+        wallpaperLayer.frame = CGRect(
+            x: 0, y: height - screenFrame.height, width: screenFrame.width, height: screenFrame.height
+        )
+        desktopLayer.contentsScale = screen.backingScaleFactor
+        wallpaperLayer.contentsScale = screen.backingScaleFactor
         CATransaction.commit()
         orderFrontRegardless()
     }
