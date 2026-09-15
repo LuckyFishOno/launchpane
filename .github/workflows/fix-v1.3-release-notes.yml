@@ -1,0 +1,74 @@
+name: Fix LaunchPane v1.3 release notes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-v1.3-release-notes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Correct v1.3 release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > RELEASE_NOTES.md <<'EOF'
+          # LaunchPane v1.3
+
+          This is the first release published under the **LaunchPane** name.
+
+          ## Highlights
+
+          - Completes the project-wide rename to LaunchPane across the app, agent, Xcode project, bundle identifiers, documentation, repository links, and saved-layout location.
+          - Preserves existing user layouts by migrating legacy layout data automatically when LaunchPane starts.
+          - Keeps the v1.2 interaction and performance improvements: smooth root/folder paging, cross-page dragging, stable folder reordering, adaptive layouts, and full-resolution app icons.
+          - Uses the new `LaunchPane.app` and `LaunchPane.dmg` product names.
+          - No accounts, analytics, telemetry, or mandatory network connection.
+
+          ## Download and install
+
+          1. Download `LaunchPane.dmg` below.
+          2. Open it and drag `LaunchPane.app` into **Applications**.
+          3. On first launch, use **System Settings → Privacy & Security → Open Anyway** if macOS blocks the non-notarized build.
+
+          ## Requirements
+
+          - macOS 15 or later
+          - Apple silicon Mac (M1 or newer)
+
+          ## Version
+
+          - App version: 1.3
+          - Build number: 4
+
+          ## SHA-256
+
+          `97f3bc585f90064fbd0ac2865271997fed538aab96ff00fb3ed72a3aeb92ce4c`
+          EOF
+
+          gh release edit v1.3 \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'LaunchPane v1.3' \
+            --notes-file RELEASE_NOTES.md \
+            --latest
+
+      - name: Remove one-shot fixer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-v1.3-release-notes.yml
+          git commit -m 'chore: remove v1.3 release-notes fixer'
+          git push origin HEAD:main
