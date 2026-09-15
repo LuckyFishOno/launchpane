@@ -17,7 +17,7 @@ For people who miss the classic full-screen app grid: LaunchPane brings back fas
 </p>
 
 <p align="center">
-  <a href="https://github.com/LuckyFishOno/launchpane/releases/latest"><strong>Download LaunchPane</strong></a>
+  <a href="https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg"><strong>Download LaunchPane</strong></a>
   ·
   <a href="https://github.com/LuckyFishOno/launchpane/releases/latest">Release notes</a>
   ·
@@ -42,7 +42,7 @@ Intel Macs are not currently supported.
 
 ## Install
 
-1. [Download the latest `LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest).
+1. [Download the latest `LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg).
 2. Open the disk image.
 3. Drag **LaunchPane.app** into **Applications**.
 4. Open LaunchPane from **Applications**.
