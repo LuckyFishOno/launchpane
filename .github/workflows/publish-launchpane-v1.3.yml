@@ -1,0 +1,198 @@
+name: Publish LaunchPane v1.3
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-launchpane-v1.3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare LaunchPane v1.3 metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          project = Path('project.yml')
+          text = project.read_text(encoding='utf-8')
+          text = text.replace('MARKETING_VERSION: "1.2"', 'MARKETING_VERSION: "1.3"')
+          text = text.replace('CURRENT_PROJECT_VERSION: 3', 'CURRENT_PROJECT_VERSION: 4')
+          project.write_text(text, encoding='utf-8')
+
+          pbx = Path('LaunchPane.xcodeproj/project.pbxproj')
+          text = pbx.read_text(encoding='utf-8')
+          text = text.replace('MARKETING_VERSION = 1.2;', 'MARKETING_VERSION = 1.3;')
+          text = text.replace('CURRENT_PROJECT_VERSION = 3;', 'CURRENT_PROJECT_VERSION = 4;')
+          pbx.write_text(text, encoding='utf-8')
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          text = text.replace(
+              'https://github.com/LuckyFishOno/launchpane/releases/latest"><strong>Download LaunchPane</strong>',
+              'https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg"><strong>Download LaunchPane</strong>'
+          )
+          text = text.replace(
+              '[Download the latest `LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest).',
+              '[Download the latest `LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg).'
+          )
+          readme.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify Swift package
+        run: swift test
+
+      - name: Build Release app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$PWD/Builds" "$PWD/dist"
+          xcodebuild \
+            -project LaunchPane.xcodeproj \
+            -scheme LaunchPane \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            CONFIGURATION_BUILD_DIR="$PWD/Builds" \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build
+          test -d "$PWD/Builds/LaunchPane.app"
+
+      - name: Ad-hoc sign app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$PWD/Builds/LaunchPane.app"
+          AGENT="$APP/Contents/Library/LoginItems/LaunchPaneAgent.app"
+
+          if [ -d "$AGENT/Contents/Frameworks" ]; then
+            while IFS= read -r -d '' framework; do
+              codesign --force --sign - --timestamp=none "$framework"
+            done < <(find "$AGENT/Contents/Frameworks" -maxdepth 1 -type d -name '*.framework' -print0)
+          fi
+
+          if [ -d "$AGENT" ]; then
+            codesign --force --sign - --timestamp=none "$AGENT"
+          fi
+
+          codesign --force --sign - --timestamp=none "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Create LaunchPane DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/dmg-root
+          ditto "$PWD/Builds/LaunchPane.app" "$PWD/dist/dmg-root/LaunchPane.app"
+          ln -s /Applications "$PWD/dist/dmg-root/Applications"
+          hdiutil create \
+            -volname 'LaunchPane' \
+            -srcfolder "$PWD/dist/dmg-root" \
+            -ov \
+            -format UDZO \
+            "$PWD/dist/LaunchPane.dmg"
+          shasum -a 256 "$PWD/dist/LaunchPane.dmg" | tee "$PWD/dist/SHA256SUMS.txt"
+
+      - name: Commit v1.3 metadata to main
+        id: version_commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md project.yml LaunchPane.xcodeproj/project.pbxproj
+          git commit -m 'release: LaunchPane v1.3'
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.version_commit.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA256="$(awk '{print $1}' dist/SHA256SUMS.txt)"
+          cat > RELEASE_NOTES.md <<EOF
+          # LaunchPane v1.3
+
+          This is the first release published under the **LaunchPane** name.
+
+          ## Highlights
+
+          - Completes the project-wide rename to LaunchPane across the app, agent, Xcode project, bundle identifiers, documentation, repository links, and saved-layout location.
+          - Preserves existing user layouts by migrating legacy layout data automatically when LaunchPane starts.
+          - Keeps the v1.2 interaction and performance improvements: smooth root/folder paging, cross-page dragging, stable folder reordering, adaptive layouts, and full-resolution app icons.
+          - Uses the new `LaunchPane.app` and `LaunchPane.dmg` product names.
+          - No accounts, analytics, telemetry, or mandatory network connection.
+
+          ## Download and install
+
+          1. Download `LaunchPane.dmg` below.
+          2. Open it and drag `LaunchPane.app` into **Applications**.
+          3. On first launch, use **System Settings → Privacy & Security → Open Anyway** if macOS blocks the non-notarized build.
+
+          ## Requirements
+
+          - macOS 15 or later
+          - Apple silicon Mac (M1 or newer)
+
+          ## Version
+
+          - App version: 1.3
+          - Build number: 4
+
+          ## SHA-256
+
+          `$SHA256`
+          EOF
+
+          if gh release view v1.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v1.3 dist/LaunchPane.dmg --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit v1.3 \
+              --repo "$GITHUB_REPOSITORY" \
+              --title 'LaunchPane v1.3' \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+          else
+            gh release create v1.3 dist/LaunchPane.dmg \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$RELEASE_SHA" \
+              --title 'LaunchPane v1.3' \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+          fi
+
+      - name: Mark older releases as legacy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in v1.0 v1.1 v1.2; do
+            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id')"
+            gh api \
+              --method PATCH \
+              "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              -f name="Legacy $tag — pre-LaunchPane build" \
+              -f body="This historical release predates the LaunchPane rename and is retained for compatibility and release history. New users should install the latest LaunchPane release: https://github.com/$GITHUB_REPOSITORY/releases/latest"
+          done
+
+      - name: Remove one-shot release workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/publish-launchpane-v1.3.yml
+          git commit -m 'chore: remove one-shot v1.3 publisher'
+          git push origin HEAD:main
