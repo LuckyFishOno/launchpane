@@ -1,8 +1,8 @@
 # LaunchPane
 
-**A fast, native Launchpad replacement for macOS.**
+**Bring back the classic full-screen app launcher on macOS.**
 
-For people who miss the classic full-screen app grid: LaunchPane brings back fast app launching, instant search, folders, persistent drag-and-drop organization, and smooth paging — built natively with Swift, AppKit, and Core Animation.
+LaunchPane is a fast, native, open-source Launchpad replacement built with **Swift 6**, **AppKit**, and **Core Animation**. It gives you a full-screen app grid, instant local search, folders, persistent drag-and-drop organization, and smooth paging without accounts, telemetry, or mandatory network access.
 
 <p align="center">
   <a href="https://github.com/LuckyFishOno/launchpane/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/LuckyFishOno/launchpane?display_name=tag&sort=semver"></a>
@@ -21,22 +21,48 @@ For people who miss the classic full-screen app grid: LaunchPane brings back fas
   ·
   <a href="https://github.com/LuckyFishOno/launchpane/releases/latest">Release notes</a>
   ·
+  <a href="#build-from-source">Build from source</a>
+  ·
   <a href="https://github.com/LuckyFishOno/launchpane/issues">Report an issue</a>
+</p>
+
+<p align="center">
+  macOS 15+ · Apple silicon · MIT licensed · Local-first
 </p>
 
 ## Why LaunchPane?
 
-- **Feels at home on macOS.** Native AppKit and Core Animation UI with system application discovery.
-- **Organize it your way.** Reorder apps, create folders, move items across pages, and keep the layout between launches.
-- **Fast from keyboard, mouse, or trackpad.** Instant IME-aware search, keyboard navigation, and paging gestures.
-- **Built for real displays.** Adaptive layout across Retina and non-Retina screens, mixed-scale multi-display setups, and different scaling modes.
-- **Private by default.** No account, activation, analytics, telemetry, or mandatory network connection.
-- **Accessible.** Keyboard navigation, accessibility semantics, right-to-left layout support, and Reduce Motion behavior.
+LaunchPane is designed for people who want the familiar full-screen macOS app-grid experience with predictable organization and native interactions.
+
+| | |
+| --- | --- |
+| **Native macOS UI** | Built with AppKit and Core Animation using documented system APIs. |
+| **Persistent organization** | Reorder apps, create folders, move items across pages, and keep the layout between launches. |
+| **Fast navigation** | Search locally, page with a trackpad or mouse, and navigate from the keyboard. |
+| **Adaptive layout** | Handles Retina and non-Retina displays, mixed-scale multi-display setups, and different scaling modes. |
+| **Private by default** | No account, activation, analytics, telemetry, or mandatory network connection. |
+| **Accessible** | Keyboard navigation, accessibility semantics, right-to-left layout support, and Reduce Motion behavior. |
+
+## Features
+
+- Full-screen adaptive app grid
+- Installed application discovery
+- Instant local search with IME-aware input
+- Folder creation and management
+- Persistent drag-and-drop reordering
+- Cross-page dragging with edge paging
+- Folder-item reordering and multi-page folders
+- Folder-to-root extraction
+- Trackpad, mouse, and keyboard paging
+- Page-local placement with forward overflow
+- Multi-display and mixed-scale support
+- Keyboard navigation, RTL layout, and Reduce Motion support
+- Reset Launchpad action
 
 ## Requirements
 
-- macOS 15 or later
-- Apple silicon Mac (M1 or newer)
+- **macOS 15 or later**
+- **Apple silicon Mac** (M1 or newer)
 
 Intel Macs are not currently supported.
 
@@ -46,13 +72,14 @@ Intel Macs are not currently supported.
 2. Open the disk image.
 3. Drag **LaunchPane.app** into **Applications**.
 4. Open LaunchPane from **Applications**.
-5. If macOS blocks the first launch, follow the one-time steps below.
-6. Launch LaunchPane again.
-7. Optional: right-click **LaunchPane** in the Dock → **Options** → **Keep in Dock** for one-click access.
+5. Optionally, right-click **LaunchPane** in the Dock → **Options** → **Keep in Dock** for one-click access.
 
 ### First launch on macOS
 
-The current downloadable build is not notarized with an Apple Developer ID. Because of that, macOS may show an **“LaunchPane” Not Opened** warning the first time you launch it.
+> [!NOTE]
+> The current downloadable build is not notarized with an Apple Developer ID. macOS may therefore block the first launch until you explicitly approve it. This is a one-time step for the downloaded build.
+
+If macOS shows an **“LaunchPane” Not Opened** warning:
 
 1. Click **Done**.
 2. Open **System Settings → Privacy & Security**.
@@ -63,48 +90,40 @@ The current downloadable build is not notarized with an Apple Developer ID. Beca
 
 <img width="716" alt="Allowing LaunchPane from macOS Privacy & Security settings" src="https://github.com/user-attachments/assets/d42ebbfc-6beb-4f20-82a5-d6173db66315" />
 
-This approval is only required once for the downloaded build. If you prefer, you can also [build LaunchPane from source](#build-from-source).
-
-## What it supports
-
-- Adaptive app grid and folder layout
-- Installed application discovery
-- Instant local search with IME-aware input
-- Trackpad, mouse, and keyboard paging
-- Persistent drag-and-drop reordering
-- Folder creation and management
-- Cross-page dragging with edge paging
-- Folder-item reordering and multi-page folders
-- Folder-to-root extraction
-- Page-local placement and forward overflow
-- Reset Launchpad action
-- Multi-display and mixed-scale configurations
-- Keyboard navigation, RTL layout, and Reduce Motion
+If you prefer not to use the downloadable build, you can [build LaunchPane from source](#build-from-source).
 
 ## Build from source
 
-You will need:
+### Prerequisites
 
 - Apple silicon Mac running macOS 15 or later
 - Xcode 26 or later
 - Swift 6
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.42 or later only when regenerating the Xcode project
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.42 or later only if you want to regenerate the Xcode project
 
-Clone and build:
+### Build
 
 ```bash
 git clone https://github.com/LuckyFishOno/launchpane.git
 cd launchpane
+
 xcodebuild \
   -project LaunchPane.xcodeproj \
   -scheme LaunchPane \
   -configuration Release \
   CONFIGURATION_BUILD_DIR="$PWD/Builds" \
   clean build
+
 open Builds/LaunchPane.app
 ```
 
-## Layout data
+### Run the test suite
+
+```bash
+swift test
+```
+
+## Local data and privacy
 
 LaunchPane stores its layout locally at:
 
@@ -112,17 +131,41 @@ LaunchPane stores its layout locally at:
 ~/Library/Application Support/LaunchPane/LauncherLayout.json
 ```
 
-The layout uses explicit pages and automatically migrates older saved layouts. Removing an app from one page does not pull apps backward from later pages. Dropping onto a full page pushes overflow forward and creates another page when needed.
+The layout uses explicit pages. Removing an app from one page does not pull apps backward from later pages, while dropping onto a full page pushes overflow forward and creates another page when needed.
+
+LaunchPane does not require an account and does not send analytics or telemetry.
 
 ## Architecture
 
-LaunchPane is implemented in Swift 6 with AppKit and Core Animation. Display geometry flows through `DisplayContext` and `LayoutConstraintSolver`, while application discovery stays separate from the persisted user layout. Drag-and-reorder behavior is modeled as an explicit state machine with transaction and rollback semantics.
+LaunchPane separates application discovery, display geometry, layout behavior, and presentation so each part can be tested independently.
+
+```mermaid
+flowchart LR
+    Apps[Installed applications] --> AppCore[AppCore]
+    Display[macOS displays] --> DisplayCore[DisplayCore]
+    LayoutFile[Local layout JSON] <--> AppCore
+    DisplayCore --> LayoutCore[LayoutCore]
+    AppCore --> Agent[LaunchPaneAgent]
+    LayoutCore --> Agent
+    Launcher[LaunchPane.app] --> Agent
+    Agent --> UI[AppKit + Core Animation UI]
+```
+
+The launcher process stays intentionally small, while the persistent UI lives in `LaunchPaneAgent`. Display geometry flows through `DisplayContext` and `LayoutConstraintSolver`, and drag-and-reorder behavior is modeled as an explicit state machine with transaction and rollback semantics.
 
 For implementation details, see [Architecture](docs/ARCHITECTURE.md) and [Paging performance](docs/PAGING_PERFORMANCE.md).
 
 ## Contributing
 
 Bug reports and focused pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+Useful feedback includes:
+
+- interaction or animation issues
+- unusual display or scaling configurations
+- keyboard or accessibility behavior
+- app-discovery edge cases
+- reproducible drag-and-drop problems
 
 If LaunchPane is useful to you, **star the repository** — it helps more Mac users discover the project.
 
