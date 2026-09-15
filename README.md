@@ -24,12 +24,6 @@ For people who miss the classic full-screen app grid: OpenLaunchpad brings back 
   <a href="https://github.com/LuckyFishOno/open-launchpad/issues">Report an issue</a>
 </p>
 
-## See it in action
-
-<p align="center">
-  <img src="docs/assets/openlaunchpad-demo.gif" width="900" alt="OpenLaunchpad demo showing the app grid, folders, and paging" />
-</p>
-
 ## Why OpenLaunchpad?
 
 - **Feels at home on macOS.** Native AppKit and Core Animation UI with system application discovery.
