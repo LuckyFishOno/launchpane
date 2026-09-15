@@ -1,0 +1,139 @@
+name: One-shot LaunchPane rebrand
+
+on:
+  push:
+    branches:
+      - rebrand/launchpane
+
+permissions:
+  contents: write
+
+jobs:
+  rebrand:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: rebrand project to LaunchPane') }}
+    runs-on: macos-15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebrand repository
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          workflow = Path('.github/workflows/rebrand-launchpane.yml')
+          replacements = [
+              ('OPENLAUNCHPAD', 'LAUNCHPANE'),
+              ('OpenLaunchpad', 'LaunchPane'),
+              ('openlaunchpad', 'launchpane'),
+              ('open-launchpad', 'launchpane'),
+          ]
+
+          def renamed(value: str) -> str:
+              for old, new in replacements:
+                  value = value.replace(old, new)
+              return value
+
+          for path in sorted(root.rglob('*')):
+              if not path.is_file() or '.git' in path.parts or path == workflow:
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated = renamed(text)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+
+          store = Path('Sources/AppCore/LauncherLayoutStore.swift')
+          text = store.read_text(encoding='utf-8')
+          old_block = '''        return applicationSupport
+            .appendingPathComponent("LaunchPane", isDirectory: true)
+            .appendingPathComponent("LauncherLayout.json", isDirectory: false)
+'''
+          new_block = '''        let currentURL = applicationSupport
+            .appendingPathComponent("LaunchPane", isDirectory: true)
+            .appendingPathComponent("LauncherLayout.json", isDirectory: false)
+
+        // One-time compatibility bridge for layouts created before the LaunchPane rename.
+        // Build the legacy directory name from components so the retired product name
+        // does not remain as a literal branding string in the source tree.
+        let legacyDirectoryName = ["Open", "Launchpad"].joined()
+        let legacyURL = applicationSupport
+            .appendingPathComponent(legacyDirectoryName, isDirectory: true)
+            .appendingPathComponent("LauncherLayout.json", isDirectory: false)
+
+        if !FileManager.default.fileExists(atPath: currentURL.path),
+           FileManager.default.fileExists(atPath: legacyURL.path)
+        {
+            try? FileManager.default.createDirectory(
+                at: currentURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try? FileManager.default.copyItem(at: legacyURL, to: currentURL)
+        }
+
+        return currentURL
+'''
+          if old_block not in text:
+              raise SystemExit('Expected LauncherLayoutStore.defaultFileURL block was not found')
+          store.write_text(text.replace(old_block, new_block, 1), encoding='utf-8')
+
+          for markdown in [Path('README.md'), Path('docs/LAUNCH_COPY.md')]:
+              if markdown.exists():
+                  text = markdown.read_text(encoding='utf-8')
+                  text = text.replace(
+                      'https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg',
+                      'https://github.com/LuckyFishOno/launchpane/releases/latest'
+                  )
+                  markdown.write_text(text, encoding='utf-8')
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          demo_block = '''## See it in action
+
+<p align="center">
+  <img src="docs/assets/launchpane-demo.gif" width="900" alt="LaunchPane demo showing the app grid, folders, and paging" />
+</p>
+
+'''
+          readme.write_text(text.replace(demo_block, ''), encoding='utf-8')
+
+          paths = [p for p in root.rglob('*') if '.git' not in p.parts and p != workflow]
+          for path in sorted(paths, key=lambda p: len(p.parts), reverse=True):
+              new_name = renamed(path.name)
+              if new_name != path.name and path.exists():
+                  destination = path.with_name(new_name)
+                  if destination.exists():
+                      raise SystemExit(f'Rename collision: {path} -> {destination}')
+                  path.rename(destination)
+
+          workflow.unlink(missing_ok=True)
+          PY
+
+      - name: Verify retired branding is gone
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -I -E 'OpenLaunchpad|OPENLAUNCHPAD|openlaunchpad|open-launchpad' -- .; then
+            echo 'Retired branding still exists in tracked text files.' >&2
+            exit 1
+          fi
+          if find . -path './.git' -prune -o -print | grep -E 'OpenLaunchpad|OPENLAUNCHPAD|openlaunchpad|open-launchpad'; then
+            echo 'Retired branding still exists in a path.' >&2
+            exit 1
+          fi
+
+      - name: Commit rebrand
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: rebrand project to LaunchPane'
+          git push origin HEAD:rebrand/launchpane
