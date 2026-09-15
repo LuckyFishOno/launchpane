@@ -45,7 +45,7 @@ enum LaunchpadVisualStyle {
 
     private enum FolderTransitionMetrics {
         static let openDuration: CFTimeInterval = 0.21
-        // OPENLAUNCHPAD_FOLDER_CLOSE_DURATION_020_V1
+        // LAUNCHPANE_FOLDER_CLOSE_DURATION_020_V1
 
         static let closeDuration: CFTimeInterval = 0.20
         static let minimumSourceScale: CGFloat = 0.08
@@ -55,7 +55,7 @@ enum LaunchpadVisualStyle {
     private enum DragReflowMetrics {
         // Shared positional timing for drag insertion/reflow. Keep every landing
         // path on this one duration so ownership handoffs never change speed.
-        // OPENLAUNCHPAD_REFLOW_DURATION_025_V1
+        // LAUNCHPANE_REFLOW_DURATION_025_V1
         static let duration: CFTimeInterval = 0.25
         static let enteringItemFadeDuration: CFTimeInterval = 0.15
         static let enteringItemOffset: CGFloat = 34
@@ -66,9 +66,9 @@ enum LaunchpadVisualStyle {
     }
 
     private enum DragCompletionMetrics {
-        // OPENLAUNCHPAD_FOLDER_ABSORB_DURATION_040_V1
+        // LAUNCHPANE_FOLDER_ABSORB_DURATION_040_V1
 
-        // OPENLAUNCHPAD_FOLDER_ABSORB_DURATION_044_V1
+        // LAUNCHPANE_FOLDER_ABSORB_DURATION_044_V1
 
 
         static let mergeDuration: CFTimeInterval = 0.25

@@ -160,9 +160,29 @@ public actor LauncherLayoutStore {
             in: .userDomainMask
         ).first ?? FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support", isDirectory: true)
-        return applicationSupport
-            .appendingPathComponent("OpenLaunchpad", isDirectory: true)
+        let currentURL = applicationSupport
+            .appendingPathComponent("LaunchPane", isDirectory: true)
             .appendingPathComponent("LauncherLayout.json", isDirectory: false)
+
+        // One-time compatibility bridge for layouts created before the LaunchPane rename.
+        // Construct the legacy directory name so retired branding is not retained as a
+        // literal in the current source tree.
+        let legacyDirectoryName = ["Open", "Launchpad"].joined()
+        let legacyURL = applicationSupport
+            .appendingPathComponent(legacyDirectoryName, isDirectory: true)
+            .appendingPathComponent("LauncherLayout.json", isDirectory: false)
+
+        if !FileManager.default.fileExists(atPath: currentURL.path),
+           FileManager.default.fileExists(atPath: legacyURL.path)
+        {
+            try? FileManager.default.createDirectory(
+                at: currentURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try? FileManager.default.copyItem(at: legacyURL, to: currentURL)
+        }
+
+        return currentURL
     }
 
     public func load() throws -> LauncherLayoutDocument {

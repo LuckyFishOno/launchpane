@@ -212,8 +212,8 @@ final class LaunchpadWindowController: NSWindowController {
     }
 
     @objc private func applicationDidResignActive() {
-        // OPENLAUNCHPAD_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
-        // OPENLAUNCHPAD_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
+        // LAUNCHPANE_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
+        // LAUNCHPANE_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
         //
         // Folder drag can replace/rebuild its AppKit hit-target surface while the
         // physical pointer gesture or its landing commit still owns the original

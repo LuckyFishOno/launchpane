@@ -152,7 +152,7 @@ class PointerTrackingTileButton: NSButton {
         onPointerCancelled?()
     }
 
-    // OPENLAUNCHPAD_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+    // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
     //
     // Programmatic drag teardown already owns the cancellation path. Clear the
     // private mouse-down state without invoking onPointerCancelled a second time

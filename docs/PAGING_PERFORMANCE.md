@@ -58,7 +58,7 @@ travel, monotonic progress, duration limits, and endpoint velocity.
 events. Existing gesture tests retain one-page-per-burst coverage.
 
 For AppKit regression checks, run a Debug agent with
-`OPENLAUNCHPAD_PAGING_DIAGNOSTICS=1` in the agent's environment. `[PagingPerf]`
+`LAUNCHPANE_PAGING_DIAGNOSTICS=1` in the agent's environment. `[PagingPerf]`
 reports actual orphan page trees as well as tracked pages. Repeatedly search and
 clear, change pages, and reorder applications. `orphanPageTrees` must remain zero;
 only the current page and its immediate neighbors should stay staged when idle.

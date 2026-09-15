@@ -312,7 +312,7 @@ final class LauncherLayoutStoreTests: XCTestCase {
 
     func testAtomicFileIOCreatesParentAndRoundTripsData() throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("OpenLaunchpadLayoutStore-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("LaunchPaneLayoutStore-\(UUID().uuidString)", isDirectory: true)
         let url = root.appendingPathComponent("Nested/Layout.json")
         defer { try? FileManager.default.removeItem(at: root) }
         let fileIO = AtomicLauncherLayoutFileIO()
@@ -324,7 +324,7 @@ final class LauncherLayoutStoreTests: XCTestCase {
     }
 
     private var testURL: URL {
-        URL(fileURLWithPath: "/tests/OpenLaunchpad/LauncherLayout.json")
+        URL(fileURLWithPath: "/tests/LaunchPane/LauncherLayout.json")
     }
 
     private func reference(_ bundleIdentifier: String) -> LauncherApplicationReference {

@@ -1,10 +1,10 @@
-# Contributing to OpenLaunchpad
+# Contributing to LaunchPane
 
-Thanks for helping improve OpenLaunchpad.
+Thanks for helping improve LaunchPane.
 
 ## Before you start
 
-OpenLaunchpad is a native macOS application written in Swift 6 with AppKit and Core Animation. Changes should preserve the project's native architecture and documented-system-API approach.
+LaunchPane is a native macOS application written in Swift 6 with AppKit and Core Animation. Changes should preserve the project's native architecture and documented-system-API approach.
 
 For bugs involving layout, dragging, paging, folders, or multiple displays, please include:
 
@@ -30,8 +30,8 @@ Build with:
 
 ```bash
 xcodebuild \
-  -project OpenLaunchpad.xcodeproj \
-  -scheme OpenLaunchpad \
+  -project LaunchPane.xcodeproj \
+  -scheme LaunchPane \
   -configuration Debug \
   build
 ```
@@ -42,8 +42,8 @@ Before opening a pull request, run:
 
 ```bash
 xcodebuild \
-  -project OpenLaunchpad.xcodeproj \
-  -scheme OpenLaunchpad \
+  -project LaunchPane.xcodeproj \
+  -scheme LaunchPane \
   -destination 'platform=macOS' \
   test
 ```

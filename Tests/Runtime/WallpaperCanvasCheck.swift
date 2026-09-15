@@ -149,9 +149,9 @@ private final class WallpaperCanvasAssertions {
 
     func run() throws {
         let isolationDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("openlaunchpad-wallpaper-canvas-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("launchpane-wallpaper-canvas-\(UUID().uuidString)", isDirectory: true)
         let layoutURL = isolationDirectory.appendingPathComponent("layout.json")
-        setenv("OPENLAUNCHPAD_LAYOUT_PATH", layoutURL.path, 1)
+        setenv("LAUNCHPANE_LAYOUT_PATH", layoutURL.path, 1)
         // There is deliberately no directory to read or write. A production
         // regression which starts discovery/persistence must not reach user data.
         let application = NSApplication.shared

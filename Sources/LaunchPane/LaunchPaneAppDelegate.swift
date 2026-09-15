@@ -1,13 +1,13 @@
 import AppKit
 
 @MainActor
-final class OpenLaunchpadAppDelegate:
+final class LaunchPaneAppDelegate:
     NSObject,
     NSApplicationDelegate
 {
     private static let toggleNotification =
         Notification.Name(
-            "org.openlaunchpad.OpenLaunchpadAgent.toggle"
+            "org.launchpane.LaunchPaneAgent.toggle"
         )
 
     private var windowController:

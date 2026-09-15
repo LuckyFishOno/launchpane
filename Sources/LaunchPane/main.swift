@@ -1,22 +1,22 @@
 import AppKit
 
-// OPENLAUNCHPAD_DOCK_AGENT_ARCHITECTURE_V1
+// LAUNCHPANE_DOCK_AGENT_ARCHITECTURE_V1
 //
 // This process is intentionally tiny and short-lived.
 //
-// The Dock tile points at OpenLaunchpad.app, but all persistent UI lives in
-// OpenLaunchpadAgent.app. Both processes use accessory activation policy, so
+// The Dock tile points at LaunchPane.app, but all persistent UI lives in
+// LaunchPaneAgent.app. Both processes use accessory activation policy, so
 // neither process owns a normal macOS menu bar. The agent has a distinct bundle
 // identifier, so keeping the launcher tile in the Dock does not expose the
 // agent's running state, Hide/Quit menu items, or running indicator.
 
 private enum DockLauncherIPC {
     static let agentBundleIdentifier =
-        "org.openlaunchpad.OpenLaunchpadAgent"
+        "org.launchpane.LaunchPaneAgent"
 
     static let toggleNotification =
         Notification.Name(
-            "org.openlaunchpad.OpenLaunchpadAgent.toggle"
+            "org.launchpane.LaunchPaneAgent.toggle"
         )
 
     static func agentApplicationURL() -> URL? {
@@ -26,7 +26,7 @@ private enum DockLauncherIPC {
                 .appendingPathComponent("Library")
                 .appendingPathComponent("LoginItems")
                 .appendingPathComponent(
-                    "OpenLaunchpadAgent.app"
+                    "LaunchPaneAgent.app"
                 )
 
         if FileManager.default.fileExists(
@@ -39,7 +39,7 @@ private enum DockLauncherIPC {
             Bundle.main.bundleURL
                 .deletingLastPathComponent()
                 .appendingPathComponent(
-                    "OpenLaunchpadAgent.app"
+                    "LaunchPaneAgent.app"
                 )
 
         if FileManager.default.fileExists(
@@ -96,7 +96,7 @@ private final class DockLauncherDelegate:
                     .agentApplicationURL()
         else {
             fputs(
-                "OpenLaunchpad: embedded agent was not found.\n",
+                "LaunchPane: embedded agent was not found.\n",
                 stderr
             )
             NSSound.beep()
@@ -121,7 +121,7 @@ private final class DockLauncherDelegate:
             DispatchQueue.main.async {
                 if let errorMessage {
                     fputs(
-                        "OpenLaunchpad: failed to launch agent: "
+                        "LaunchPane: failed to launch agent: "
                             + errorMessage
                             + "\n",
                         stderr

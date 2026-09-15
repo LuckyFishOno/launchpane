@@ -1,6 +1,6 @@
 import AppKit
 
-// The embedded agent owns all long-lived OpenLaunchpad UI state.
+// The embedded agent owns all long-lived LaunchPane UI state.
 //
 // It is an LSUIElement/accessory application:
 // - no Dock running application
@@ -8,7 +8,7 @@ import AppKit
 // - still allowed to activate and present interactive windows
 
 let application = NSApplication.shared
-let delegate = OpenLaunchpadAppDelegate()
+let delegate = LaunchPaneAppDelegate()
 
 application.delegate = delegate
 application.setActivationPolicy(.accessory)

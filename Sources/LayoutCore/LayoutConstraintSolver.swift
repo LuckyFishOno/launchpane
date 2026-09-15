@@ -122,7 +122,7 @@ public struct LayoutConstraintSolver: LayoutSolving, Sendable {
         return min(max(tokens.minimumIconSize, requestedSize), tokens.maximumIconSize, cellLimitedSize)
     }
 
-    // OPENLAUNCHPAD_ADAPTIVE_LARGE_DISPLAY_LAYOUT_V7
+    // LAUNCHPANE_ADAPTIVE_LARGE_DISPLAY_LAYOUT_V7
     // Interpolate continuously instead of branching on a specific monitor model
     // or backing scale. A 1710pt logical canvas keeps the 108pt v6 geometry;
     // a native 3840pt logical canvas reaches 136pt. Intermediate resolutions

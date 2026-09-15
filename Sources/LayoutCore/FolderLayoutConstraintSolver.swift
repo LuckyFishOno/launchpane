@@ -17,12 +17,12 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
     ) -> FolderGridMetrics {
         let folderTokens = tokens.folder
 
-        // OPENLAUNCHPAD_FOLDER_MATCH_ROOT_ICON_V1
+        // LAUNCHPANE_FOLDER_MATCH_ROOT_ICON_V1
         // Folder children must use the exact same *resolved* icon geometry as
         // the root grid. Do not hard-code 96pt here: the root solver may resolve
         // a smaller/larger value for another logical resolution, grid request,
         // or external display.
-        // OPENLAUNCHPAD_FOLDER_MATCH_ROOT_VERTICAL_GEOMETRY_V1
+        // LAUNCHPANE_FOLDER_MATCH_ROOT_VERTICAL_GEOMETRY_V1
         // A Folder child and a root-grid App must share the same resolved
         // vertical tile geometry, not only the same icon size. GridMetrics and
         // FolderGridMetrics both place the icon at cell.midY + labelHeight / 2.
@@ -37,7 +37,7 @@ extension LayoutConstraintSolver: FolderLayoutSolving {
         let rootIconSize = rootMetrics.iconSize
         let rootLabelHeight = rootMetrics.labelHeight
 
-        // OPENLAUNCHPAD_ADAPTIVE_FOLDER_PANEL_SCALE_V12
+        // LAUNCHPANE_ADAPTIVE_FOLDER_PANEL_SCALE_V12
         // Root icons already scale continuously from 108pt on the MacBook
         // baseline to 136pt on a native 3840pt-wide 4K canvas. Reuse that
         // resolved ratio for the open-folder panel so the panel, cell lattice,

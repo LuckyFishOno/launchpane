@@ -16,8 +16,8 @@ First build Debug into `Builds` using the root README. Then, from the repository
 root, run these commands in **zsh** (with `rg` available):
 
 ```zsh
-runtime_dir=$(mktemp -d /private/tmp/openlaunchpad-search-check.XXXXXX)
-runtime_sources=("${(@f)$(rg --files Sources/OpenLaunchpad -g '*.swift' -g '!main.swift')}")
+runtime_dir=$(mktemp -d /private/tmp/launchpane-search-check.XXXXXX)
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
 swiftc -swift-version 6 -parse-as-library \
   -F "$PWD/Builds" \
   -framework AppCore -framework DisplayCore -framework LayoutCore \
@@ -25,7 +25,7 @@ swiftc -swift-version 6 -parse-as-library \
   "${runtime_sources[@]}" Tests/Runtime/SearchReopenCheck.swift \
   -o "$runtime_dir/search-check"
 
-OPENLAUNCHPAD_LAYOUT_PATH="$runtime_dir/layout.json" \
+LAUNCHPANE_LAYOUT_PATH="$runtime_dir/layout.json" \
   "$runtime_dir/search-check"
 ```
 
@@ -51,15 +51,15 @@ opens graphical windows but never injects global pointer input. Run from the
 repository root after building Debug:
 
 ```zsh
-drag_check_dir=$(mktemp -d /private/tmp/openlaunchpad-drag-check.XXXXXX)
-runtime_sources=("${(@f)$(rg --files Sources/OpenLaunchpad -g '*.swift' -g '!main.swift')}")
+drag_check_dir=$(mktemp -d /private/tmp/launchpane-drag-check.XXXXXX)
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
 swiftc -swift-version 6 -parse-as-library \
   -F "$PWD/Builds" \
   -framework AppCore -framework DisplayCore -framework LayoutCore \
   -Xlinker -rpath -Xlinker "$PWD/Builds" \
   "${runtime_sources[@]}" Tests/Runtime/CrossPageDragCheck.swift \
   -o "$drag_check_dir/cross-page-check"
-OPENLAUNCHPAD_LAYOUT_PATH="$drag_check_dir/layout.json" \
+LAUNCHPANE_LAYOUT_PATH="$drag_check_dir/layout.json" \
   "$drag_check_dir/cross-page-check"
 ```
 
@@ -89,11 +89,11 @@ empty pages, packed search results, and mapping visible insertion slots back to
 persisted indices when some application references cannot be resolved.
 
 ```zsh
-projection_check_dir=$(mktemp -d /private/tmp/openlaunchpad-projection-check.XXXXXX)
+projection_check_dir=$(mktemp -d /private/tmp/launchpane-projection-check.XXXXXX)
 swiftc -swift-version 6 -parse-as-library \
   -F "$PWD/Builds" -framework AppCore \
   -Xlinker -rpath -Xlinker "$PWD/Builds" \
-  Sources/OpenLaunchpad/ResolvedLaunchpadItem.swift \
+  Sources/LaunchPane/ResolvedLaunchpadItem.swift \
   Tests/Runtime/ResolvedPageCheck.swift \
   -o "$projection_check_dir/resolved-page-check"
 "$projection_check_dir/resolved-page-check"
@@ -124,8 +124,8 @@ of visible compositor surfaces. Both other checks avoid discovery and persistenc
 From the repository root in **zsh**:
 
 ```zsh
-memory_check_dir=$(mktemp -d /private/tmp/openlaunchpad-memory-checks.XXXXXX)
-runtime_sources=("${(@f)$(rg --files Sources/OpenLaunchpad -g '*.swift' -g '!main.swift')}")
+memory_check_dir=$(mktemp -d /private/tmp/launchpane-memory-checks.XXXXXX)
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
 for check_name in WallpaperRasterCheck WallpaperCanvasCheck IconCacheScaleCheck AgentMemoryCheck; do
   swiftc -O -swift-version 6 -parse-as-library \
     -F "$PWD/Builds" \

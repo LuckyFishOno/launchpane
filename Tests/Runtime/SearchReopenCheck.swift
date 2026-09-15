@@ -1,6 +1,6 @@
-// Standalone AppKit regression harness. Compile alongside Sources/OpenLaunchpad
+// Standalone AppKit regression harness. Compile alongside Sources/LaunchPane
 // (excluding main.swift), linking AppCore, DisplayCore and LayoutCore frameworks.
-// Run with OPENLAUNCHPAD_LAYOUT_PATH pointing to a temporary JSON file; do not
+// Run with LAUNCHPANE_LAYOUT_PATH pointing to a temporary JSON file; do not
 // use the user's layout store. No global input injection is needed.
 import AppKit
 import DisplayCore
@@ -145,7 +145,7 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
 @main
 struct SearchReopenCheck {
     @MainActor static func main() {
-        precondition(ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"] != nil,
+        precondition(ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"] != nil,
                      "Use an isolated layout path for this test")
         let app = NSApplication.shared
         let delegate = SearchReopenCheckDelegate()

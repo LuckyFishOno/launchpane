@@ -1,6 +1,6 @@
 import Foundation
 
-/// Creates the layout used only when OpenLaunchpad has no persisted arrangement.
+/// Creates the layout used only when LaunchPane has no persisted arrangement.
 public enum LauncherDefaultLayoutBuilder {
     public static let utilitiesFolderID = UUID(
         uuid: (0x4F, 0x50, 0x45, 0x4E, 0x4C, 0x41, 0x55, 0x4E,

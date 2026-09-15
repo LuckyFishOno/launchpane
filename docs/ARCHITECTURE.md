@@ -1,13 +1,13 @@
-# OpenLaunchpad Architecture
+# LaunchPane Architecture
 
-OpenLaunchpad is a native macOS launcher built with documented system APIs. The codebase separates application data, display geometry, deterministic layout, and presentation so that each area can evolve without coupling the entire launcher to a specific screen or interaction implementation.
+LaunchPane is a native macOS launcher built with documented system APIs. The codebase separates application data, display geometry, deterministic layout, and presentation so that each area can evolve without coupling the entire launcher to a specific screen or interaction implementation.
 
 ## Module Boundaries
 
 ```text
 AppCore ───────────────────────────────┐
                                        │
-DisplayCore ──> LayoutCore ────────────┼──> OpenLaunchpad runtime
+DisplayCore ──> LayoutCore ────────────┼──> LaunchPane runtime
                                        │
 Persisted layout state ────────────────┘
 ```
@@ -28,9 +28,9 @@ Application discovery and user layout are intentionally separate. A temporary di
 
 This design keeps the launcher adaptive across built-in displays, external monitors, scaled modes, and mixed backing scales.
 
-### OpenLaunchpad Runtime
+### LaunchPane Runtime
 
-The Xcode application uses two processes. `OpenLaunchpad.app` is a short-lived Dock launcher that opens the embedded `OpenLaunchpadAgent.app`, or sends a toggle notification to an already-running agent. The accessory agent owns AppKit windows, Core Animation presentation layers, search presentation, paging, icon rendering, pointer interaction, keyboard navigation, and accessibility controls. Both processes use accessory activation; only the user-pinned launcher is intended to remain in the Dock. Embedding the agent under `Contents/Library/LoginItems` does not register it to launch at login.
+The Xcode application uses two processes. `LaunchPane.app` is a short-lived Dock launcher that opens the embedded `LaunchPaneAgent.app`, or sends a toggle notification to an already-running agent. The accessory agent owns AppKit windows, Core Animation presentation layers, search presentation, paging, icon rendering, pointer interaction, keyboard navigation, and accessibility controls. Both processes use accessory activation; only the user-pinned launcher is intended to remain in the Dock. Embedding the agent under `Contents/Library/LoginItems` does not register it to launch at login.
 
 SwiftPM exposes and tests the core libraries only. XcodeGen defines the two application targets and embeds the agent in the distributable launcher bundle.
 

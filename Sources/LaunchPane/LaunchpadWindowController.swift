@@ -5,7 +5,7 @@ import LayoutCore
 import QuartzCore
 
 // This controller owns the AppKit event surface and its tightly coupled Core Animation presentation state.
-// OPENLAUNCHPAD_AGENT_LOW_MEMORY_V1
+// LAUNCHPANE_AGENT_LOW_MEMORY_V1
 // swiftlint:disable file_length type_body_length
 @MainActor
 private final class LaunchpadCanvasView: NSView {
@@ -19,8 +19,8 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let solver = LayoutConstraintSolver()
     private let catalog = AppCatalogActor(
         excludedBundleIdentifiers: [
-            "org.openlaunchpad.OpenLaunchpad",
-            "org.openlaunchpad.OpenLaunchpadAgent",
+            "org.launchpane.LaunchPane",
+            "org.launchpane.LaunchPaneAgent",
         ]
     )
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
@@ -55,7 +55,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private var iconPrewarmTask: Task<Void, Never>?
     private var idlePinnedIconWarmTask: Task<Void, Never>?
 
-    // OPENLAUNCHPAD_VISIBLE_ALL_HQ_ICON_PREWARM_V4
+    // LAUNCHPANE_VISIBLE_ALL_HQ_ICON_PREWARM_V4
     // One presentation-wide task fills the transient cache with full-size
     // icons after the first frame. It survives page transitions so opening a
     // folder later is a cache hit instead of a new decode burst.
@@ -87,8 +87,8 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private var interactiveFolderPageGeneration = 0
     private var folderPageSurfaces: [Int: FolderPageSurface] = [:]
 
-    // OPENLAUNCHPAD_FOLDER_PAGING_ROOT_MOTION_V14
-    // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+    // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
+    // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
     // Folder paging uses the exact same compositor animator and motion profile
     // as root paging. Only the travel distance changes from the full display
     // width to the open folder panel width.
@@ -106,7 +106,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private var folderAnimationGeneration = 0
     private var folderHiddenApplicationID: ApplicationIdentity?
 
-    // OPENLAUNCHPAD_FOLDER_INTERACTION_V1
+    // LAUNCHPANE_FOLDER_INTERACTION_V1
     // Folder title editing is an AppKit control layered above the Core Animation
     // folder chrome. Folder-child dragging owns its gesture until the child
     // actually crosses the panel boundary, then hands the same mouse gesture to
@@ -120,7 +120,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private var pendingFolderPress: PendingFolderTilePress?
     private var folderItemDragSession: FolderItemDragSession?
 
-    // OPENLAUNCHPAD_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+    // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
     //
     // Folder -> root extraction crosses two presentation trees while the same
     // physical mouseDown is still active. The exact NSButton that received that
@@ -131,7 +131,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     // it must never remove this pointer owner mid-gesture.
     private var preservedFolderTrackingButton: AppTileButton?
 
-    // OPENLAUNCHPAD_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
+    // LAUNCHPANE_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
     //
     // Folder -> root extraction temporarily keeps an AppKit button from the
     // closing Folder alive while the root drag pipeline takes over. AppKit can
@@ -140,7 +140,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     // both pointer ownership and the root drag commit have finished.
     private var folderExtractionActivationShield = false
 
-    // OPENLAUNCHPAD_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
+    // LAUNCHPANE_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
     //
     // A Folder-child drag temporarily owns one AppKit NSButton independently
     // from the Folder page surface that is being reordered/rebuilt. Releasing
@@ -327,7 +327,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         wantsLayer = true
         configureCanvas()
         setAccessibilityRole(.group)
-        setAccessibilityLabel("OpenLaunchpad")
+        setAccessibilityLabel("LaunchPane")
         searchField.onTextChanged = { [weak self] in
             self?.searchDidChange()
         }
@@ -448,7 +448,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         requestClose()
     }
 
-    // OPENLAUNCHPAD_VISIBLE_ROOT_ENTRY_ACCESS_REPAIR_V1
+    // LAUNCHPANE_VISIBLE_ROOT_ENTRY_ACCESS_REPAIR_V1
     fileprivate func visibleRootEntry(at point: CGPoint) -> LaunchpadPageEntry? {
         guard openFolderID == nil, let activeSurface else { return nil }
         return activeSurface.entries.first { entry in
@@ -515,7 +515,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         else { return }
 
         if openFolderID != nil {
-            // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+            // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
             // Match root paging input semantics. Precise trackpad gestures are
             // direct-manipulation and are sampled onto the physical display's
             // refresh boundary. Wheel/phase-less input keeps the discrete path.
@@ -968,13 +968,13 @@ private extension LaunchpadRootView {
     }
 
 
-    // OPENLAUNCHPAD_ULTRA_SMOOTH_PAGING_V1
+    // LAUNCHPANE_ULTRA_SMOOTH_PAGING_V1
     //
     // Keep currentPage and the immediate neighbours already attached one viewport
     // off-screen. A trackpad gesture then starts by changing only two CALayer
     // positions; it does not construct a page tree or churn the NSView hierarchy.
     func stageAdjacentPageSurfaces(scale: CGFloat) {
-        // OPENLAUNCHPAD_PAGING_LONG_SESSION_PERF_V1
+        // LAUNCHPANE_PAGING_LONG_SESSION_PERF_V1
         //
         // Paging visuals and pointer hit-targets have different lifetimes:
         //
@@ -1045,7 +1045,7 @@ private extension LaunchpadRootView {
 
         #if DEBUG
         if ProcessInfo.processInfo.environment[
-            "OPENLAUNCHPAD_PAGING_DIAGNOSTICS"
+            "LAUNCHPANE_PAGING_DIAGNOSTICS"
         ] == "1" {
             let attachedTileButtons = pageSurfaces.values.reduce(into: 0) {
                 total, surface in
@@ -1469,7 +1469,7 @@ private extension LaunchpadRootView {
 
     @objc
     func pagingDisplayLinkDidFire(_ link: CADisplayLink) {
-        // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+        // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
         // Folder and root direct-manipulation share one display link. Only one
         // can exist at a time; presenting at most once per refresh prevents a
         // burst of trackpad events from turning into redundant CA commits.
@@ -2100,7 +2100,7 @@ private extension LaunchpadRootView {
             await Task.yield()
             guard presentationResourcesActive, !Task.isCancelled else { return }
 
-            // OPENLAUNCHPAD_FOLDER_OPEN_HEADROOM_V6
+            // LAUNCHPANE_FOLDER_OPEN_HEADROOM_V6
             // P0: every child of every first-page folder, full Retina size. Keep
             // four background workers so an actively opened folder can start its
             // own four priority loads without creating a decode storm.
@@ -2617,7 +2617,7 @@ private extension LaunchpadRootView {
         }
     }
 
-    // OPENLAUNCHPAD_NATIVE_FOLDER_CREATION_V2
+    // LAUNCHPANE_NATIVE_FOLDER_CREATION_V2
     @discardableResult
     func beginFolderCreationPreview(
         _ target: LauncherDropTarget,
@@ -2775,7 +2775,7 @@ private extension LaunchpadRootView {
     }
 
     private enum DragEdgeMetrics {
-        // OPENLAUNCHPAD_ADAPTIVE_EDGE_PAGING_ZONE_V11
+        // LAUNCHPANE_ADAPTIVE_EDGE_PAGING_ZONE_V11
         //
         // Keep edge paging proportional to the current logical display width.
         // Previously the 4% rule was capped at only 96pt, which meant a native
@@ -2797,7 +2797,7 @@ private extension LaunchpadRootView {
         static let pageDuration: CFTimeInterval = 0.45
     }
 
-    // OPENLAUNCHPAD_FOLDER_DRAG_EDGE_PAGING_V18
+    // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
     // Folder-local drag paging deliberately uses the Folder panel rather than
     // the full display. The hot zone scales with the panel so native 4K gets a
     // comfortably larger target while smaller displays keep the same feel.
@@ -2815,12 +2815,12 @@ private extension LaunchpadRootView {
     private enum FolderSpringOpenMetrics {
         // Total stable overlap before spring-loading the folder. The shorter
         // LauncherDragIntentState merge dwell only arms a closed-folder drop.
-        // OPENLAUNCHPAD_FOLDER_SPRING_OPEN_DWELL_100_V2
+        // LAUNCHPANE_FOLDER_SPRING_OPEN_DWELL_100_V2
         static let dwell: TimeInterval = 1.0
     }
 
     private enum DragProxyMetrics {
-        static let labelLayerName = "OpenLaunchpadDragProxyLabel"
+        static let labelLayerName = "LaunchPaneDragProxyLabel"
         static let labelAnimationKey = "folderMergeSourceLabelFade"
     }
 
@@ -3834,7 +3834,7 @@ private extension LaunchpadRootView {
             return oldPositions[.application(identity)]
         }()
 
-        // OPENLAUNCHPAD_CROSS_PAGE_ENTERING_HANDOFF_V3
+        // LAUNCHPANE_CROSS_PAGE_ENTERING_HANDOFF_V3
         // oldSurface is the live pre-merge projection after edge paging. Remember
         // which page owned each item so a tile pulled in from an adjacent page
         // can receive a real visual handoff instead of appearing directly on top
@@ -4159,7 +4159,7 @@ private extension LaunchpadRootView {
         dragSession.folderSpringOpenTask = nil
 
         if dragSession.folderCreationPreview != nil {
-            // OPENLAUNCHPAD_SPRING_OPEN_COMMIT_LOCK_V1
+            // LAUNCHPANE_SPRING_OPEN_COMMIT_LOCK_V1
             // Spring-open is the irreversible mouse-up intent boundary.
             //
             // beginFolderCreationPreview() has already mutated the draft by
@@ -5750,7 +5750,7 @@ private extension LaunchpadRootView {
         let shouldAnimate = animated
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let transition = LaunchpadVisualStyle.dragCompletionTransition(kind: .insertion)
-        // OPENLAUNCHPAD_SPRING_OPEN_RELEASE_HANDOFF_V1
+        // LAUNCHPANE_SPRING_OPEN_RELEASE_HANDOFF_V1
         // Spring-open Folder release is still an ordinary positional landing.
         // Use the exact same insertion/reflow transition as App swaps, rollback,
         // and Folder->root landing instead of the old 0.22s fast path.
@@ -6396,7 +6396,7 @@ private extension LaunchpadRootView {
             updateFolderItemDrag(at: point)
         }
 
-        // OPENLAUNCHPAD_FOLDER_POINTER_RELEASE_OWNERSHIP_V20
+        // LAUNCHPANE_FOLDER_POINTER_RELEASE_OWNERSHIP_V20
         //
         // A Folder child can remain the AppKit mouse owner even after its visual
         // presentation has been replaced by a root preview. Never remove that
@@ -6415,7 +6415,7 @@ private extension LaunchpadRootView {
                 button.endPointerTrackingWithoutCallback()
                 button.removeFromSuperview()
 
-                // OPENLAUNCHPAD_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
+                // LAUNCHPANE_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
                 // Keep the pointer-owner sentinel alive for one additional main
                 // turn after removal. didResignActive / click-through side effects
                 // caused by AppKit teardown can be delivered synchronously or on
@@ -6465,7 +6465,7 @@ private extension LaunchpadRootView {
                 }
                 completeDragInteraction(at: point)
 
-                // OPENLAUNCHPAD_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
+                // LAUNCHPANE_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
                 // Do not retire the Folder-owned pointer view here. The root drag
                 // commit is still landing/persisting after mouseUp returns. Keep a
                 // hidden, disabled ownership sentinel until finishDragCommitIfReady()
@@ -6483,7 +6483,7 @@ private extension LaunchpadRootView {
                 context.lastPointerPoint = point
                 context.lastProxyCenter = center
 
-                // OPENLAUNCHPAD_FOLDER_DRAG_EDGE_PAGING_V18
+                // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
                 // mouseUp can arrive while the edge-triggered page is still
                 // settling. AppKit has already completed pointer tracking, so
                 // retain the release point and commit only after the new page is
@@ -6604,7 +6604,7 @@ private extension LaunchpadRootView {
             context.proxyLayer.position = center
             CATransaction.commit()
 
-            // OPENLAUNCHPAD_FOLDER_DRAG_EDGE_PAGING_V18
+            // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
             // During the short page transition, the drag proxy remains the
             // pointer-owned foreground object. Do not reinterpret transient
             // positions as extraction/reorder until the new page has settled.
@@ -7026,7 +7026,7 @@ private extension LaunchpadRootView {
             )
             let visibleCount = pageEndIndex - pageStartIndex
 
-            // OPENLAUNCHPAD_FOLDER_PAGE_LOCAL_LAYOUT_V16
+            // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
             // The open Folder panel uses one stable full-folder lattice on every
             // page. Reorder hit-testing must use that exact same lattice too;
             // solving a second, smaller Folder for a partial page makes its cells
@@ -7034,7 +7034,7 @@ private extension LaunchpadRootView {
             return (folder, allMetrics, pageStartIndex, visibleCount)
         }
 
-        // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
         func projectedFolderApplications(
             _ context: FolderItemDragSession,
             destinationAbsoluteIndex: Int
@@ -7713,7 +7713,7 @@ private extension LaunchpadRootView {
             }
         }
 
-        // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
         func finishFolderCrossPageRollback(
             _ context: FolderItemDragSession,
             animated: Bool
@@ -7911,7 +7911,7 @@ private extension LaunchpadRootView {
             session.proxyLayer.removeAllAnimations()
             session.proxyLayer.removeFromSuperlayer()
 
-            // OPENLAUNCHPAD_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+            // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
             //
             // Escape/programmatic rollback can run while the preserved button
             // still owns mouseDown. removeFromSuperview() would otherwise call
@@ -7967,7 +7967,7 @@ private extension LaunchpadRootView {
         func openFolder(_ folderID: UUID, sourceFrame: CGRect? = nil) {
             guard resolvedFolder(id: folderID) != nil else { return }
 
-        // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // Folder interaction owns the foreground. Stop opportunistic root/session
         // icon decoding before the zoom starts so Core Animation does not compete
         // with AppKit image decode/upload work during the 210ms transition.
@@ -8073,7 +8073,7 @@ private extension LaunchpadRootView {
         let endIndex = min(startIndex + allMetrics.itemsPerPage, folder.applications.count)
         let visibleApplications = Array(folder.applications[startIndex ..< endIndex])
 
-        // OPENLAUNCHPAD_STABLE_FOLDER_PAGE_SIZE_V13
+        // LAUNCHPANE_STABLE_FOLDER_PAGE_SIZE_V13
         // Keep one geometry for every page in this open folder. If page one is
         // full and page two is partial, page two reuses the full-page panel/cell
         // lattice instead of shrinking the panel around its smaller item count.
@@ -8082,7 +8082,7 @@ private extension LaunchpadRootView {
         let metrics = allMetrics
         folderPanelFrame = metrics.panelFrame
 
-        // OPENLAUNCHPAD_ADAPTIVE_FOLDER_PANEL_SCALE_V12
+        // LAUNCHPANE_ADAPTIVE_FOLDER_PANEL_SCALE_V12
         // Match the folder chrome to the same resolved large-display scale that
         // produced the child icon size. The MacBook baseline remains 1.0; a
         // native 4K canvas reaches roughly 136 / 108 = 1.26.
@@ -8094,7 +8094,7 @@ private extension LaunchpadRootView {
         let sourceFrame = folderAnimationSourceFrame
         let sourcePoint = sourceFrame?.center ?? metrics.panelFrame.center
 
-        // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // Animate/rasterize only the visual folder region, not a transparent
         // full-screen 4K layer. A small safety inset includes the panel shadow.
         // Keeping the layer's bounds origin in screen coordinates means all
@@ -8133,7 +8133,7 @@ private extension LaunchpadRootView {
         contentLayer.opacity = 1
         contentLayer.contentsScale = scale
 
-        // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // During open/close animation flatten the complex subtree (up to 35
         // icons, labels and shadows) into one compositor-friendly surface.
         // Disable it as soon as animation ends so the resting folder stays live
@@ -8156,7 +8156,7 @@ private extension LaunchpadRootView {
         panelLayer.shadowOffset = CGSize(width: 0, height: -10 * folderVisualScale)
         panelLayer.shadowRadius = 30 * folderVisualScale
 
-        // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // A fixed shadow path avoids deriving a large translucent alpha mask on
         // every transformed frame, which is particularly expensive on 4K.
         panelLayer.shadowPath = CGPath(
@@ -8168,7 +8168,7 @@ private extension LaunchpadRootView {
 
         contentLayer.addSublayer(panelLayer)
 
-        // OPENLAUNCHPAD_FOLDER_TITLE_27PT_V1
+        // LAUNCHPANE_FOLDER_TITLE_27PT_V1
         // Keep 27pt on the MacBook baseline and enlarge it with the folder panel
         // on wider logical displays.
         let titleFontSize = 27 * folderVisualScale
@@ -8198,7 +8198,7 @@ private extension LaunchpadRootView {
             height: metrics.titleFrame.height
         )
 
-        // OPENLAUNCHPAD_FOLDER_PAGING_ROOT_MOTION_V14
+        // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
         // Keep the panel/title fixed while the page contents slide behind a
         // clipped viewport, matching the root Launchpad page composition.
         let pageViewportLayer = CALayer()
@@ -8231,7 +8231,7 @@ private extension LaunchpadRootView {
                 labelFrame: frames.label,
                 scale: scale,
                 selected: startIndex + localIndex == folderSelectedIndex,
-                // OPENLAUNCHPAD_FOLDER_LOW_RES_FALLBACK_V6
+                // LAUNCHPANE_FOLDER_LOW_RES_FALLBACK_V6
                 // If the exact HQ bitmap has not landed yet, show the best
                 // resident miniature immediately instead of a blank icon.
                 icon: iconCache.bestAvailableCGImage(
@@ -8240,7 +8240,7 @@ private extension LaunchpadRootView {
                     scale: scale
                 )
             ))
-            // OPENLAUNCHPAD_FOLDER_CHILD_NO_RASTER_CACHE_V6
+            // LAUNCHPANE_FOLDER_CHILD_NO_RASTER_CACHE_V6
             // Folder children are already inside one animated content container
             // and do not participate in root-page swipes. Avoid allocating a
             // second Retina raster surface per child during the open animation.
@@ -8269,7 +8269,7 @@ private extension LaunchpadRootView {
             presentation.button.onPointerDown = { [weak self, weak presentation] event in
                 guard let self, let presentation else { return }
                 self.folderItemPointerDown(
-                    // OPENLAUNCHPAD_FOLDER_COMPILE_REPAIR_V1
+                    // LAUNCHPANE_FOLDER_COMPILE_REPAIR_V1
                     // This callback belongs to the concrete folder snapshot that
                     // renderFolderOverlay() already resolved. Do not pass the
                     // mutable optional openFolderID (UUID?) to a UUID parameter.
@@ -8294,7 +8294,7 @@ private extension LaunchpadRootView {
             folderPresentations.append(presentation)
         }
 
-        // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+        // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
         // Root paging never builds its incoming page at gesture time; surfaces
         // already exist. Keep the current folder page in the same kind of cache
         // and stage its neighbor after the opening animation.
@@ -8343,7 +8343,7 @@ private extension LaunchpadRootView {
                 presentation.button.isHidden = isDraggedSource
             }
 
-            // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+            // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
             // Once there is no full-folder zoom, switch to the same per-tile
             // raster cache used by root pages before any paging begins.
             enableFolderTileRasterCaches(folderPresentations, scale: scale)
@@ -8395,7 +8395,7 @@ private extension LaunchpadRootView {
                 contentLayer.shouldRasterize = false
                 contentLayer.rasterizationScale = 1
 
-                // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+                // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
                 // V13 deliberately used one parent raster for the zoom. Once
                 // that animation ends, hand caching back to individual tiles
                 // exactly like root pages so horizontal motion stays GPU-cheap.
@@ -8406,7 +8406,7 @@ private extension LaunchpadRootView {
                     presentation.button.isHidden = isDraggedSource
                 }
 
-                // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+                // LAUNCHPANE_FOLDER_OPEN_FPS_V13
                 // Resume any missing HQ folder icons only after the zoom reaches
                 // its final state. Existing cache/fallback images remain visible
                 // during the transition, so frame pacing wins without blanks.
@@ -8438,7 +8438,7 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    // OPENLAUNCHPAD_PROGRESSIVE_FOLDER_ICON_WARM_V6
+    // LAUNCHPANE_PROGRESSIVE_FOLDER_ICON_WARM_V6
     func warmFolderIcons(
         _ applications: [ApplicationRecord],
         pointSize: CGFloat,
@@ -8487,7 +8487,7 @@ private extension LaunchpadRootView {
         }
     }
 
-    // OPENLAUNCHPAD_FOLDER_PAGE_LOCAL_LAYOUT_V16
+    // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
     // Resolve every page against the stable full-folder grid, but always map the
     // page's applications from local slot zero. This deliberately does not reuse
     // a page-global/absolute index. A sparse second page therefore occupies
@@ -8497,10 +8497,10 @@ private extension LaunchpadRootView {
         visibleCount: Int,
         metrics: FolderGridMetrics
     ) -> GridItemFrames? {
-        // OPENLAUNCHPAD_FOLDER_PAGE_LOCAL_LAYOUT_V16_COMPILE_REPAIR
+        // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16_COMPILE_REPAIR
         //
         // GridItemFrames belongs to LayoutCore. Its synthesized memberwise
-        // initializer is internal to that module, so OpenLaunchpad must not
+        // initializer is internal to that module, so LaunchPane must not
         // construct it directly. FolderGridMetrics already exposes the public
         // page-local frame calculation we need.
         //
@@ -8515,7 +8515,7 @@ private extension LaunchpadRootView {
         return metrics.itemFrames(forItemAt: localIndex)
     }
 
-    // OPENLAUNCHPAD_FOLDER_PAGING_ROOT_MOTION_V14
+    // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
     func makeFolderPageLayer(
         folder: ResolvedLaunchpadFolder,
         metrics: FolderGridMetrics,
@@ -8571,7 +8571,7 @@ private extension LaunchpadRootView {
                 )
             ))
 
-            // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+            // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
             // Folder pages use the same per-tile raster strategy as root pages.
             pageLayer.addSublayer(presentation.tileLayer)
 
@@ -8625,7 +8625,7 @@ private extension LaunchpadRootView {
             .joined(separator: "  ")
     }
 
-    // OPENLAUNCHPAD_FOLDER_PAGING_FRAME_PACED_V15
+    // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
     func folderPageSurface(
         folder: ResolvedLaunchpadFolder,
         metrics: FolderGridMetrics,
@@ -8665,7 +8665,7 @@ private extension LaunchpadRootView {
 
     func detachFolderButtons(from surface: FolderPageSurface) {
         for presentation in surface.presentations {
-            // OPENLAUNCHPAD_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+            // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
             //
             // Folder close/page-cache cleanup may discard the presentation that
             // originally owned mouseDown. Keep that one transparent NSButton in
@@ -8732,7 +8732,7 @@ private extension LaunchpadRootView {
             )
             surface.layer.opacity = 1
 
-            // OPENLAUNCHPAD_FOLDER_PAGE_LOCAL_LAYOUT_V16
+            // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
             // Adjacent pages are prebuilt for smooth paging, but they do not
             // need to be visible while resting. Hide them until a transition
             // actually starts so a sparse current page cannot expose content
@@ -9307,7 +9307,7 @@ private extension LaunchpadRootView {
         folderIconTask = nil
         cancelInteractiveFolderPageSwipeImmediately()
 
-        // OPENLAUNCHPAD_FOLDER_PAGING_ROOT_MOTION_V14
+        // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
         // If Escape/outside-click closes the folder mid-page-slide, stop the
         // nested page animator before starting the folder collapse animation.
         if let currentFolderPageLayer = folderPageContentLayer {
@@ -9350,7 +9350,7 @@ private extension LaunchpadRootView {
             return
         }
 
-        // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // Re-flatten the subtree only for the short close animation.
         contentLayer.shouldRasterize = true
         contentLayer.rasterizationScale = max(1, window?.backingScaleFactor ?? 1)
@@ -9402,7 +9402,7 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    // OPENLAUNCHPAD_FOLDER_OPEN_FPS_V13
+    // LAUNCHPANE_FOLDER_OPEN_FPS_V13
     func resumeRootIconPrewarmingAfterFolder() {
         guard
             presentationResourcesActive,
@@ -9611,7 +9611,7 @@ private final class InteractivePageSwipe {
 private enum LaunchpadRuntimePaths {
     static var layoutFileURL: URL {
         guard
-            let overridePath = ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"],
+            let overridePath = ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"],
             !overridePath.isEmpty
         else {
             return LauncherLayoutStore.defaultFileURL
@@ -9733,7 +9733,7 @@ private enum DragSourceOrigin {
         let sourceAbsoluteIndex: Int
         var destinationAbsoluteIndex: Int
 
-        // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
         // Keep one immutable Folder-order snapshot exactly like the root drag's
         // projectionBaselineDocument. Every page turn/reflow is projected from
         // this baseline, never from an already-mutated preview.
@@ -9741,7 +9741,7 @@ private enum DragSourceOrigin {
         let sourcePage: Int
         var hasCrossedPages = false
 
-        // OPENLAUNCHPAD_FOLDER_DRAG_EDGE_PAGING_V18
+        // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
         // Keep edge-paging state on the gesture owner so cancellation, mouseUp,
         // Folder->Root promotion, and repeated multi-page turns all invalidate
         // the same asynchronous dwell/waiter deterministically.
@@ -9753,7 +9753,7 @@ private enum DragSourceOrigin {
         var isEdgePageTurnInFlight = false
         var pendingReleasePoint: CGPoint?
 
-        // OPENLAUNCHPAD_FOLDER_DRAG_OWNERSHIP_V2
+        // LAUNCHPANE_FOLDER_DRAG_OWNERSHIP_V2
         // Folder-local dragging follows the same ownership rule as root drag:
         // once the proxy exists, the source tile is detached rather than made
         // transparent. Keep its exact parent/index for an atomic local rollback.
@@ -9881,7 +9881,7 @@ private final class LaunchpadDragSession {
         previewState.destination
     }
 
-    // OPENLAUNCHPAD_REORDER_RESPONSE_080_V4
+    // LAUNCHPANE_REORDER_RESPONSE_080_V4
     // The spatial gate prevents accidental swaps; keep the temporal confirmation
     // short so a deliberate crossing feels immediate.
     var intentState = LauncherDragIntentState(mergeDwell: 0.15, reorderDwell: 0.08)

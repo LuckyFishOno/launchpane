@@ -73,7 +73,7 @@ final class FolderLayoutConstraintSolverTests: XCTestCase {
         XCTAssertEqual(root.iconSize, 136, accuracy: 0.001)
         XCTAssertEqual(folder.iconSize, root.iconSize, accuracy: 0.001)
 
-        // OPENLAUNCHPAD_ADAPTIVE_FOLDER_PANEL_SCALE_V12
+        // LAUNCHPANE_ADAPTIVE_FOLDER_PANEL_SCALE_V12
         // A native 4K folder should grow with the same 136/108 visual ratio
         // instead of staying near the baseline ~1404pt panel width.
         XCTAssertGreaterThan(folder.panelFrame.width, 1700)

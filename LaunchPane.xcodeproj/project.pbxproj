@@ -13,7 +13,7 @@
 		09D8835A3A84C41F74DC8AFC /* ResolvedLaunchpadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */; };
 		0D75DFD8B3636EBE3C49B253 /* FolderGridMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D4FE193FBED9D30F9E18F22 /* FolderGridMetrics.swift */; };
 		0E7BE9F258F11E32BBBDA4BC /* LauncherDragStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0316EF912435FF4406D68B /* LauncherDragStateMachineTests.swift */; };
-		12244CC4613DD5D5BC183E64 /* OpenLaunchpadAgent.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		12244CC4613DD5D5BC183E64 /* LaunchPaneAgent.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 1F4C6FA5030C26EE56A7EA1D /* LaunchPaneAgent.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		15317DE43A84082B5D8F1374 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1B0BA9C755B1111664D706C4 /* LauncherLayoutDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443ADE5BD70008889E14D3C2 /* LauncherLayoutDraft.swift */; };
 		21F1378191CE5F7511A2D664 /* GridMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E56C5EAF5E8F1588E68A9B /* GridMetrics.swift */; };
@@ -64,7 +64,7 @@
 		9E1117AC6FA0ACFA8D8BBCC4 /* ApplicationIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4DD9B562099FCB3AFBACDE /* ApplicationIdentity.swift */; };
 		A780A6DA3C9E839CCC62F01C /* LauncherDragCommitStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E229850957C5AD71D22DD37 /* LauncherDragCommitStateTests.swift */; };
 		AB23ABABD660E86FA8280D84 /* LauncherPageLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D61C240000189F8897C427 /* LauncherPageLayoutTests.swift */; };
-		ABF7D9DF7083E8E8F31AF65C /* OpenLaunchpadAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */; };
+		ABF7D9DF7083E8E8F31AF65C /* LaunchPaneAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A68E669D05E860BEC22BEBE /* LaunchPaneAppDelegate.swift */; };
 		ACF411DEBB490DE553B05FEF /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 14B080262F0D053F847C8C56 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AFB607DA6FAB5DAAA5F8A1ED /* LaunchpadVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408C803592FEE9AADE0D481D /* LaunchpadVisualStyle.swift */; };
 		B3B8DD678C68BDD603140072 /* LauncherLayoutDocumentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9518B652FD8CD8C57497B9DE /* LauncherLayoutDocumentTests.swift */; };
@@ -151,7 +151,7 @@
 			containerPortal = 0EDFF5FABD4D2BFF09E84785 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D4ABD2A63C24B8AD8627CD54;
-			remoteInfo = OpenLaunchpadAgent;
+			remoteInfo = LaunchPaneAgent;
 		};
 		F35B1C0486348253B7C037CA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -193,7 +193,7 @@
 			dstPath = Contents/Library/LoginItems;
 			dstSubfolderSpec = 1;
 			files = (
-				12244CC4613DD5D5BC183E64 /* OpenLaunchpadAgent.app in Embed Dependencies */,
+				12244CC4613DD5D5BC183E64 /* LaunchPaneAgent.app in Embed Dependencies */,
 			);
 			name = "Embed Dependencies";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -237,7 +237,7 @@
 		1C32D26B5C679828632E513F /* FolderLayoutConstraintSolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderLayoutConstraintSolverTests.swift; sourceTree = "<group>"; };
 		1E1EB07541F69D0A31D137EF /* PageSwipeInputGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeInputGateTests.swift; sourceTree = "<group>"; };
 		1EAD90D03BB151AA69C03063 /* CenteredPresentationTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CenteredPresentationTransform.swift; sourceTree = "<group>"; };
-		1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenLaunchpadAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1F4C6FA5030C26EE56A7EA1D /* LaunchPaneAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaunchPaneAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		222A916923502CF88621E550 /* AppDiscoverySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiscoverySource.swift; sourceTree = "<group>"; };
 		2283965C7B8580E623BDF407 /* LauncherLayoutDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDocument.swift; sourceTree = "<group>"; };
 		29BA734C9BC2743B9126C8DF /* AppTileButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTileButton.swift; sourceTree = "<group>"; };
@@ -248,7 +248,7 @@
 		331B4CEC80B332CBD4C548BC /* LauncherDragStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragStateMachine.swift; sourceTree = "<group>"; };
 		35FDED82180A56F6A542E724 /* FolderLayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderLayoutConstraintSolver.swift; sourceTree = "<group>"; };
 		3CD5D979B1C7F17EAD127F69 /* LauncherLayoutDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDraftTests.swift; sourceTree = "<group>"; };
-		3FB4D471A61995223FC3DF49 /* OpenLaunchpad.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenLaunchpad.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3FB4D471A61995223FC3DF49 /* LaunchPane.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaunchPane.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		408C803592FEE9AADE0D481D /* LaunchpadVisualStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadVisualStyle.swift; sourceTree = "<group>"; };
 		43B0741E5E4A57312A3B1904 /* LauncherDragIntentStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragIntentStateTests.swift; sourceTree = "<group>"; };
 		443ADE5BD70008889E14D3C2 /* LauncherLayoutDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDraft.swift; sourceTree = "<group>"; };
@@ -268,7 +268,7 @@
 		6E4E38533AF488DB1288B349 /* LauncherDefaultLayoutBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDefaultLayoutBuilder.swift; sourceTree = "<group>"; };
 		6F029DB8DF3AA6B270BCD7FD /* LayoutCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LayoutCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7063D05C62C50D27709A8D0E /* LayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConstraintSolver.swift; sourceTree = "<group>"; };
-		7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLaunchpadAppDelegate.swift; sourceTree = "<group>"; };
+		7A68E669D05E860BEC22BEBE /* LaunchPaneAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPaneAppDelegate.swift; sourceTree = "<group>"; };
 		7C2E689B95E0A1F4DCD985E9 /* PageMotionProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageMotionProfileTests.swift; sourceTree = "<group>"; };
 		7D4DD9B562099FCB3AFBACDE /* ApplicationIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIdentity.swift; sourceTree = "<group>"; };
 		85B82049AF39D0EE1704D010 /* LauncherDragPreviewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragPreviewState.swift; sourceTree = "<group>"; };
@@ -397,13 +397,13 @@
 				D8980D149844E12745569181 /* DisplayCoreTests.xctest */,
 				89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */,
 				6F029DB8DF3AA6B270BCD7FD /* LayoutCoreTests.xctest */,
-				3FB4D471A61995223FC3DF49 /* OpenLaunchpad.app */,
-				1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */,
+				3FB4D471A61995223FC3DF49 /* LaunchPane.app */,
+				1F4C6FA5030C26EE56A7EA1D /* LaunchPaneAgent.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		25137C27C66D2E1BEC4318A7 /* OpenLaunchpad */ = {
+		25137C27C66D2E1BEC4318A7 /* LaunchPane */ = {
 			isa = PBXGroup;
 			children = (
 				D453BE91D8AC9209C1579803 /* AppIconCache.swift */,
@@ -418,12 +418,12 @@
 				9B619722288AFCCF8E443240 /* LaunchpadWindowController.swift */,
 				6B31A338D9D6D61031ECD4A2 /* main.swift */,
 				5462CB0F958F486BD9D285B0 /* MenuBarBackdropWindow.swift */,
-				7A68E669D05E860BEC22BEBE /* OpenLaunchpadAppDelegate.swift */,
+				7A68E669D05E860BEC22BEBE /* LaunchPaneAppDelegate.swift */,
 				5582D3009A0729AEB083C298 /* PageScrollGesture.swift */,
 				B7B62A789019436B0A0D6AFD /* ResolvedLaunchpadItem.swift */,
 				9FEB6AA18D73798F6BE43641 /* Resources */,
 			);
-			path = OpenLaunchpad;
+			path = LaunchPane;
 			sourceTree = "<group>";
 		};
 		2D1E4ACAB1567E0136ADE41F /* AppCore */ = {
@@ -460,12 +460,12 @@
 			path = DisplayCore;
 			sourceTree = "<group>";
 		};
-		7907B142E5B447BF5AB8C31A /* OpenLaunchpadAgent */ = {
+		7907B142E5B447BF5AB8C31A /* LaunchPaneAgent */ = {
 			isa = PBXGroup;
 			children = (
 				AAB2DA73B71E42DFD2282ECC /* main.swift */,
 			);
-			path = OpenLaunchpadAgent;
+			path = LaunchPaneAgent;
 			sourceTree = "<group>";
 		};
 		7D722812A4BE974615F8AC03 /* DisplayCoreTests */ = {
@@ -527,8 +527,8 @@
 				2D1E4ACAB1567E0136ADE41F /* AppCore */,
 				653B517893F31BDC96DB62F6 /* DisplayCore */,
 				9F1FF3F849D56E025C55E5FA /* LayoutCore */,
-				25137C27C66D2E1BEC4318A7 /* OpenLaunchpad */,
-				7907B142E5B447BF5AB8C31A /* OpenLaunchpadAgent */,
+				25137C27C66D2E1BEC4318A7 /* LaunchPane */,
+				7907B142E5B447BF5AB8C31A /* LaunchPaneAgent */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -596,9 +596,9 @@
 			productReference = 89DEAF972EA4C00ED237B8E3 /* LayoutCore.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		A601FBF8B0FF84481231803F /* OpenLaunchpad */ = {
+		A601FBF8B0FF84481231803F /* LaunchPane */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 6E2015047DD4DA92402460DC /* Build configuration list for PBXNativeTarget "OpenLaunchpad" */;
+			buildConfigurationList = 6E2015047DD4DA92402460DC /* Build configuration list for PBXNativeTarget "LaunchPane" */;
 			buildPhases = (
 				D62C611A2F914D9A76A3D0CB /* Sources */,
 				AB6FC30484D5021C3F26D4C5 /* Resources */,
@@ -609,11 +609,11 @@
 			dependencies = (
 				A332CD3DF8F13682C66387A7 /* PBXTargetDependency */,
 			);
-			name = OpenLaunchpad;
+			name = LaunchPane;
 			packageProductDependencies = (
 			);
-			productName = OpenLaunchpad;
-			productReference = 3FB4D471A61995223FC3DF49 /* OpenLaunchpad.app */;
+			productName = LaunchPane;
+			productReference = 3FB4D471A61995223FC3DF49 /* LaunchPane.app */;
 			productType = "com.apple.product-type.application";
 		};
 		A742D13D123D58D7443D071D /* AppCore */ = {
@@ -650,9 +650,9 @@
 			productReference = 14B080262F0D053F847C8C56 /* DisplayCore.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */ = {
+		D4ABD2A63C24B8AD8627CD54 /* LaunchPaneAgent */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "OpenLaunchpadAgent" */;
+			buildConfigurationList = 02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "LaunchPaneAgent" */;
 			buildPhases = (
 				BC9CB06B1095B5D147FF7B0E /* Sources */,
 				1BB5FEB02E0DDE257DDDE23A /* Frameworks */,
@@ -665,11 +665,11 @@
 				ACDDC9F6A4E7D473E95C9314 /* PBXTargetDependency */,
 				A4A541E3B8BA2022D98C2F0E /* PBXTargetDependency */,
 			);
-			name = OpenLaunchpadAgent;
+			name = LaunchPaneAgent;
 			packageProductDependencies = (
 			);
-			productName = OpenLaunchpadAgent;
-			productReference = 1F4C6FA5030C26EE56A7EA1D /* OpenLaunchpadAgent.app */;
+			productName = LaunchPaneAgent;
+			productReference = 1F4C6FA5030C26EE56A7EA1D /* LaunchPaneAgent.app */;
 			productType = "com.apple.product-type.application";
 		};
 		FAE6BA9E8C49944AC05AECE5 /* AppCoreTests */ = {
@@ -709,7 +709,7 @@
 					};
 				};
 			};
-			buildConfigurationList = DFE695066891B9FE3D2D7E5C /* Build configuration list for PBXProject "OpenLaunchpad" */;
+			buildConfigurationList = DFE695066891B9FE3D2D7E5C /* Build configuration list for PBXProject "LaunchPane" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -726,8 +726,8 @@
 				A742D13D123D58D7443D071D /* AppCore */,
 				B072042C9B93747290AEA0B3 /* DisplayCore */,
 				5E043041C2F50E83AEA383F6 /* LayoutCore */,
-				D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */,
-				A601FBF8B0FF84481231803F /* OpenLaunchpad */,
+				D4ABD2A63C24B8AD8627CD54 /* LaunchPaneAgent */,
+				A601FBF8B0FF84481231803F /* LaunchPane */,
 				12CFDAEAC98137A52DD8682D /* DisplayCoreTests */,
 				FAE6BA9E8C49944AC05AECE5 /* AppCoreTests */,
 				4A138C787ADC5E41BBE02027 /* LayoutCoreTests */,
@@ -850,7 +850,7 @@
 				E9DC648E2B6FAB77C71311CC /* LaunchpadWindow.swift in Sources */,
 				FBD82A0C49F0AFC8E4E7C9C9 /* LaunchpadWindowController.swift in Sources */,
 				CED3475B2679E293531AA094 /* MenuBarBackdropWindow.swift in Sources */,
-				ABF7D9DF7083E8E8F31AF65C /* OpenLaunchpadAppDelegate.swift in Sources */,
+				ABF7D9DF7083E8E8F31AF65C /* LaunchPaneAppDelegate.swift in Sources */,
 				7ADE28F647B62F1FA8A80F9F /* PageScrollGesture.swift in Sources */,
 				09D8835A3A84C41F74DC8AFC /* ResolvedLaunchpadItem.swift in Sources */,
 				48945C82D0C2F2EBDE9D5655 /* main.swift in Sources */,
@@ -908,7 +908,7 @@
 		};
 		A332CD3DF8F13682C66387A7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D4ABD2A63C24B8AD8627CD54 /* OpenLaunchpadAgent */;
+			target = D4ABD2A63C24B8AD8627CD54 /* LaunchPaneAgent */;
 			targetProxy = CE86F3D4A028913A18358730 /* PBXContainerItemProxy */;
 		};
 		A4A541E3B8BA2022D98C2F0E /* PBXTargetDependency */ = {
@@ -940,7 +940,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.DisplayCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.DisplayCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -958,7 +958,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.AppCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.AppCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -979,7 +979,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.LayoutCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LayoutCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -994,17 +994,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
+				INFOPLIST_KEY_CFBundleDisplayName = LaunchPaneAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 LaunchPane contributors";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
-				PRODUCT_NAME = OpenLaunchpadAgent;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPaneAgent;
+				PRODUCT_NAME = LaunchPaneAgent;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
@@ -1021,7 +1021,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.LayoutCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LayoutCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1034,17 +1034,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpadAgent;
+				INFOPLIST_KEY_CFBundleDisplayName = LaunchPaneAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 LaunchPane contributors";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpadAgent;
-				PRODUCT_NAME = OpenLaunchpadAgent;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPaneAgent;
+				PRODUCT_NAME = LaunchPaneAgent;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
@@ -1066,7 +1066,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.AppCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.AppCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1089,7 +1089,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.LayoutCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LayoutCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1107,7 +1107,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.AppCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.AppCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1123,7 +1123,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.DisplayCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.DisplayCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1139,7 +1139,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.LayoutCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LayoutCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1155,7 +1155,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.DisplayCoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.DisplayCoreTests;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1168,17 +1168,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpad;
+				INFOPLIST_KEY_CFBundleDisplayName = LaunchPane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 LaunchPane contributors";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpad;
-				PRODUCT_NAME = OpenLaunchpad;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPane;
+				PRODUCT_NAME = LaunchPane;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1320,7 +1320,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.DisplayCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.DisplayCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1343,7 +1343,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.AppCore;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.AppCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1358,17 +1358,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenLaunchpad;
+				INFOPLIST_KEY_CFBundleDisplayName = LaunchPane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 OpenLaunchpad contributors";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 LaunchPane contributors";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.2;
-				PRODUCT_BUNDLE_IDENTIFIER = org.openlaunchpad.OpenLaunchpad;
-				PRODUCT_NAME = OpenLaunchpad;
+				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPane;
+				PRODUCT_NAME = LaunchPane;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1376,7 +1376,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "OpenLaunchpadAgent" */ = {
+		02030E936AFD23EDBE710426 /* Build configuration list for PBXNativeTarget "LaunchPaneAgent" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				622F8F83507ADCAA79DC6279 /* Debug */,
@@ -1412,7 +1412,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		6E2015047DD4DA92402460DC /* Build configuration list for PBXNativeTarget "OpenLaunchpad" */ = {
+		6E2015047DD4DA92402460DC /* Build configuration list for PBXNativeTarget "LaunchPane" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				E0E8298376322C7DE5FBA909 /* Debug */,
@@ -1448,7 +1448,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		DFE695066891B9FE3D2D7E5C /* Build configuration list for PBXProject "OpenLaunchpad" */ = {
+		DFE695066891B9FE3D2D7E5C /* Build configuration list for PBXProject "LaunchPane" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				E9DBA3E47FD305281AE12F8F /* Debug */,

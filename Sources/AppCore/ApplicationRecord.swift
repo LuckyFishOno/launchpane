@@ -40,7 +40,7 @@ public struct ApplicationRecord: Identifiable, Codable, Hashable, Sendable {
             normalizedName
         )
 
-        // OPENLAUNCHPAD_STRICT_LCSUBSTRING_SEARCH_V1
+        // LAUNCHPANE_STRICT_LCSUBSTRING_SEARCH_V1
         // The whole query must be the common contiguous substring.
         guard match.length == normalizedQuery.count else { return nil }
 

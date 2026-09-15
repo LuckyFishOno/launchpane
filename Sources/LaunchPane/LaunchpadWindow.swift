@@ -4,7 +4,7 @@ import LayoutCore
 
 @MainActor
 final class LaunchpadWindow: NSWindow {
-    // OPENLAUNCHPAD_NATIVE_DOCK_TRANSITION_V3_RADIAL
+    // LAUNCHPANE_NATIVE_DOCK_TRANSITION_V3_RADIAL
     //
     // Timing is derived from the supplied native Launchpad recording
     // (58 fps). In addition to the background cross-fade, the foreground
@@ -56,10 +56,10 @@ final class LaunchpadWindow: NSWindow {
         static let minimumReversalDuration: CFTimeInterval = 2.0 / 58.0
 
         static let opacityAnimationKey =
-            "OpenLaunchpad.nativeWindowVisibility"
+            "LaunchPane.nativeWindowVisibility"
 
         static let spatialAnimationKey =
-            "OpenLaunchpad.nativeRadialMotion"
+            "LaunchPane.nativeRadialMotion"
 
         // A restrained overscan is enough to make edge items visibly travel
         // farther than center items without cropping the final resting layout.
@@ -143,7 +143,7 @@ final class LaunchpadWindow: NSWindow {
         super.sendEvent(event)
     }
 
-    // OPENLAUNCHPAD_DOCK_AGENT_ARCHITECTURE_V1
+    // LAUNCHPANE_DOCK_AGENT_ARCHITECTURE_V1
     //
     // The UI lives in an LSUIElement/accessory agent. No menu-bar
     // presentation workaround belongs in this window anymore.

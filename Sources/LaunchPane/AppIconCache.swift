@@ -41,12 +41,12 @@ final class AppIconCache {
 
     private let cache = NSCache<NSString, CachedIcon>()
 
-    // OPENLAUNCHPAD_FIRST_PAGE_PINNED_ICON_CACHE_V2
+    // LAUNCHPANE_FIRST_PAGE_PINNED_ICON_CACHE_V2
     // Only first-page standalone applications live here while the launcher is
     // hidden. Folder children and every other page stay in the transient cache.
     private var pinnedFirstPageIcons: [NSString: CachedIcon] = [:]
 
-    // OPENLAUNCHPAD_FIRST_PAGE_FOLDER_MINIATURE_CACHE_V3
+    // LAUNCHPANE_FIRST_PAGE_FOLDER_MINIATURE_CACHE_V3
     // Closed folders only expose a 3x3 preview. Keep those tiny first-page
     // bitmaps separately so idle memory remains bounded even with many folders.
     private var pinnedFirstPageFolderMiniatures: [NSString: CachedIcon] = [:]
@@ -54,7 +54,7 @@ final class AppIconCache {
     private var inFlightLoads: [Request: InFlightLoad] = [:]
     private let decode: @Sendable (String, Int) -> CGImage?
 
-    // OPENLAUNCHPAD_EXACT_TRANSIENT_ICON_BITMAPS_V6
+    // LAUNCHPANE_EXACT_TRANSIENT_ICON_BITMAPS_V6
     // Keep the transient visible-session cache at the exact backing-pixel size.
     // NSWorkspace may otherwise hand back 512/1024px representations for a
     // ~216px request, wasting cache budget and evicting folder icons too early.
@@ -80,7 +80,7 @@ final class AppIconCache {
         return cachedImage(for: request)
     }
 
-    // OPENLAUNCHPAD_BEST_AVAILABLE_ICON_FALLBACK_V6
+    // LAUNCHPANE_BEST_AVAILABLE_ICON_FALLBACK_V6
     /// Returns the best bitmap already resident even when it is smaller than the
     /// final request. Open-folder rendering uses this only as an immediate visual
     /// fallback; the normal HQ loader replaces it as soon as the exact image lands.

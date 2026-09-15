@@ -160,7 +160,7 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         try publish(candidate)
     }
 
-    // OPENLAUNCHPAD_FOLDER_CHILD_REORDER_V8
+    // LAUNCHPANE_FOLDER_CHILD_REORDER_V8
     /// Moves one application to the position currently occupied by another
     /// application in the same folder. The destination uses the same final-slot
     /// semantics as root reordering: intervening children shift by one slot.
@@ -199,7 +199,7 @@ public struct LauncherLayoutDraft: Equatable, Sendable {
         try publish(candidate)
     }
 
-    // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
     /// Moves one application to an exact final child index after removing the
     /// source. This mirrors root `moveRootItem(...toPage:at:)` insertion
     /// semantics and lets Folder drag paging project/commit the same slot that

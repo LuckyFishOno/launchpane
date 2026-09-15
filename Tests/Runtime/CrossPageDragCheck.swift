@@ -14,7 +14,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
     private var sourceID: ApplicationIdentity!
     private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
     private var layoutURL: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]!)
+        URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
     private func value<T>(_ object: Any, _ key: String, as: T.Type = T.self) -> T? {
         guard let raw = Mirror(reflecting: object).children.first(where: { $0.label == key })?.value else { return nil }
@@ -218,7 +218,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
 @main
 struct CrossPageDragCheck {
     @MainActor static func main() {
-        precondition(ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true,
+        precondition(ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true,
                      "Use an isolated layout file under /private/tmp")
         let app = NSApplication.shared
         let delegate = CrossPageDragCheckDelegate()

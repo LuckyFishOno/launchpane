@@ -32,7 +32,7 @@ public actor AppCatalogActor {
                     completeness = .partial
                 }
                 for application in outcome.applications {
-                    // OPENLAUNCHPAD_SELF_CATALOG_EXCLUSION_V1
+                    // LAUNCHPANE_SELF_CATALOG_EXCLUSION_V1
                     // Product-specific callers may remove applications from the
                     // canonical catalog by bundle identifier. Filtering here,
                     // before caching, keeps grid/search/reset behavior consistent.

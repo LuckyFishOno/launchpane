@@ -20,7 +20,7 @@ public struct LayoutTokens: Equatable, Sendable {
     public var folder: FolderLayoutTokens
 
     public init(
-        // OPENLAUNCHPAD_BALANCED_ICON_LAYOUT_108_V6
+        // LAUNCHPANE_BALANCED_ICON_LAYOUT_108_V6
         // Reduce the 144pt experiment by one quarter. Root applications and
         // open-folder children still share the exact same resolved geometry.
         preferredIconSize: CGFloat = 108,
@@ -30,8 +30,8 @@ public struct LayoutTokens: Equatable, Sendable {
         minimumVerticalGap: CGFloat = 24,
         horizontalMargin: CGFloat = 48,
         verticalMargin: CGFloat = 32,
-        // OPENLAUNCHPAD_ADAPTIVE_LARGE_DISPLAY_LAYOUT_V7
-        // OPENLAUNCHPAD_WIDER_4K_HORIZONTAL_SPACING_V10
+        // LAUNCHPANE_ADAPTIVE_LARGE_DISPLAY_LAYOUT_V7
+        // LAUNCHPANE_WIDER_4K_HORIZONTAL_SPACING_V10
         // Keep the 1520pt MacBook baseline unchanged, but give large native
         // logical canvases more horizontal breathing room. At a 3840pt canvas
         // the seven-column root grid now tops out at 2160pt instead of 1920pt.

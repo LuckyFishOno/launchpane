@@ -1,4 +1,4 @@
-# OpenLaunchpad Engineering Rules
+# LaunchPane Engineering Rules
 
 - Use Swift 6 and documented macOS APIs in production targets.
 - Build the launcher runtime with AppKit and Core Animation. Reserve SwiftUI for settings and onboarding.

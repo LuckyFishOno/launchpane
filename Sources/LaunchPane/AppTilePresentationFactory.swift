@@ -103,7 +103,7 @@ enum AppTilePresentationFactory {
         // Match the visible footprint of modern macOS app icons instead.
         static let surfaceScale: CGFloat = 0.80
 
-        // OPENLAUNCHPAD_FOLDER_MINIATURE_GEOMETRY_108_V6
+        // LAUNCHPANE_FOLDER_MINIATURE_GEOMETRY_108_V6
         // Keep the established 3x3 optical proportions while the root icon
         // settles at 108pt. Normal 108pt geometry resolves to:
         //   miniature icon = 15.84pt

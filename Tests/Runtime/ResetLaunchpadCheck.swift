@@ -10,7 +10,7 @@ final class ResetLaunchpadCheckDelegate: NSObject, NSApplicationDelegate {
     private let previousApp = NSWorkspace.shared.frontmostApplication
     private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
     private var layoutURL: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]!)
+        URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
 
     private func descendants(_ view: NSView) -> [NSView] {
@@ -113,7 +113,7 @@ final class ResetLaunchpadCheckDelegate: NSObject, NSApplicationDelegate {
 @main
 struct ResetLaunchpadCheck {
     @MainActor static func main() {
-        precondition(ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true)
+        precondition(ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true)
         let app = NSApplication.shared
         let delegate = ResetLaunchpadCheckDelegate()
         app.setActivationPolicy(.accessory)

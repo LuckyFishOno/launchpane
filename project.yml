@@ -1,5 +1,5 @@
-name: OpenLaunchpad
-# OPENLAUNCHPAD_XCODE_LEGACY_RESOURCE_CLEANUP_V1
+name: LaunchPane
+# LAUNCHPANE_XCODE_LEGACY_RESOURCE_CLEANUP_V1
 
 options:
   minimumXcodeGenVersion: 2.42.0
@@ -25,7 +25,7 @@ targets:
           - "**/*.backup-*"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.AppCore
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.AppCore
         GENERATE_INFOPLIST_FILE: YES
 
   DisplayCore:
@@ -38,7 +38,7 @@ targets:
           - "**/*.backup-*"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.DisplayCore
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.DisplayCore
         GENERATE_INFOPLIST_FILE: YES
 
   LayoutCore:
@@ -53,20 +53,20 @@ targets:
       - target: DisplayCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.LayoutCore
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.LayoutCore
         GENERATE_INFOPLIST_FILE: YES
 
-  OpenLaunchpadAgent:
+  LaunchPaneAgent:
     type: application
     platform: macOS
     sources:
-      - path: Sources/OpenLaunchpad
+      - path: Sources/LaunchPane
         excludes:
           - main.swift
           - Resources
           - "**/*.backup-*"
           - "**/*.before-*"
-      - path: Sources/OpenLaunchpadAgent
+      - path: Sources/LaunchPaneAgent
         excludes:
           - "**/*.backup-*"
           - "**/*.before-*"
@@ -76,26 +76,26 @@ targets:
       - target: LayoutCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.OpenLaunchpadAgent
-        PRODUCT_NAME: OpenLaunchpadAgent
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.LaunchPaneAgent
+        PRODUCT_NAME: LaunchPaneAgent
         MARKETING_VERSION: "1.2"
         CURRENT_PROJECT_VERSION: 3
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: OpenLaunchpadAgent
+        INFOPLIST_KEY_CFBundleDisplayName: LaunchPaneAgent
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
-        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 OpenLaunchpad contributors
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 LaunchPane contributors
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: YES
 
-  OpenLaunchpad:
+  LaunchPane:
     type: application
     platform: macOS
     sources:
-      - path: Sources/OpenLaunchpad/main.swift
-      - path: Sources/OpenLaunchpad/Resources
+      - path: Sources/LaunchPane/main.swift
+      - path: Sources/LaunchPane/Resources
     dependencies:
-      - target: OpenLaunchpadAgent
+      - target: LaunchPaneAgent
         embed: true
         link: false
         codeSign: true
@@ -104,16 +104,16 @@ targets:
           subpath: Contents/Library/LoginItems
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.OpenLaunchpad
-        PRODUCT_NAME: OpenLaunchpad
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.LaunchPane
+        PRODUCT_NAME: LaunchPane
         MARKETING_VERSION: "1.2"
         CURRENT_PROJECT_VERSION: 3
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: OpenLaunchpad
+        INFOPLIST_KEY_CFBundleDisplayName: LaunchPane
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 OpenLaunchpad contributors
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 LaunchPane contributors
         CODE_SIGN_STYLE: Automatic
 
   DisplayCoreTests:
@@ -128,7 +128,7 @@ targets:
       - target: DisplayCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.DisplayCoreTests
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.DisplayCoreTests
         GENERATE_INFOPLIST_FILE: YES
 
   AppCoreTests:
@@ -143,7 +143,7 @@ targets:
       - target: AppCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.AppCoreTests
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.AppCoreTests
         GENERATE_INFOPLIST_FILE: YES
 
   LayoutCoreTests:
@@ -159,14 +159,14 @@ targets:
       - target: LayoutCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.openlaunchpad.LayoutCoreTests
+        PRODUCT_BUNDLE_IDENTIFIER: org.launchpane.LayoutCoreTests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  OpenLaunchpad:
+  LaunchPane:
     build:
       targets:
-        OpenLaunchpad: all
+        LaunchPane: all
         AppCoreTests: [test]
         DisplayCoreTests: [test]
         LayoutCoreTests: [test]

@@ -181,7 +181,7 @@ final class LauncherLayoutDraftTests: XCTestCase {
         XCTAssertEqual(folder.applications, [canvas, alpha, beta])
     }
 
-    // OPENLAUNCHPAD_FOLDER_DRAG_ROOT_PARITY_V19
+    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
     func testMoveApplicationWithinFolderToExactIndexMatchesProjectedSlot() throws {
         let alpha = reference("org.example.alpha")
         let beta = reference("org.example.beta")

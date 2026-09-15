@@ -12,8 +12,8 @@ struct AgentMemoryCheck {
     @MainActor
     static func main() async throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("openlaunchpad-memory-check-\(UUID().uuidString)")
-        setenv("OPENLAUNCHPAD_LAYOUT_PATH", directory.appendingPathComponent("layout.json").path, 1)
+            .appendingPathComponent("launchpane-memory-check-\(UUID().uuidString)")
+        setenv("LAUNCHPANE_LAYOUT_PATH", directory.appendingPathComponent("layout.json").path, 1)
         defer { try? FileManager.default.removeItem(at: directory) }
         NSApplication.shared.setActivationPolicy(.prohibited)
         report("AppKit initialized")

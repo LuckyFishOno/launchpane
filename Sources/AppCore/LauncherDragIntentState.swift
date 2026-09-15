@@ -20,7 +20,7 @@ public struct LauncherDragIntentState: Equatable, Sendable {
     public private(set) var isReady = false
     public private(set) var generation: UInt64 = 0
 
-    // OPENLAUNCHPAD_MERGE_DWELL_015_V1
+    // LAUNCHPANE_MERGE_DWELL_015_V1
 
 
     public init(mergeDwell: TimeInterval = 0.15, reorderDwell: TimeInterval = 0.18) {

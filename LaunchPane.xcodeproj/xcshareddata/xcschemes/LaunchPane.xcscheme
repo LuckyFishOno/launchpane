@@ -18,7 +18,7 @@
                BlueprintIdentifier = "FAE6BA9E8C49944AC05AECE5"
                BuildableName = "AppCoreTests.xctest"
                BlueprintName = "AppCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -32,7 +32,7 @@
                BlueprintIdentifier = "12CFDAEAC98137A52DD8682D"
                BuildableName = "DisplayCoreTests.xctest"
                BlueprintName = "DisplayCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -46,7 +46,7 @@
                BlueprintIdentifier = "4A138C787ADC5E41BBE02027"
                BuildableName = "LayoutCoreTests.xctest"
                BlueprintName = "LayoutCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -58,9 +58,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A601FBF8B0FF84481231803F"
-               BuildableName = "OpenLaunchpad.app"
-               BlueprintName = "OpenLaunchpad"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               BuildableName = "LaunchPane.app"
+               BlueprintName = "LaunchPane"
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -76,9 +76,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A601FBF8B0FF84481231803F"
-            BuildableName = "OpenLaunchpad.app"
-            BlueprintName = "OpenLaunchpad"
-            ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+            BuildableName = "LaunchPane.app"
+            BlueprintName = "LaunchPane"
+            ReferencedContainer = "container:LaunchPane.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -90,7 +90,7 @@
                BlueprintIdentifier = "FAE6BA9E8C49944AC05AECE5"
                BuildableName = "AppCoreTests.xctest"
                BlueprintName = "AppCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -101,7 +101,7 @@
                BlueprintIdentifier = "12CFDAEAC98137A52DD8682D"
                BuildableName = "DisplayCoreTests.xctest"
                BlueprintName = "DisplayCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -112,7 +112,7 @@
                BlueprintIdentifier = "4A138C787ADC5E41BBE02027"
                BuildableName = "LayoutCoreTests.xctest"
                BlueprintName = "LayoutCoreTests"
-               ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -134,9 +134,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A601FBF8B0FF84481231803F"
-            BuildableName = "OpenLaunchpad.app"
-            BlueprintName = "OpenLaunchpad"
-            ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+            BuildableName = "LaunchPane.app"
+            BlueprintName = "LaunchPane"
+            ReferencedContainer = "container:LaunchPane.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -151,9 +151,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A601FBF8B0FF84481231803F"
-            BuildableName = "OpenLaunchpad.app"
-            BlueprintName = "OpenLaunchpad"
-            ReferencedContainer = "container:OpenLaunchpad.xcodeproj">
+            BuildableName = "LaunchPane.app"
+            BlueprintName = "LaunchPane"
+            ReferencedContainer = "container:LaunchPane.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

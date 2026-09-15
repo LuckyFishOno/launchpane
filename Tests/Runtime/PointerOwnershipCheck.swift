@@ -14,7 +14,7 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
     private var fixture = LauncherLayoutDocument()
     private var references: [LauncherApplicationReference] = []
     private var layoutURL: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]!)
+        URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
 
     private func value<T>(_ object: Any, _ key: String, as: T.Type = T.self) -> T? {
@@ -205,7 +205,7 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
 
 @main struct PointerOwnershipCheck {
     @MainActor static func main() {
-        precondition(ProcessInfo.processInfo.environment["OPENLAUNCHPAD_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true)
+        precondition(ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]?.hasPrefix("/private/tmp/") == true)
         let app = NSApplication.shared
         let delegate = PointerOwnershipCheckDelegate()
         app.setActivationPolicy(.accessory)

@@ -3,7 +3,7 @@ import QuartzCore
 
 @MainActor
 final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
-    // OPENLAUNCHPAD_SEARCH_FOCUS_SLIDE_V3_SUBLAYER_TRANSFORM
+    // LAUNCHPANE_SEARCH_FOCUS_SLIDE_V3_SUBLAYER_TRANSFORM
     // The icon and idle placeholder share one visual container.
     // IMPORTANT: the NSView frame never moves during focus. AppKit owns view
     // geometry and relayouts it repeatedly while the field editor becomes first
@@ -28,7 +28,7 @@ final class LaunchpadSearchField: NSView, NSTextFieldDelegate {
     private var isEditing = false
     private var contentMotionGeneration = 0
 
-    // OPENLAUNCHPAD_SEARCH_IME_MARKED_TEXT_V1
+    // LAUNCHPANE_SEARCH_IME_MARKED_TEXT_V1
     //
     // NSTextField edits through the window's shared NSTextView field editor.
     // During IME composition (Zhuyin/Pinyin/Japanese/etc.), marked text can
