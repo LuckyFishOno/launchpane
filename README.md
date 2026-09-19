@@ -1,8 +1,8 @@
 # LaunchPane
 
-**Bring back the classic full-screen app launcher on macOS.**
+**A fast, native Launchpad-style app launcher for modern macOS.**
 
-LaunchPane is a fast, native, open-source Launchpad replacement built with **Swift 6**, **AppKit**, and **Core Animation**. It gives you a full-screen app grid, instant local search, folders, persistent drag-and-drop organization, and smooth paging without accounts, telemetry, or mandatory network access.
+LaunchPane gives Apple silicon Macs a familiar full-screen app grid with instant search, folders, drag-and-drop organization, and smooth paging. It is open source, local-first, and built with Swift, AppKit, and Core Animation.
 
 <p align="center">
   <a href="https://github.com/LuckyFishOno/launchpane/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/LuckyFishOno/launchpane?display_name=tag&sort=semver"></a>
@@ -19,78 +19,85 @@ LaunchPane is a fast, native, open-source Launchpad replacement built with **Swi
 <p align="center">
   <a href="https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg"><strong>Download LaunchPane</strong></a>
   ·
-  <a href="https://github.com/LuckyFishOno/launchpane/releases/latest">Release notes</a>
+  <a href="#install">Install</a>
+  ·
+  <a href="#first-launch">First launch</a>
   ·
   <a href="#build-from-source">Build from source</a>
   ·
   <a href="https://github.com/LuckyFishOno/launchpane/issues">Report an issue</a>
 </p>
 
-<p align="center">
-  macOS 15+ · Apple silicon · MIT licensed · Local-first
-</p>
+## Why use it?
 
-## Why LaunchPane?
+LaunchPane is for Mac users who miss a simple, visual way to open and organize apps. It keeps the classic full-screen launcher feeling, while making the behavior predictable: folders stay put, pages do not unexpectedly collapse, and your layout is saved locally.
 
-LaunchPane is designed for people who want the familiar full-screen macOS app-grid experience with predictable organization and native interactions.
-
-| | |
+| What you get | Why it matters |
 | --- | --- |
-| **Native macOS UI** | Built with AppKit and Core Animation using documented system APIs. |
-| **Persistent organization** | Reorder apps, create folders, move items across pages, and keep the layout between launches. |
-| **Fast navigation** | Search locally, page with a trackpad or mouse, and navigate from the keyboard. |
-| **Adaptive layout** | Handles Retina and non-Retina displays, mixed-scale multi-display setups, and different scaling modes. |
-| **Private by default** | No account, activation, analytics, telemetry, or mandatory network connection. |
-| **Accessible** | Keyboard navigation, accessibility semantics, right-to-left layout support, and Reduce Motion behavior. |
+| **Full-screen app grid** | Browse installed apps visually, with a layout that adapts to your display. |
+| **Instant local search** | Find apps quickly without accounts, indexing services, or network calls. |
+| **Folders and drag-and-drop** | Group apps, reorder pages, move items across pages, and keep the layout. |
+| **Native macOS feel** | AppKit and Core Animation, with trackpad, mouse, and keyboard navigation. |
+| **Private by default** | No telemetry, no login, no activation, and no mandatory internet connection. |
 
 ## Features
 
-- Full-screen adaptive app grid
-- Installed application discovery
+- Adaptive full-screen app grid
+- Installed app discovery with automatic refresh when new apps are added
 - Instant local search with IME-aware input
 - Folder creation and management
-- Persistent drag-and-drop reordering
+- Persistent drag-and-drop organization across pages
 - Cross-page dragging with edge paging
-- Folder-item reordering and multi-page folders
-- Folder-to-root extraction
 - Trackpad, mouse, and keyboard paging
-- Page-local placement with forward overflow
-- Multi-display and mixed-scale support
-- Keyboard navigation, RTL layout, and Reduce Motion support
-- Reset Launchpad action
+- Multi-display and mixed-scale display support
+- Accessibility semantics, keyboard navigation, RTL layout, and Reduce Motion support
+- Reset action for restoring the default launcher layout
 
 ## Requirements
 
-- **macOS 15 or later**
-- **Apple silicon Mac** (M1 or newer)
+- macOS 15 or later
+- Apple silicon Mac, M1 or newer
 
 Intel Macs are not currently supported.
 
 ## Install
 
-1. [Download the latest `LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg).
+1. Download the latest [`LaunchPane.dmg`](https://github.com/LuckyFishOno/launchpane/releases/latest/download/LaunchPane.dmg).
 2. Open the disk image.
 3. Drag **LaunchPane.app** into **Applications**.
-4. Open LaunchPane from **Applications**.
-5. Optionally, right-click **LaunchPane** in the Dock → **Options** → **Keep in Dock** for one-click access.
+4. Open **LaunchPane** from Applications.
+5. Keep it in the Dock if you want one-click access.
 
-### First launch on macOS
+## First launch
 
-> [!NOTE]
-> The current downloadable build is not notarized with an Apple Developer ID. macOS may therefore block the first launch until you explicitly approve it. This is a one-time step for the downloaded build.
+The downloadable build is not notarized yet, so macOS will ask you to approve it the first time. This is expected for an unsigned open-source build downloaded outside the Mac App Store.
 
-If macOS shows an **“LaunchPane” Not Opened** warning:
+If macOS shows **“LaunchPane” Not Opened**:
 
 1. Click **Done**.
-2. Open **System Settings → Privacy & Security**.
-3. Scroll to **Security**.
-4. Click **Open Anyway** for LaunchPane.
-5. Authenticate if requested.
-6. Click **Open**.
+2. Open **System Settings**.
+3. Go to **Privacy & Security**.
+4. Scroll to **Security**.
+5. Click **Open Anyway** for LaunchPane.
+6. Authenticate if macOS asks.
+7. Click **Open**.
 
 <img width="716" alt="Allowing LaunchPane from macOS Privacy & Security settings" src="https://github.com/user-attachments/assets/d42ebbfc-6beb-4f20-82a5-d6173db66315" />
 
-If you prefer not to use the downloadable build, you can [build LaunchPane from source](#build-from-source).
+After this one-time approval, LaunchPane opens normally. If you would rather avoid this Gatekeeper step, build the app from source with Xcode.
+
+## First use
+
+LaunchPane opens as a full-screen app grid. New apps installed into `/Applications`, `/System/Applications`, or `~/Applications` are detected and added to the pane automatically.
+
+Useful interactions:
+
+- Type to search.
+- Drag apps to reorder them.
+- Drag one app onto another app to create a folder.
+- Drag near the left or right edge to move across pages.
+- Click outside a folder to close it.
+- Use the reset action if you want to rebuild the default layout.
 
 ## Build from source
 
@@ -99,7 +106,7 @@ If you prefer not to use the downloadable build, you can [build LaunchPane from 
 - Apple silicon Mac running macOS 15 or later
 - Xcode 26 or later
 - Swift 6
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.42 or later only if you want to regenerate the Xcode project
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.42 or later, only if you regenerate the Xcode project
 
 ### Build
 
@@ -117,10 +124,11 @@ xcodebuild \
 open Builds/LaunchPane.app
 ```
 
-### Run the test suite
+### Run focused tests
 
 ```bash
-swift test
+swift test --filter FolderMergeGeometryTests
+swift test --filter LauncherLayoutStoreTests/testReconcileAndCommitAppendsNewApplicationsToExistingLayout
 ```
 
 ## Local data and privacy
@@ -131,13 +139,11 @@ LaunchPane stores its layout locally at:
 ~/Library/Application Support/LaunchPane/LauncherLayout.json
 ```
 
-The layout uses explicit pages. Removing an app from one page does not pull apps backward from later pages, while dropping onto a full page pushes overflow forward and creates another page when needed.
-
-LaunchPane does not require an account and does not send analytics or telemetry.
+LaunchPane does not require an account and does not send analytics or telemetry. Layout data stays on your Mac.
 
 ## Architecture
 
-LaunchPane separates application discovery, display geometry, layout behavior, and presentation so each part can be tested independently.
+LaunchPane separates app discovery, display geometry, layout behavior, and presentation so each part can be tested independently.
 
 ```mermaid
 flowchart LR
@@ -151,23 +157,23 @@ flowchart LR
     Agent --> UI[AppKit + Core Animation UI]
 ```
 
-The launcher process stays intentionally small, while the persistent UI lives in `LaunchPaneAgent`. Display geometry flows through `DisplayContext` and `LayoutConstraintSolver`, and drag-and-reorder behavior is modeled as an explicit state machine with transaction and rollback semantics.
+The visible app is a small launcher. The persistent UI lives in `LaunchPaneAgent`, which owns the full-screen window, icon rendering, search, paging, drag-and-drop, and accessibility behavior.
 
-For implementation details, see [Architecture](docs/ARCHITECTURE.md) and [Paging performance](docs/PAGING_PERFORMANCE.md).
+For more detail, see [Architecture](docs/ARCHITECTURE.md), [Memory](docs/MEMORY.md), and [Paging performance](docs/PAGING_PERFORMANCE.md).
 
 ## Contributing
 
-Bug reports and focused pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Bug reports and focused pull requests are welcome. Useful reports include your macOS version, Mac model, display arrangement, and a short screen recording for interaction issues.
 
-Useful feedback includes:
+Areas where feedback helps most:
 
-- interaction or animation issues
-- unusual display or scaling configurations
-- keyboard or accessibility behavior
-- app-discovery edge cases
-- reproducible drag-and-drop problems
+- drag-and-drop feel
+- folder creation and reordering
+- unusual display scaling or multi-display setups
+- app discovery edge cases
+- keyboard and accessibility behavior
 
-If LaunchPane is useful to you, **star the repository** — it helps more Mac users discover the project.
+If LaunchPane is useful to you, starring the repository helps more Mac users find it.
 
 ## License
 
