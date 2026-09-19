@@ -28,6 +28,12 @@ LaunchPane gives Apple silicon Macs a familiar full-screen app grid with instant
   <a href="https://github.com/LuckyFishOno/launchpane/issues">Report an issue</a>
 </p>
 
+## See LaunchPane in action
+
+<p align="center">
+  <img src="docs/assets/launchpane-demo.gif" width="1200" alt="LaunchPane search, folder creation, app organization, and page navigation demo" />
+</p>
+
 ## Why use it?
 
 LaunchPane is for Mac users who miss a simple, visual way to open and organize apps. It keeps the classic full-screen launcher feeling, while making the behavior predictable: folders stay put, pages do not unexpectedly collapse, and your layout is saved locally.
