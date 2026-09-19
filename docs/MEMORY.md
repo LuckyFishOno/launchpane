@@ -76,7 +76,7 @@ For a delayed command-line measurement while the launcher stays visible:
 zsh Tests/Runtime/SampleAgentMemory.zsh
 ```
 
-Open Launchpad on 4K within eight seconds and leave it open. The read-only report
+LaunchPane on 4K within eight seconds and leave it open. The read-only report
 is saved in `Builds`; the script does not launch, kill, or replace the agent.
 Use **Physical footprint**, including compressed memory, rather than only RSS.
 The offline runtime checks are documented in `Tests/Runtime/README.md`.

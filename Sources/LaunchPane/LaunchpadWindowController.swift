@@ -15,6 +15,59 @@ private final class LaunchpadCanvasView: NSView {
 }
 
 @MainActor
+private final class ApplicationDirectoryMonitor {
+    private var sources: [DispatchSourceFileSystemObject] = []
+    private var debounceTask: Task<Void, Never>?
+    private let onChange: @MainActor () -> Void
+
+    init(onChange: @escaping @MainActor () -> Void) {
+        self.onChange = onChange
+    }
+
+    deinit {
+        debounceTask?.cancel()
+        sources.forEach { $0.cancel() }
+    }
+
+    func start() {
+        guard sources.isEmpty else { return }
+        let urls = [
+            URL(fileURLWithPath: "/Applications", isDirectory: true),
+            URL(fileURLWithPath: "/System/Applications", isDirectory: true),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Applications", isDirectory: true),
+        ]
+
+        for url in urls where FileManager.default.fileExists(atPath: url.path) {
+            let descriptor = open(url.path, O_EVTONLY)
+            guard descriptor >= 0 else { continue }
+            let source = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: descriptor,
+                eventMask: [.write, .delete, .rename, .revoke],
+                queue: .main
+            )
+            source.setEventHandler { [weak self] in
+                self?.scheduleChange()
+            }
+            source.setCancelHandler {
+                close(descriptor)
+            }
+            sources.append(source)
+            source.resume()
+        }
+    }
+
+    private func scheduleChange() {
+        debounceTask?.cancel()
+        debounceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.onChange()
+        }
+    }
+}
+
+@MainActor
 final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let solver = LayoutConstraintSolver()
     private let catalog = AppCatalogActor(
@@ -37,6 +90,11 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let pageTransitionAnimator = PageTransitionAnimator()
     private let searchField = LaunchpadSearchField(frame: .zero)
     private var displayContext: DisplayContext
+    private lazy var applicationDirectoryMonitor = ApplicationDirectoryMonitor { [weak self] in
+        Task { @MainActor [weak self] in
+            await self?.refreshApplicationsFromDisk()
+        }
+    }
 
     private var applications: [ApplicationRecord] = []
     private var layoutDocument = LauncherLayoutDocument()
@@ -191,6 +249,45 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         searchField.resetForPresentation()
         window?.makeFirstResponder(self)
         searchDidChange()
+    }
+
+    func refreshApplicationsFromDisk() async {
+        let discovery = await catalog.refreshOutcome()
+        applications = discovery.applications
+        do {
+            let reconciliation = try await layoutStore.reconcileAndCommit(
+                applications: discovery.applications,
+                completeness: discovery.completeness
+            )
+            layoutDocument = reconciliation.document
+        } catch {
+            layoutDocument = LauncherLayoutReconciler.reconcile(
+                LauncherLayoutDocument(),
+                with: discovery.applications,
+                completeness: discovery.completeness
+            ).document
+        }
+
+        selectedIndex = -1
+        if searchField.stringValue.isEmpty, let metrics = currentMetrics {
+            let pages = ResolvedLaunchpadItemFactory.makePages(
+                document: layoutDocument,
+                applications: applications,
+                query: "",
+                pageCapacity: metrics.itemsPerPage
+            )
+            currentPage = min(currentPage, max(0, pages.pageCount - 1))
+        } else {
+            currentPage = 0
+        }
+        resetPageTransition()
+        closeFolder(animated: false)
+        invalidatePageSurfaceCache()
+        needsLayout = true
+
+        if presentationResourcesActive {
+            scheduleIdleFirstPageIconWarm()
+        }
     }
 
     func prepareForPresentation(displayContext: DisplayContext) {
@@ -358,24 +455,11 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         guard window != nil, !hasLoadedApplications else { return }
         hasLoadedApplications = true
         window?.makeFirstResponder(self)
+        applicationDirectoryMonitor.start()
 
         Task { [weak self] in
             guard let self else { return }
-            let discovery = await catalog.refreshOutcome()
-            applications = discovery.applications
-            do {
-                let reconciliation = try await layoutStore.reconcileAndCommit(
-                    applications: discovery.applications,
-                    completeness: discovery.completeness
-                )
-                layoutDocument = reconciliation.document
-            } catch {
-                layoutDocument = LauncherLayoutReconciler.reconcile(
-                    LauncherLayoutDocument(),
-                    with: discovery.applications,
-                    completeness: discovery.completeness
-                ).document
-            }
+            await refreshApplicationsFromDisk()
             isLoadingApplications = false
             selectedIndex = -1
             resetPageTransition()
@@ -3606,6 +3690,10 @@ private extension LaunchpadRootView {
         case let .application(identity): merge = .application(identity)
         case let .folder(folderID): merge = .folder(folderID)
         case nil: merge = nil
+        }
+        if merge == nil,
+           FolderMergeGeometry.isApproachingTarget(draggedIcon: draggedFrame, targets: targets) {
+            return (.outside, nil)
         }
         return (insertion, merge)
     }
@@ -9884,7 +9972,7 @@ private final class LaunchpadDragSession {
     // LAUNCHPANE_REORDER_RESPONSE_080_V4
     // The spatial gate prevents accidental swaps; keep the temporal confirmation
     // short so a deliberate crossing feels immediate.
-    var intentState = LauncherDragIntentState(mergeDwell: 0.15, reorderDwell: 0.08)
+    var intentState = LauncherDragIntentState(mergeDwell: 0.15, reorderDwell: 0.16)
     var intentTask: Task<Void, Never>?
     var folderSpringOpenTask: Task<Void, Never>?
     var folderCreationPreview: FolderCreationPreview?

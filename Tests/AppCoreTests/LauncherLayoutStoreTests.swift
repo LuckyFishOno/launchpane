@@ -136,6 +136,25 @@ final class LauncherLayoutStoreTests: XCTestCase {
         XCTAssertEqual(fileIO.writeCount, 1)
     }
 
+    func testReconcileAndCommitAppendsNewApplicationsToExistingLayout() async throws {
+        let fileIO = MemoryLayoutFileIO()
+        let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
+        let alpha = application("Alpha")
+        let beta = application("Beta")
+        let gamma = application("Gamma")
+
+        let first = try await store.reconcileAndCommit(applications: [alpha, beta])
+        let second = try await store.reconcileAndCommit(applications: [alpha, beta, gamma])
+        let third = try await store.reconcileAndCommit(applications: [alpha, beta, gamma])
+
+        XCTAssertEqual(applicationIdentities(in: first.document.items), [alpha.id, beta.id])
+        XCTAssertEqual(applicationIdentities(in: second.document.items), [alpha.id, beta.id, gamma.id])
+        XCTAssertEqual(second.report.addedApplications, [gamma.id])
+        XCTAssertEqual(third.document, second.document)
+        XCTAssertFalse(third.changed)
+        XCTAssertEqual(fileIO.writeCount, 2)
+    }
+
     func testFirstCompleteReconciliationSeedsUtilitiesFolderOnlyOnce() async throws {
         let fileIO = MemoryLayoutFileIO()
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
@@ -340,6 +359,13 @@ final class LauncherLayoutStoreTests: XCTestCase {
             bundleIdentifier: "org.example.\(name.lowercased())",
             bundleURL: URL(fileURLWithPath: path ?? "/Applications/\(name).app")
         )
+    }
+
+    private func applicationIdentities(in items: [LauncherLayoutItem]) -> [ApplicationIdentity] {
+        items.compactMap { item in
+            guard case let .application(application) = item else { return nil }
+            return application.identity
+        }
     }
 }
 

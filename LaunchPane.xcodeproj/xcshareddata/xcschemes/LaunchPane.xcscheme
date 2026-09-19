@@ -15,7 +15,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FAE6BA9E8C49944AC05AECE5"
+               BlueprintIdentifier = "7D5F930AEC6D8D385519A112"
                BuildableName = "AppCoreTests.xctest"
                BlueprintName = "AppCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -29,23 +29,9 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "12CFDAEAC98137A52DD8682D"
+               BlueprintIdentifier = "75E0F4EA5A1BCD26A540D900"
                BuildableName = "DisplayCoreTests.xctest"
                BlueprintName = "DisplayCoreTests"
-               ReferencedContainer = "container:LaunchPane.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4A138C787ADC5E41BBE02027"
-               BuildableName = "LayoutCoreTests.xctest"
-               BlueprintName = "LayoutCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -57,9 +43,23 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A601FBF8B0FF84481231803F"
+               BlueprintIdentifier = "BA2F3CA4691158CBF32643E1"
                BuildableName = "LaunchPane.app"
                BlueprintName = "LaunchPane"
+               ReferencedContainer = "container:LaunchPane.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8062643F9D99A2FB13D8925E"
+               BuildableName = "LayoutCoreTests.xctest"
+               BlueprintName = "LayoutCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -75,7 +75,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A601FBF8B0FF84481231803F"
+            BlueprintIdentifier = "BA2F3CA4691158CBF32643E1"
             BuildableName = "LaunchPane.app"
             BlueprintName = "LaunchPane"
             ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -87,7 +87,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FAE6BA9E8C49944AC05AECE5"
+               BlueprintIdentifier = "7D5F930AEC6D8D385519A112"
                BuildableName = "AppCoreTests.xctest"
                BlueprintName = "AppCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -98,7 +98,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "12CFDAEAC98137A52DD8682D"
+               BlueprintIdentifier = "75E0F4EA5A1BCD26A540D900"
                BuildableName = "DisplayCoreTests.xctest"
                BlueprintName = "DisplayCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -109,7 +109,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4A138C787ADC5E41BBE02027"
+               BlueprintIdentifier = "8062643F9D99A2FB13D8925E"
                BuildableName = "LayoutCoreTests.xctest"
                BlueprintName = "LayoutCoreTests"
                ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -133,7 +133,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A601FBF8B0FF84481231803F"
+            BlueprintIdentifier = "BA2F3CA4691158CBF32643E1"
             BuildableName = "LaunchPane.app"
             BlueprintName = "LaunchPane"
             ReferencedContainer = "container:LaunchPane.xcodeproj">
@@ -150,7 +150,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A601FBF8B0FF84481231803F"
+            BlueprintIdentifier = "BA2F3CA4691158CBF32643E1"
             BuildableName = "LaunchPane.app"
             BlueprintName = "LaunchPane"
             ReferencedContainer = "container:LaunchPane.xcodeproj">

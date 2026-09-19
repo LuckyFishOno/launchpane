@@ -8,12 +8,12 @@ final class FolderMergeGeometryTests: XCTestCase {
 
     func testAllEightApproachDirectionsHaveTheSameNormalizedDistanceAndAcquisition() throws {
         for direction in directions {
-            let inside = translatedIcon(distance: 0.37, direction: direction)
-            let outside = translatedIcon(distance: 0.39, direction: direction)
+            let inside = translatedIcon(distance: 0.43, direction: direction)
+            let outside = translatedIcon(distance: 0.45, direction: direction)
 
             XCTAssertEqual(
                 try XCTUnwrap(FolderMergeGeometry.normalizedDistance(draggedIcon: inside, targetIcon: icon)),
-                0.37,
+                0.43,
                 accuracy: 0.000_000_001
             )
             XCTAssertEqual(target(for: inside), "target", "Direction: \(direction)")
@@ -23,19 +23,33 @@ final class FolderMergeGeometryTests: XCTestCase {
 
     func testIconPerimeterAndDiagonalCornersDoNotAcquireFolderIntent() {
         for direction in directions {
-            XCTAssertNil(target(for: translatedIcon(distance: 0.49, direction: direction)))
+            XCTAssertNil(target(for: translatedIcon(distance: 0.55, direction: direction)))
         }
         // Both per-axis distances are below the radius, but the diagonal is not.
-        XCTAssertNil(target(for: icon.offsetBy(dx: 32, dy: 32)))
+        XCTAssertNil(target(for: icon.offsetBy(dx: 34, dy: 34)))
     }
 
     func testRetentionHasDirectionalHysteresisWithoutAcquiringANewTarget() {
         for direction in directions {
-            let betweenRadii = translatedIcon(distance: 0.42, direction: direction)
+            let betweenRadii = translatedIcon(distance: 0.50, direction: direction)
             XCTAssertNil(target(for: betweenRadii))
             XCTAssertEqual(target(for: betweenRadii, retaining: "target"), "target")
-            XCTAssertNil(target(for: translatedIcon(distance: 0.47, direction: direction), retaining: "target"))
+            XCTAssertNil(target(for: translatedIcon(distance: 0.55, direction: direction), retaining: "target"))
         }
+    }
+
+    func testApproachZoneCanHoldReorderBeforeMergeAcquires() {
+        let nearButNotMerged = translatedIcon(distance: 0.50, direction: CGVector(dx: 1, dy: 0))
+
+        XCTAssertNil(target(for: nearButNotMerged))
+        XCTAssertTrue(FolderMergeGeometry.isApproachingTarget(
+            draggedIcon: nearButNotMerged,
+            targets: [Target(id: "target", iconFrame: icon)]
+        ))
+        XCTAssertFalse(FolderMergeGeometry.isApproachingTarget(
+            draggedIcon: translatedIcon(distance: 0.80, direction: CGVector(dx: 1, dy: 0)),
+            targets: [Target(id: "target", iconFrame: icon)]
+        ))
     }
 
     func testClosestAcquisitionWinsRegardlessOfIterationOrder() {
@@ -81,8 +95,8 @@ final class FolderMergeGeometryTests: XCTestCase {
         for scale in [CGFloat(0.5), 1, 2, 3] {
             for direction in directions {
                 let baseDrag = nonSquare.offsetBy(
-                    dx: 0.37 * direction.dx * nonSquare.width,
-                    dy: 0.37 * direction.dy * nonSquare.height
+                    dx: 0.43 * direction.dx * nonSquare.width,
+                    dy: 0.43 * direction.dy * nonSquare.height
                 )
                 let transform = CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: 713, ty: -251)
                 let target = nonSquare.applying(transform)
@@ -90,7 +104,7 @@ final class FolderMergeGeometryTests: XCTestCase {
 
                 XCTAssertEqual(
                     try XCTUnwrap(FolderMergeGeometry.normalizedDistance(draggedIcon: dragged, targetIcon: target)),
-                    0.37,
+                    0.43,
                     accuracy: 0.000_000_001
                 )
                 XCTAssertEqual(FolderMergeGeometry.target(

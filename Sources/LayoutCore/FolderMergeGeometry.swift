@@ -23,10 +23,10 @@ public enum FolderMergeGeometry {
         public let retentionOverlapFraction: CGFloat
 
         public init(
-            acquisitionRadius: CGFloat = 0.38,
-            retentionRadius: CGFloat = 0.46,
-            acquisitionOverlapFraction: CGFloat = 0.45,
-            retentionOverlapFraction: CGFloat = 0.35
+            acquisitionRadius: CGFloat = 0.44,
+            retentionRadius: CGFloat = 0.54,
+            acquisitionOverlapFraction: CGFloat = 0.34,
+            retentionOverlapFraction: CGFloat = 0.22
         ) {
             self.acquisitionRadius = acquisitionRadius
             self.retentionRadius = retentionRadius
@@ -76,6 +76,22 @@ public enum FolderMergeGeometry {
             }
         }
         return acquired?.id ?? retained
+    }
+
+    public static func isApproachingTarget<ID: Hashable>(
+        draggedIcon: CGRect,
+        targets: [Target<ID>],
+        tokens: Tokens = .standard
+    ) -> Bool {
+        guard tokens.isValid, validIcon(draggedIcon) else { return false }
+        let approachRadius = max(tokens.retentionRadius, tokens.acquisitionRadius + 0.18)
+        let approachOverlap = max(0.12, tokens.acquisitionOverlapFraction * 0.5)
+        return targets.contains { candidate in
+            guard let distance = normalizedDistance(draggedIcon: draggedIcon, targetIcon: candidate.iconFrame),
+                  let overlap = overlapFraction(draggedIcon, candidate.iconFrame)
+            else { return false }
+            return distance <= approachRadius && overlap >= approachOverlap
+        }
     }
 
     /// Center distance in target-icon units, independent of screen origin, scale,

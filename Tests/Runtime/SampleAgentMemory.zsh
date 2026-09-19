@@ -8,7 +8,7 @@ if [[ "$delay_seconds" != <-> ]]; then
   exit 2
 fi
 output_path=${2:-"$PWD/Builds/agent-memory-$(date +%Y%m%d-%H%M%S).txt"}
-print "Open Launchpad on the target display; leave it visible. Capturing in ${delay_seconds}s."
+print "LaunchPane on the target display; leave it visible. Capturing in ${delay_seconds}s."
 sleep "$delay_seconds"
 if ! agent_pid=$(pgrep -x LaunchPaneAgent); then
   print -u2 'No LaunchPaneAgent process is running.'
