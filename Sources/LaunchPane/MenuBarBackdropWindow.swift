@@ -10,14 +10,19 @@ final class MenuBarBackdropWindow: NSWindow {
     private let desktopLayer = CALayer()
     private let wallpaperLayer = CALayer()
 
-    var transitionLayer: CALayer? { wallpaperLayer }
+    // Fade the entire menu continuation with the main presentation. Fading
+    // only wallpaperLayer leaves its opaque desktop underlay visible first.
+    var transitionLayer: CALayer? { clippingView.layer }
 
     init() {
         super.init(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
-        level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 1)
+        // The system menu can remain in its own fade transaction briefly after
+        // activation. Keep this narrow cover above menu and status surfaces so
+        // their bright bottom edge cannot cross the launcher's opening fade.
+        level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.popUpMenuWindow)) + 1)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         animationBehavior = .none
         isReleasedWhenClosed = false
@@ -28,6 +33,7 @@ final class MenuBarBackdropWindow: NSWindow {
         clippingView.wantsLayer = true
         clippingView.layer?.masksToBounds = true
         clippingView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
+        clippingView.layer?.opacity = 0
         clippingView.setAccessibilityHidden(true)
 
         for layer in [desktopLayer, wallpaperLayer] {
@@ -55,6 +61,9 @@ final class MenuBarBackdropWindow: NSWindow {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        if !isVisible {
+            clippingView.layer?.opacity = 0
+        }
         clippingView.frame = CGRect(origin: .zero, size: frame.size)
         desktopLayer.contents = desktopImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)
         wallpaperLayer.contents = wallpaperImage?.cgImage(forProposedRect: nil, context: nil, hints: nil)

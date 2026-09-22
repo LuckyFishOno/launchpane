@@ -4,6 +4,16 @@ import DisplayCore
 import XCTest
 
 final class WallpaperLayoutTests: XCTestCase {
+    func testMenuBarCoverageExtendsPastBoundaryByOneBackingPixel() {
+        let requirements: [CGFloat] = [22, 38, 37.5, 0]
+        for scale: CGFloat in [1, 1.25, 2, 3] {
+            let height = MenuBarCoverage.height(
+                requiredHeights: requirements, backingScaleFactor: scale
+            )
+            XCTAssertEqual((height - 38) * scale, 1, accuracy: 0.000_001)
+        }
+    }
+
     func testMissingDesktopClippingOptionUsesFillWhileExplicitFitIsPreserved() throws {
         let fill = WallpaperPlacementOptions(scaling: .proportional, allowsClipping: nil)
         let fit = WallpaperPlacementOptions(scaling: .proportional, allowsClipping: false)

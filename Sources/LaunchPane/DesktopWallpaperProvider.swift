@@ -120,13 +120,13 @@ enum DesktopWallpaperProvider {
     }
 
     static func menuBarHeight(on screen: NSScreen) -> CGFloat {
-        max(
+        MenuBarCoverage.height(requiredHeights: [
             NSStatusBar.system.thickness,
             screen.frame.maxY - screen.visibleFrame.maxY,
             screen.safeAreaInsets.top,
             screen.auxiliaryTopLeftArea?.height ?? 0,
             screen.auxiliaryTopRightArea?.height ?? 0
-        )
+        ], backingScaleFactor: screen.backingScaleFactor)
     }
 
     static func renderImages(

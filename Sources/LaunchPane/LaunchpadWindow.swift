@@ -48,7 +48,7 @@ final class LaunchpadWindow: NSWindow {
         //
         // Give the closing transition a longer interval for app launches.
         static let openDuration: CFTimeInterval = 13.0 / 58.0
-        static let closeDuration: CFTimeInterval = 0.32
+        static let closeDuration: CFTimeInterval = 0.27
 
         // For a rapid reversal we still need enough compositor time to avoid
         // creating a one-frame discontinuity.
@@ -147,9 +147,7 @@ final class LaunchpadWindow: NSWindow {
     // The UI lives in an LSUIElement/accessory agent. No menu-bar
     // presentation workaround belongs in this window anymore.
     var onDidHide: (() -> Void)?
-    // The menu-region background shares the main window's exact opacity curve.
-    // Its unblurred desktop stays opaque underneath, so menus never shine
-    // through when the frosted background fades in or out.
+    // The entire menu-region cover shares the main window's opacity curve.
     weak var synchronizedBackdropLayer: CALayer?
 
     override var canBecomeKey: Bool {

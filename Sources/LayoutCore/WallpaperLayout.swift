@@ -20,6 +20,17 @@ public struct WallpaperPlacementOptions: Equatable, Sendable {
     }
 }
 
+/// Extend the menu continuation by one backing pixel past the system menu
+/// boundary to keep the two window surfaces overlapped during their fade.
+public enum MenuBarCoverage {
+    public static func height(requiredHeights: [CGFloat], backingScaleFactor: CGFloat) -> CGFloat {
+        let systemHeight = requiredHeights.filter { $0.isFinite && $0 >= 0 }.max() ?? 0
+        let scale = backingScaleFactor.isFinite && backingScaleFactor > 0
+            ? backingScaleFactor : 1
+        return systemHeight + 1 / scale
+    }
+}
+
 /// The deliberately blurred material needs far fewer pixels than app artwork.
 /// Keep this budget independent of named monitor resolutions or UI backing scale.
 public enum WallpaperRasterMetrics {
