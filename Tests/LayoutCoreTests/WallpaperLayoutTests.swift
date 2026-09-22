@@ -4,6 +4,27 @@ import DisplayCore
 import XCTest
 
 final class WallpaperLayoutTests: XCTestCase {
+    func testMissingDesktopClippingOptionUsesFillWhileExplicitFitIsPreserved() throws {
+        let fill = WallpaperPlacementOptions(scaling: .proportional, allowsClipping: nil)
+        let fit = WallpaperPlacementOptions(scaling: .proportional, allowsClipping: false)
+        let explicitFill = WallpaperPlacementOptions(scaling: .proportional, allowsClipping: true)
+
+        XCTAssertTrue(fill.allowsClipping)
+        XCTAssertFalse(fit.allowsClipping)
+        XCTAssertTrue(explicitFill.allowsClipping)
+
+        let fillLayout = try XCTUnwrap(WallpaperLayout(
+            sourceExtent: sourceExtent, display: display,
+            scaling: fill.scaling, allowsClipping: fill.allowsClipping
+        ))
+        let fitLayout = try XCTUnwrap(WallpaperLayout(
+            sourceExtent: sourceExtent, display: display,
+            scaling: fit.scaling, allowsClipping: fit.allowsClipping
+        ))
+        XCTAssertTrue(fillLayout.imageFrame.contains(fillLayout.canvasBounds))
+        XCTAssertFalse(fitLayout.imageFrame.contains(fitLayout.canvasBounds))
+    }
+
     func testFrostedRasterIsBoundedIndependentlyOfDisplayResolution() throws {
         for size in [CGSize(width: 3840, height: 2160), CGSize(width: 15360, height: 8640)] {
             let raster = try XCTUnwrap(FrostedWallpaperRasterLayout(nativeCanvas: CGRect(origin: .zero, size: size)))

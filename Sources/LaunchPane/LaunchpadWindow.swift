@@ -46,10 +46,9 @@ final class LaunchpadWindow: NSWindow {
         //
         //     13 / 58 = 0.2241 s
         //
-        // The closing transition resolves in approximately the same visual
-        // interval, with a substantially more front-loaded opacity drop.
+        // Give the closing transition a longer interval for app launches.
         static let openDuration: CFTimeInterval = 13.0 / 58.0
-        static let closeDuration: CFTimeInterval = 13.0 / 58.0
+        static let closeDuration: CFTimeInterval = 0.32
 
         // For a rapid reversal we still need enough compositor time to avoid
         // creating a one-frame discontinuity.

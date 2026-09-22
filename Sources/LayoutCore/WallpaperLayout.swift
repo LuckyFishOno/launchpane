@@ -8,6 +8,18 @@ public enum WallpaperScaling: Equatable, Sendable {
     case center
 }
 
+/// macOS uses Fill Screen for a desktop whose clipping option is omitted.
+/// An explicit Fit to Screen choice still needs its unfilled margins.
+public struct WallpaperPlacementOptions: Equatable, Sendable {
+    public let scaling: WallpaperScaling
+    public let allowsClipping: Bool
+
+    public init(scaling: WallpaperScaling, allowsClipping: Bool?) {
+        self.scaling = scaling
+        self.allowsClipping = allowsClipping ?? true
+    }
+}
+
 /// The deliberately blurred material needs far fewer pixels than app artwork.
 /// Keep this budget independent of named monitor resolutions or UI backing scale.
 public enum WallpaperRasterMetrics {

@@ -76,7 +76,10 @@ enum DesktopWallpaperProvider {
         let scalingValue = (options[.imageScaling] as? NSNumber)?.uintValue
             ?? NSImageScaling.scaleProportionallyUpOrDown.rawValue
         let scaling = NSImageScaling(rawValue: scalingValue) ?? .scaleProportionallyUpOrDown
-        let allowsClipping = (options[.allowClipping] as? NSNumber)?.boolValue ?? false
+        let placement = WallpaperPlacementOptions(
+            scaling: wallpaperScaling(for: scaling),
+            allowsClipping: (options[.allowClipping] as? NSNumber)?.boolValue
+        )
         let fillColor = (options[.fillColor] as? NSColor)?.usingColorSpace(.deviceRGB)
             ?? fallbackColor
         let metadata = try? imageURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
@@ -89,7 +92,7 @@ enum DesktopWallpaperProvider {
             backingScale: display.backingScaleFactor,
             menuBarHeight: menuBarHeight,
             scalingValue: scalingValue,
-            allowsClipping: allowsClipping,
+            allowsClipping: placement.allowsClipping,
             fillComponents: [fillColor.redComponent, fillColor.greenComponent, fillColor.blueComponent]
         )
 
@@ -107,8 +110,8 @@ enum DesktopWallpaperProvider {
         let result = autoreleasepool { () -> Images? in
             guard let source = sourceImage(at: imageURL) else { return nil }
             return renderImages(
-                source: source, display: display, scaling: wallpaperScaling(for: scaling),
-                allowsClipping: allowsClipping, fillColor: fillColor, menuBarHeight: menuBarHeight
+                source: source, display: display, scaling: placement.scaling,
+                allowsClipping: placement.allowsClipping, fillColor: fillColor, menuBarHeight: menuBarHeight
             )
         }
         guard let result else { return nil }
