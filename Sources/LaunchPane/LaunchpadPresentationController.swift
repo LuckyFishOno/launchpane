@@ -88,8 +88,7 @@ final class LaunchpadWindowController: NSWindowController {
         targetDisplayID =
             display.displayID
 
-        window.onDidHide = {
-            [weak self] in
+        window.onDidHide = { [weak self] in
 
             guard let self else {
                 return
@@ -173,8 +172,7 @@ final class LaunchpadWindowController: NSWindowController {
             NSWorkspace.shared
                 .frontmostApplication,
            frontmost.processIdentifier
-                != ownPID
-        {
+                != ownPID {
             previousFrontmostApplication =
                 frontmost
         }
@@ -223,8 +221,7 @@ final class LaunchpadWindowController: NSWindowController {
         // reported internal handoff interval as non-dismissal; ordinary external
         // deactivation behavior remains unchanged.
         if let rootView = window?.contentView as? LaunchpadRootView,
-           rootView.suppressesResignActiveDismissal
-        {
+           rootView.suppressesResignActiveDismissal {
             NSApplication.shared.activate()
             window?.makeKey()
             return
@@ -258,8 +255,7 @@ final class LaunchpadWindowController: NSWindowController {
 
         if let previousFrontmostApplication,
            !previousFrontmostApplication
-                .isTerminated
-        {
+                .isTerminated {
             _ =
                 previousFrontmostApplication
                     .activate(

@@ -12,7 +12,12 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
     private let previousApp = NSWorkspace.shared.frontmostApplication
     private var failures = 0
     private var initialTileCount = 0
-    private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
+    private var root: LaunchpadRootView {
+        guard let root = controller.window?.contentView as? LaunchpadRootView else {
+            fatalError("Expected the launcher window to contain LaunchpadRootView")
+        }
+        return root
+    }
     private var search: LaunchpadSearchField {
         descendants(root).compactMap { $0 as? LaunchpadSearchField }.first!
     }
@@ -116,7 +121,9 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
             checkIdle("rapid reopen")
 
             search.focus(in: controller.window)
-            let editor = textField.currentEditor() as! NSTextView
+            guard let editor = textField.currentEditor() as? NSTextView else {
+                fatalError("Expected an active NSTextView field editor before testing unfinished IME input")
+            }
             editor.setMarkedText("ㄓ", selectedRange: NSRange(location: 1, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: 0))
             check(editor.hasMarkedText(), "unfinished IME input exists")

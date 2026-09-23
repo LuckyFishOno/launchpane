@@ -1,6 +1,6 @@
 import AppKit
-import QuartzCore
 import LayoutCore
+import QuartzCore
 
 @MainActor
 final class LaunchpadWindow: NSWindow {
@@ -459,11 +459,11 @@ final class LaunchpadWindow: NSWindow {
         var found = false
 
         for index in 0 ..< (curve.count - 1) {
-            let a = curve[index]
-            let b = curve[index + 1]
+            let startSample = curve[index]
+            let endSample = curve[index + 1]
 
-            let low = min(a, b) - 0.000_001
-            let high = max(a, b) + 0.000_001
+            let low = min(startSample, endSample) - 0.000_001
+            let high = max(startSample, endSample) + 0.000_001
 
             guard
                 clampedStart >= low,
@@ -474,11 +474,11 @@ final class LaunchpadWindow: NSWindow {
 
             segmentIndex = index
 
-            let delta = b - a
+            let delta = endSample - startSample
 
             if abs(delta) > 0.000_001 {
                 interpolation =
-                    Double((clampedStart - a) / delta)
+                    Double((clampedStart - startSample) / delta)
             } else {
                 interpolation = 0
             }
@@ -659,11 +659,9 @@ final class LaunchpadWindow: NSWindow {
 
         CATransaction.begin()
 
-        CATransaction.setCompletionBlock {
-            [weak self] in
+        CATransaction.setCompletionBlock { [weak self] in
 
-            Task {
-                @MainActor [weak self] in
+            Task { @MainActor [weak self] in
 
                 guard
                     let self,

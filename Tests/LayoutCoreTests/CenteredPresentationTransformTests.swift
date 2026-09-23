@@ -11,7 +11,9 @@ final class CenteredPresentationTransformTests: XCTestCase {
                                      y: bounds.minY + size.height * anchor.y)
                 let center = CGPoint(x: bounds.midX, y: bounds.midY)
                 for scale: CGFloat in [1, 1.02, 1.085] {
-                    let transform = CenteredPresentationTransform.make(bounds: bounds, anchorPoint: anchor, scale: scale)
+                    let transform = CenteredPresentationTransform.make(
+                        bounds: bounds, anchorPoint: anchor, scale: scale
+                    )
                     for offset in [CGPoint.zero, CGPoint(x: -300, y: 0), CGPoint(x: 300, y: 0),
                                    CGPoint(x: 0, y: -200), CGPoint(x: 0, y: 200)] {
                         let local = CGPoint(x: center.x + offset.x - origin.x,

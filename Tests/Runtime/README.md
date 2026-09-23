@@ -12,6 +12,35 @@ session and temporarily brings a test launcher window forward. It uses a
 temporary layout file and restores the previous foreground application when
 finished. It does not inject global events or require Accessibility permission.
 
+## Menu-bar opening animation
+
+`MenuBarOpeningAnimationCheck.swift` constructs the production
+`LaunchpadWindow` and `MenuBarBackdropWindow` and runs their real Core Animation
+opening path. It verifies that the complete menu-bar continuation starts
+transparent, covers and overlaps the selected display's top boundary, and uses
+the launcher's exact measured opacity samples, key times, and duration in the
+same transaction. It also guards against accidentally applying the launcher's
+spatial scale to the top continuation. With Reduce Motion enabled, it verifies
+that both surfaces resolve together without animations.
+
+Build Debug into `Builds`, then run:
+
+```zsh
+menu_check_dir=$(mktemp -d /private/tmp/launchpane-menu-check.XXXXXX)
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/MenuBarOpeningAnimationCheck.swift \
+  -o "$menu_check_dir/menu-bar-opening-check"
+"$menu_check_dir/menu-bar-opening-check"
+```
+
+Success ends with `MENU BAR OPENING: 20 assertions, 0 failures` when animation
+is enabled. The check briefly displays the two test surfaces and then removes
+them. It does not discover apps or read or write the saved launcher layout.
+
 First build Debug into `Builds` using the root README. Then, from the repository
 root, run these commands in **zsh** (with `rg` available):
 
@@ -74,6 +103,10 @@ hidden/disabled source views, continued dragging, release outside the window,
 exactly one release, and cancellation on detachment. Folder fixtures cover local
 reorder, cross-page release, release during paging, persisted order, live hit
 targets, and immediately starting another drag without Escape.
+Commit counting starts after catalog reconciliation, using the persisted document
+immediately before dragging. The check also verifies that previews leave that
+document unchanged before mouse-up.
+
 It also verifies that landing preserves the existing folder panel and icon
 presentations, and that reused buttons drag from their newly committed slots.
 

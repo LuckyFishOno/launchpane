@@ -92,7 +92,9 @@ final class LauncherPageLayoutTests: XCTestCase {
     func testFolderMergeKeepsFolderOnTargetPageAndSourcePageGap() throws {
         var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(pages: pages("AB", "CD", "EF")))
         let folderID = UUID()
-        try draft.mergeApplications(source: reference("A").identity, target: reference("E").identity, folderID: folderID)
+        try draft.mergeApplications(
+            source: reference("A").identity, target: reference("E").identity, folderID: folderID
+        )
         XCTAssertEqual(draft.document.pages, [page("B"), page("CD"), [
             .folder(LauncherFolder(id: folderID, applications: [reference("E"), reference("A")])),
             .application(reference("F")),
@@ -101,7 +103,9 @@ final class LauncherPageLayoutTests: XCTestCase {
 
     func testAddingToFolderDoesNotShiftUnrelatedPages() throws {
         let folder = LauncherFolder(applications: [reference("C"), reference("D")])
-        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(pages: [page("AB"), [.folder(folder)], page("EF")]))
+        var draft = try LauncherLayoutDraft(
+            document: LauncherLayoutDocument(pages: [page("AB"), [.folder(folder)], page("EF")])
+        )
         try draft.addApplication(reference("B").identity, toFolder: folder.id)
         XCTAssertEqual(draft.document.pages, [page("A"), [
             .folder(LauncherFolder(id: folder.id, applications: [reference("C"), reference("D"), reference("B")])),
@@ -110,9 +114,13 @@ final class LauncherPageLayoutTests: XCTestCase {
 
     func testRootFolderCanMoveAcrossPagesAndOverflowAsOneItem() throws {
         let folder = LauncherFolder(applications: [reference("X"), reference("Y")])
-        var draft = try LauncherLayoutDraft(document: LauncherLayoutDocument(pages: [[.folder(folder)], page("AB"), page("CD")]))
+        var draft = try LauncherLayoutDraft(
+            document: LauncherLayoutDocument(pages: [[.folder(folder)], page("AB"), page("CD")])
+        )
         try draft.moveRootItem(.folder(folder.id), toPage: 2, at: 1, pageCapacity: 2)
-        XCTAssertEqual(draft.document.pages, [[], page("AB"), [.application(reference("C")), .folder(folder)], page("D")])
+        XCTAssertEqual(
+            draft.document.pages, [[], page("AB"), [.application(reference("C")), .folder(folder)], page("D")]
+        )
     }
 
     func testReconcilePrunesWithinPageAndAppendsNewAppsOnlyAtEnd() {
@@ -131,7 +139,9 @@ final class LauncherPageLayoutTests: XCTestCase {
 
     func testPartialCatalogRetainsUnavailableReferenceOnItsOriginalPage() {
         let original = LauncherLayoutDocument(pages: pages("A", "B", "C"))
-        let result = LauncherLayoutReconciler.reconcile(original, with: [application("A"), application("C")], completeness: .partial)
+        let result = LauncherLayoutReconciler.reconcile(
+            original, with: [application("A"), application("C")], completeness: .partial
+        )
         XCTAssertEqual(result.document, original)
     }
 
@@ -173,10 +183,17 @@ final class LauncherPageLayoutTests: XCTestCase {
 
     private func pages(_ letters: String...) -> [[LauncherLayoutItem]] { letters.map(page) }
     private func page(_ letters: String) -> [LauncherLayoutItem] { letters.map { .application(reference(String($0))) } }
-    private func identifier(_ letter: String) -> LauncherLayoutItemIdentifier { .application(reference(letter).identity) }
-    private func reference(_ letter: String) -> LauncherApplicationReference { LauncherApplicationReference(application: application(letter)) }
+    private func identifier(_ letter: String) -> LauncherLayoutItemIdentifier {
+        .application(reference(letter).identity)
+    }
+    private func reference(_ letter: String) -> LauncherApplicationReference {
+        LauncherApplicationReference(application: application(letter))
+    }
     private func application(_ letter: String) -> ApplicationRecord {
-        ApplicationRecord(displayName: letter, bundleIdentifier: "org.test.\(letter)", bundleURL: URL(fileURLWithPath: "/Applications/\(letter).app"))
+        ApplicationRecord(
+            displayName: letter, bundleIdentifier: "org.test.\(letter)",
+            bundleURL: URL(fileURLWithPath: "/Applications/\(letter).app")
+        )
     }
 }
 

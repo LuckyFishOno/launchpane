@@ -130,12 +130,19 @@ xcodebuild \
 open Builds/LaunchPane.app
 ```
 
-### Run focused tests
+### Run tests
 
 ```bash
+swift test
+
+# Optional focused examples
 swift test --filter FolderMergeGeometryTests
 swift test --filter LauncherLayoutStoreTests/testReconcileAndCommitAppendsNewApplicationsToExistingLayout
 ```
+
+The core suite currently contains 185 deterministic tests. AppKit runtime
+checks for window, wallpaper, search, paging, drag, and menu-bar animation
+behavior are documented in [Tests/Runtime/README.md](Tests/Runtime/README.md).
 
 ## Local data and privacy
 

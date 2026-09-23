@@ -22,7 +22,6 @@ public struct LauncherDragIntentState: Equatable, Sendable {
 
     // LAUNCHPANE_MERGE_DWELL_015_V1
 
-
     public init(mergeDwell: TimeInterval = 0.15, reorderDwell: TimeInterval = 0.18) {
         precondition(mergeDwell.isFinite && mergeDwell >= 0)
         precondition(reorderDwell.isFinite && reorderDwell >= 0)

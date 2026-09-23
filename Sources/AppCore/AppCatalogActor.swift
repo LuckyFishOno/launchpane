@@ -37,8 +37,7 @@ public actor AppCatalogActor {
                     // canonical catalog by bundle identifier. Filtering here,
                     // before caching, keeps grid/search/reset behavior consistent.
                     if let bundleIdentifier = application.bundleIdentifier?.lowercased(),
-                       excludedBundleIdentifiers.contains(bundleIdentifier)
-                    {
+                       excludedBundleIdentifiers.contains(bundleIdentifier) {
                         continue
                     }
 

@@ -8,7 +8,12 @@ final class ResetLaunchpadCheckDelegate: NSObject, NSApplicationDelegate {
     private var controller: LaunchpadWindowController!
     private var failures = 0
     private let previousApp = NSWorkspace.shared.frontmostApplication
-    private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
+    private var root: LaunchpadRootView {
+        guard let root = controller.window?.contentView as? LaunchpadRootView else {
+            fatalError("Expected the launcher window to contain LaunchpadRootView")
+        }
+        return root
+    }
     private var layoutURL: URL {
         URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
@@ -59,7 +64,8 @@ final class ResetLaunchpadCheckDelegate: NSObject, NSApplicationDelegate {
         controller.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         await until("fixture loaded") {
-            Mirror(reflecting: self.root).children.first { $0.label == "isLoadingApplications" }?.value as? Bool == false
+            Mirror(reflecting: self.root).children
+                .first { $0.label == "isLoadingApplications" }?.value as? Bool == false
         }
         let search = descendants(root).compactMap { $0 as? LaunchpadSearchField }.first!
         let settings = descendants(search).compactMap { $0 as? NSButton }.first { $0.menu != nil }!

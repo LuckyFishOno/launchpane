@@ -228,11 +228,13 @@ private extension LaunchpadSearchField {
         !stringValue.isEmpty || hasActiveEditor
     }
 
-    func searchContentMetrics() -> (
-        visualWidth: CGFloat,
-        placeholderInkWidth: CGFloat,
-        placeholderCellWidth: CGFloat
-    ) {
+    struct SearchContentMetrics {
+        let visualWidth: CGFloat
+        let placeholderInkWidth: CGFloat
+        let placeholderCellWidth: CGFloat
+    }
+
+    func searchContentMetrics() -> SearchContentMetrics {
         let inkWidth = placeholder.size().width
         let visualWidth = Metrics.iconSize
             + Metrics.iconTextSpacing
@@ -241,10 +243,10 @@ private extension LaunchpadSearchField {
             inkWidth
                 + Metrics.placeholderCellHorizontalPadding * 2
         )
-        return (
-            visualWidth,
-            inkWidth,
-            cellWidth
+        return SearchContentMetrics(
+            visualWidth: visualWidth,
+            placeholderInkWidth: inkWidth,
+            placeholderCellWidth: cellWidth
         )
     }
 

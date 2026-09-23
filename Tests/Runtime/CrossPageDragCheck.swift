@@ -12,7 +12,12 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
     private var failures = 0
     private var fixture = LauncherLayoutDocument()
     private var sourceID: ApplicationIdentity!
-    private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
+    private var root: LaunchpadRootView {
+        guard let root = controller.window?.contentView as? LaunchpadRootView else {
+            fatalError("Expected the launcher window to contain LaunchpadRootView")
+        }
+        return root
+    }
     private var layoutURL: URL {
         URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
@@ -112,7 +117,9 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
     }
     private func run() async throws {
         let discovery = await AppCatalogActor().refreshOutcome()
-        let items = discovery.applications.map { LauncherLayoutItem.application(LauncherApplicationReference(application: $0)) }
+        let items = discovery.applications.map {
+            LauncherLayoutItem.application(LauncherApplicationReference(application: $0))
+        }
         precondition(items.count >= 16, "Needs at least 16 installed apps")
         sourceID = discovery.applications[0].id
         fixture = LauncherLayoutDocument(revision: 100, pages: [Array(items[0..<4]), Array(items[4..<8]),
@@ -173,7 +180,9 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         try await openFixture()
         let trailingPage = fixture.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
         _ = start()
-        if await until("held edge reaches a new trailing page", timeout: 12, { page == trailingPage && !transitioning }) {
+        if await until("held edge reaches a new trailing page", timeout: 12, {
+            page == trailingPage && !transitioning
+        }) {
             await pause(1.2)
             check(page == trailingPage && !transitioning, "holding on new last page stays bounded")
             controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))

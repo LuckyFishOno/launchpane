@@ -40,9 +40,9 @@ Visual constants are centralized in typed style or metrics values. Interactive a
 
 `WallpaperLayout` maps the wallpaper onto the complete display in backing pixels using the desktop's scaling and clipping options. Menu-bar, Dock, and notch reservations constrain controls, not the wallpaper canvas. `FrostedWallpaperRasterLayout` then reduces only the intentionally blurred material to a maximum 1280-pixel long edge, scaling the blur radius to preserve its screen-space appearance. `DesktopWallpaperProvider` caches this frosted image and the native-resolution plain desktop's menu-bar rows by file metadata, display geometry, menu height, and desktop options.
 
-The main window and `MenuBarBackdropWindow` directly share the same small frosted image through Core Animation layers. Both map it to identical full-display coordinates; the menu window clips the top region without first cropping the bitmap, keeping interpolation continuous at the seam. This avoids three full-screen `NSImageView` backing stores. The menu has no independent visual-effect material or tint. Its opacity animation follows the main window, with native plain desktop rows underneath to prevent menus showing through during a fade. Fractional plain-desktop crop heights round outward while preserving the original pixel-to-point mapping. Presentation also applies one display-centered compositor transform to the main content: foreground controls and tiles converge from a restrained 1.085× dispersed state on open and expand back to it on close. The full-screen wallpaper receives the exact inverse transform, so only the launcher foreground moves and the desktop remains spatially fixed across the menu-window seam. Relayout sets its bounds and position independently, preserving this transform during rapid reversal.
+The main window and `MenuBarBackdropWindow` directly share the same small frosted image through Core Animation layers. Both map it to identical full-display coordinates; the menu window clips the top region without first cropping the bitmap, keeping interpolation continuous at the seam. This avoids three full-screen `NSImageView` backing stores. The menu has no independent visual-effect material or tint. Its complete continuation layer, including the native plain-desktop rows and frosted wallpaper, uses the main window's exact opacity samples, key times, and duration. The continuation overlaps the main canvas by one backing pixel and remains spatially fixed instead of receiving the foreground scale. Fractional plain-desktop crop heights round outward while preserving the original pixel-to-point mapping. Presentation also applies one display-centered compositor transform to the main content: foreground controls and tiles converge from a restrained 1.085× dispersed state on open and expand back to it on close. The full-screen wallpaper receives the exact inverse transform, so only the launcher foreground moves and the desktop remains spatially fixed across the menu-window seam. Relayout sets its bounds and position independently, preserving this transform during rapid reversal.
 
-Wallpaper output is rendered eagerly at the existing pixel format so cached images do not retain a source/filter graph. Temporary Core Image resources are cleared after rendering. App icon decoding, resolution, bit depth, color gamut, folder preloading, adjacent-page staging, and per-tile raster caches are unchanged. The icon cache keeps one original representation per application: smaller requests reuse a larger image already loaded, while larger requests still decode at their original requested size. A late smaller load cannot downgrade the cache. See [memory verification](MEMORY.md).
+Wallpaper output is rendered eagerly at the existing pixel format so cached images do not retain a source/filter graph. Temporary Core Image resources are cleared after rendering. App icon decoding preserves resolution, bit depth, and color gamut. The icon cache keeps one original representation per application: smaller requests reuse a larger image already loaded, while larger requests still decode at their original requested size. A late smaller load cannot downgrade the cache. After the launcher closes, presentation-only page trees, wallpaper references, and transient icons are released; the catalog, layout, and bounded first-page warm set remain resident. See [memory verification](MEMORY.md).
 
 This is a visual replacement of the menu region while preserving the system Dock. AppKit's actual `hideMenuBar` presentation mode requires `hideDock`, so it cannot provide an interactive Dock. The main window remains below Dock and the top continuation closes when the app deactivates. No global menu/Dock settings are changed.
 
@@ -148,8 +148,8 @@ finish as one coordinated drag commit.
 
 ### Regression Coverage
 
-The 2026-09-12 page-local change passes 136 Swift core tests and the Debug
-application build. `LauncherPageLayoutTests` adds 19 deterministic cases for
+The current suite passes 185 Swift core tests and the Debug application build.
+`LauncherPageLayoutTests` contains 19 deterministic cases for
 legacy migration, explicit page round-tripping, empty/partial pages, overflow,
 forward/reverse moves, folders, reconciliation, and boundary-only commits.
 Four additional state-machine cases cover page insertion, replacing an outside
@@ -158,8 +158,11 @@ drives the real AppKit tile's pointer methods with an isolated store to cover
 stationary multi-page dwelling, reverse traversal, edge/mid-animation release,
 cancellation and retiring the exact transition layers, bounded new-page creation,
 and forward overflow. `ResolvedPageCheck.swift` checks compacted visible indices
-against unresolved persisted references. These checks do not measure compositor
-frame pacing or replace manual physical-device testing.
+against unresolved persisted references. `MenuBarOpeningAnimationCheck.swift`
+constructs the production launcher and top-continuation windows and verifies
+their synchronized opening animations, display-top overlap, and Reduce Motion
+path. These checks do not measure compositor frame pacing or replace manual
+physical-device testing.
 
 ## Accessibility and Input
 

@@ -9,7 +9,12 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
     private var failures = 0
     private let previousApp = NSWorkspace.shared.frontmostApplication
     private var controller: LaunchpadWindowController!
-    private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
+    private var root: LaunchpadRootView {
+        guard let root = controller.window?.contentView as? LaunchpadRootView else {
+            fatalError("Expected the launcher window to contain LaunchpadRootView")
+        }
+        return root
+    }
     private let folderID = UUID()
     private var fixture = LauncherLayoutDocument()
     private var references: [LauncherApplicationReference] = []
@@ -116,9 +121,16 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
     }
     private func checkFolderDrop(crossPage: Bool, duringTransition: Bool = false) async throws {
         try await openFixture()
+        // Loading may reconcile the installed-app catalog and advance the fixture
+        // revision. Measure only writes caused by this pointer interaction.
+        let beforeDrag = try JSONDecoder().decode(
+            LauncherLayoutDocument.self, from: Data(contentsOf: layoutURL)
+        )
         let presentations: [AppTilePresentation] = value(root, "folderPresentations")!
         let source = presentations[0]
-        let start = root.convert(CGPoint(x: source.button.bounds.midX, y: source.button.bounds.midY), from: source.button)
+        let start = root.convert(
+            CGPoint(x: source.button.bounds.midX, y: source.button.bounds.midY), from: source.button
+        )
         send(.leftMouseDown, at: start)
         let panel: CGRect = value(root, "folderPanelFrame")!
         let target = crossPage
@@ -136,6 +148,9 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         }
         let folderChrome: CALayer? = value(root, "folderContentAnimationLayer")
         let landingPresentations: [AppTilePresentation] = value(root, "folderPresentations")!
+        let beforeRelease = try Data(contentsOf: layoutURL)
+        let beforeReleaseDocument = try JSONDecoder().decode(LauncherLayoutDocument.self, from: beforeRelease)
+        check(beforeReleaseDocument == beforeDrag, "folder drag preview does not persist before release")
         send(.leftMouseUp, at: target)
         let settled = await until("folder drop settles without Escape") {
             value(root, "folderItemDragSession", as: Any.self) == nil
@@ -144,12 +159,17 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         }
         check(!source.button.isTrackingPointer, "source pointer tracking ended")
         if !settled {
-            print("DIAGNOSTIC state=\(String(describing: value(root, "dragStateMachine", as: LauncherDragStateMachine.self))) committing=\(String(describing: value(root, "isCommittingLayout", as: Bool.self))) folderDrag=\(String(describing: value(root, "folderItemDragSession", as: Any.self)))")
+            let state = value(root, "dragStateMachine", as: LauncherDragStateMachine.self)
+            let committing = value(root, "isCommittingLayout", as: Bool.self)
+            let folderDrag = value(root, "folderItemDragSession", as: Any.self)
+            print("DIAGNOSTIC state=\(String(describing: state)) "
+                + "committing=\(String(describing: committing)) folderDrag=\(String(describing: folderDrag))")
         }
         if settled {
             let document = try JSONDecoder().decode(LauncherLayoutDocument.self, from: Data(contentsOf: layoutURL))
             let folder = document.items.compactMap { if case let .folder(folder) = $0 { folder } else { nil } }.first!
-            check(document.revision == fixture.revision + 1, "folder reorder committed exactly once")
+            check(document.revision == beforeDrag.revision + 1,
+                  "folder reorder committed exactly once (before=\(beforeDrag.revision), after=\(document.revision))")
             check(Set(folder.applications) == Set(references), "folder reorder preserves every app")
             check(folder.applications != references, "folder order changed")
             let current: [AppTilePresentation] = value(root, "folderPresentations")!

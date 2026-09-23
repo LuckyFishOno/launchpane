@@ -1051,7 +1051,6 @@ private extension LaunchpadRootView {
         )
     }
 
-
     // LAUNCHPANE_ULTRA_SMOOTH_PAGING_V1
     //
     // Keep currentPage and the immediate neighbours already attached one viewport
@@ -1131,18 +1130,15 @@ private extension LaunchpadRootView {
         if ProcessInfo.processInfo.environment[
             "LAUNCHPANE_PAGING_DIAGNOSTICS"
         ] == "1" {
-            let attachedTileButtons = pageSurfaces.values.reduce(into: 0) {
-                total, surface in
-                total += surface.entries.reduce(into: 0) {
-                    pageTotal, entry in
+            let attachedTileButtons = pageSurfaces.values.reduce(into: 0) { total, surface in
+                total += surface.entries.reduce(into: 0) { pageTotal, entry in
                     if entry.button.superview != nil {
                         pageTotal += 1
                     }
                 }
             }
 
-            let stagedPageLayers = pageSurfaces.values.reduce(into: 0) {
-                total, surface in
+            let stagedPageLayers = pageSurfaces.values.reduce(into: 0) { total, surface in
                 if surface.layer.superlayer != nil {
                     total += 1
                 }
@@ -1280,7 +1276,9 @@ private extension LaunchpadRootView {
     func moveSelection(_ movement: GridNavigationMovement) {
         guard !isPageTransitionActive, let metrics = currentMetrics else { return }
         let items = resolvedItems
-        let currentSelection = items.indices.contains(selectedIndex) ? selectedIndex : pageProjection(metrics: metrics).range(forPage: currentPage).first
+        let currentSelection = items.indices.contains(selectedIndex)
+            ? selectedIndex
+            : pageProjection(metrics: metrics).range(forPage: currentPage).first
         guard let index = GridSelectionNavigator.nextIndex(
             from: currentSelection,
             movement: movement,
@@ -1482,7 +1480,8 @@ private extension LaunchpadRootView {
         alert.alertStyle = .warning
         alert.messageText = "Launchpad Couldn’t Be Reset"
         if error as? LauncherLayoutStoreError == .incompleteCatalogForReset {
-            alert.informativeText = "The application scan was incomplete, so your current layout was kept unchanged. Try again in a moment."
+            alert.informativeText = "The application scan was incomplete, so your current layout was kept unchanged. "
+                + "Try again in a moment."
         } else {
             alert.informativeText = "Your current layout was kept unchanged."
         }
@@ -1559,8 +1558,7 @@ private extension LaunchpadRootView {
         // burst of trackpad events from turning into redundant CA commits.
         if let folderSwipe = interactiveFolderPageSwipe,
            folderSwipe.phase == .tracking,
-           folderSwipe.needsPresentationUpdate
-        {
+           folderSwipe.needsPresentationUpdate {
             presentInteractiveFolderPageSwipe(folderSwipe)
             return
         }
@@ -1712,8 +1710,7 @@ private extension LaunchpadRootView {
         }
 
         if let swipe = interactivePageSwipe,
-           event.scrollingDeltaX != 0
-        {
+           event.scrollingDeltaX != 0 {
             updateInteractivePageSwipe(
                 swipe,
                 deltaX: event.scrollingDeltaX,
@@ -2956,7 +2953,8 @@ private extension LaunchpadRootView {
         let direction = dragEdgeDirection(at: point, metrics: metrics)
         // Existing pages may be traversed freely. Offer one temporary trailing
         // page, not an unbounded train of empty pages while the pointer rests.
-        let existingCount = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
+        let existingCount = session.projectionBaselineDocument
+            .normalizedForPageCapacity(metrics.itemsPerPage).pages.count
         guard let direction, (0...existingCount).contains(currentPage + direction) else {
             session.edgePagingTask?.cancel()
             session.edgePagingTask = nil
@@ -3130,20 +3128,16 @@ private extension LaunchpadRootView {
         let scale = window?.backingScaleFactor ?? 1
         let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-
-
         let workingSurface:
             LaunchpadPageSurface = {
                 if session
-                    .usesInPlacePreview
-                {
+                    .usesInPlacePreview {
                     return session
                         .originalSurface
                 }
 
                 if let previewSurface =
-                    session.previewSurface
-                {
+                    session.previewSurface {
                     return previewSurface
                 }
 
@@ -3200,8 +3194,7 @@ private extension LaunchpadRootView {
                 .isHidden = false
 
             for entry
-                in workingSurface.entries
-            {
+                in workingSurface.entries {
                 guard
                     let targetFrame =
                         targetFrames[
@@ -3271,8 +3264,7 @@ private extension LaunchpadRootView {
                     == session
                         .sourceEntry
                         .item
-                        .id
-                {
+                        .id {
                     // Source item 仍然只有 drag proxy
                     // 是唯一 visual owner。
                     //
@@ -3376,8 +3368,7 @@ private extension LaunchpadRootView {
             ] = [:]
 
         for entry
-            in previousSurface.entries
-        {
+            in previousSurface.entries {
             oldPositions[
                 entry.item.id
             ] =
@@ -3416,8 +3407,7 @@ private extension LaunchpadRootView {
             .isHidden = false
 
         for entry
-            in newSurface.entries
-        {
+            in newSurface.entries {
             let targetPosition =
                 entry
                     .tileLayer
@@ -3427,8 +3417,7 @@ private extension LaunchpadRootView {
                 == session
                     .sourceEntry
                     .item
-                    .id
-            {
+                    .id {
                 entry
                     .tileLayer
                     .removeFromSuperlayer()
@@ -3446,8 +3435,7 @@ private extension LaunchpadRootView {
             if let oldPosition =
                 oldPositions[
                     entry.item.id
-                ]
-            {
+                ] {
                 startPosition =
                     oldPosition
             } else {
@@ -3572,8 +3560,6 @@ private extension LaunchpadRootView {
         session
             .usesInPlacePreview = false
     }
-
-
 
     func visibleIconFrame(for entry: LaunchpadPageEntry) -> CGRect {
         let visibleCenter = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
@@ -3895,8 +3881,7 @@ private extension LaunchpadRootView {
         if let landingTargetID,
            let landingEntry = oldSurface.entries.first(where: {
                $0.item.id == landingTargetID
-           })
-        {
+           }) {
             session.mergeLandingTargetIconFrame = visibleIconFrame(for: landingEntry)
         } else {
             session.mergeLandingTargetIconFrame = nil
@@ -3976,8 +3961,7 @@ private extension LaunchpadRootView {
                let applicationTargetPosition,
                case let .folder(folder) = entry.item,
                case let .application(targetIdentity) = session.target,
-               folder.applications.contains(where: { $0.id == targetIdentity })
-            {
+               folder.applications.contains(where: { $0.id == targetIdentity }) {
                 startPosition = applicationTargetPosition
             }
 
@@ -3988,8 +3972,7 @@ private extension LaunchpadRootView {
             // outgoing tile has visibly vacated the slot.
             if startPosition == nil,
                let previousPage = preMergePageByIdentifier[entry.item.id],
-               previousPage != currentPage
-            {
+               previousPage != currentPage {
                 let logicalDirection: CGFloat =
                     previousPage > currentPage ? 1 : -1
                 let visualDirection =
@@ -4044,8 +4027,7 @@ private extension LaunchpadRootView {
         if case let .folder(folderID) = session.target,
            let folderEntry = newSurface.entries.first(where: {
                $0.item.id == .folder(folderID)
-           }), shouldAnimate
-        {
+           }), shouldAnimate {
             let scaleDown = CABasicAnimation(keyPath: "transform")
             scaleDown.fromValue = CATransform3DMakeAffineTransform(
                 .init(
@@ -4113,8 +4095,7 @@ private extension LaunchpadRootView {
 
         switch session.target {
         case let .folder(folderID):
-            finalFolder = session.draft.document.items.compactMap {
-                (item: LauncherLayoutItem) -> LauncherFolder? in
+            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
                 guard case let .folder(folder) = item, folder.id == folderID else {
                     return nil
                 }
@@ -4122,8 +4103,7 @@ private extension LaunchpadRootView {
             }.first
 
         case let .application(targetIdentity):
-            finalFolder = session.draft.document.items.compactMap {
-                (item: LauncherLayoutItem) -> LauncherFolder? in
+            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
                 guard case let .folder(folder) = item else { return nil }
                 let identities = folder.applications.map(\.identity)
                 guard
@@ -4206,8 +4186,7 @@ private extension LaunchpadRootView {
                 iconFrame: landingIconFrame,
                 logicalIndex: sourceIndex,
                 layoutDirection: userInterfaceLayoutDirection
-            )
-        {
+            ) {
             targetCenter = childCenter
         } else {
             // Closed folders expose only nine miniature slots. Once all nine
@@ -4509,8 +4488,7 @@ private extension LaunchpadRootView {
                 currentPage
             ],
            cachedSurface
-            !== previewSurface
-        {
+            !== previewSurface {
             detachButtons(
                 from: cachedSurface
             )
@@ -4594,8 +4572,7 @@ private extension LaunchpadRootView {
            let previewSurface =
             context
                 .session
-                .previewSurface
-        {
+                .previewSurface {
             CATransaction.begin()
             CATransaction
                 .setDisableActions(
@@ -4616,8 +4593,7 @@ private extension LaunchpadRootView {
             // Collapse every drag-only presentation state back to its model
             // value before pointer interaction becomes available again.
             for entry in
-                previewSurface.entries
-            {
+                previewSurface.entries {
                 entry
                     .tileLayer
                     .removeAnimation(
@@ -4688,8 +4664,7 @@ private extension LaunchpadRootView {
             updateSelectionAppearance()
 
             if let metrics =
-                currentMetrics
-            {
+                currentMetrics {
                 scheduleIconPrewarming(
                     metrics: metrics,
                     scale:
@@ -4774,8 +4749,7 @@ private extension LaunchpadRootView {
             for entry
                 in session
                     .originalSurface
-                    .entries
-            {
+                    .entries {
                 guard
                     let originalFrame =
                         session
@@ -5248,7 +5222,6 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-
     func animateMergeProxyIntoFolder(
         _ proxy: CALayer,
         destination: CGPoint,
@@ -5469,8 +5442,7 @@ private extension LaunchpadRootView {
                 )
 
             for entry
-                in surface.entries
-            {
+                in surface.entries {
                 guard
                     let originalFrame =
                         session
@@ -5534,8 +5506,7 @@ private extension LaunchpadRootView {
                     .opacity = 1
 
                 if entry.item.id
-                    == sourceID
-                {
+                    == sourceID {
                     entry
                         .tileLayer
                         .removeFromSuperlayer()
@@ -5644,14 +5615,7 @@ private extension LaunchpadRootView {
         pageContentLayer =
             surface.layer
 
-        let finalize = {
-            [
-                weak proxy,
-                weak sourceLayer =
-                    session
-                        .sourceEntry
-                        .tileLayer
-            ] in
+        let finalize = { [weak proxy, weak sourceLayer = session.sourceEntry.tileLayer] in
 
             CATransaction.begin()
 
@@ -5670,8 +5634,7 @@ private extension LaunchpadRootView {
                 .removeFromSuperlayer()
 
             if shouldRevealSource,
-               let sourceLayer
-            {
+               let sourceLayer {
                 sourceLayer
                     .removeAllAnimations()
 
@@ -5679,8 +5642,7 @@ private extension LaunchpadRootView {
                     .opacity = 1
 
                 if sourceLayer
-                    .superlayer == nil
-                {
+                    .superlayer == nil {
                     // Proxy 已經先移除，
                     // 然後 live source 接手。
                     //
@@ -5710,8 +5672,7 @@ private extension LaunchpadRootView {
                     : session
                         .originalFramesByIdentifier[
                             sourceID
-                        ]
-            {
+                        ] {
                 session
                     .sourceEntry
                     .button
@@ -6147,8 +6108,7 @@ private extension LaunchpadRootView {
         if committed,
            session.target.isInsertion,
            let liveLayer = revealLayer,
-           let liveSurface = revealSurface
-        {
+           let liveSurface = revealSurface {
             let visibleProxyPosition =
                 proxy.presentation()?.position
                     ?? proxy.position
@@ -6207,8 +6167,7 @@ private extension LaunchpadRootView {
 
             if let revealLayer,
                revealLayer.superlayer == nil,
-               let revealSurface
-            {
+               let revealSurface {
                 revealSurface.layer.addSublayer(revealLayer)
             }
             revealLayer?.opacity = 1
@@ -6218,8 +6177,7 @@ private extension LaunchpadRootView {
             return
         }
 
-        let finishPresentation = {
-            [weak proxy, weak revealLayer] in
+        let finishPresentation = { [weak proxy, weak revealLayer] in
 
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -6230,8 +6188,7 @@ private extension LaunchpadRootView {
             }
             if let revealLayer,
                revealLayer.superlayer == nil,
-               let revealSurface
-            {
+               let revealSurface {
                 revealSurface.layer.addSublayer(revealLayer)
             }
             revealLayer?.opacity = 1
@@ -7090,12 +7047,14 @@ private extension LaunchpadRootView {
             )
         }
 
-        func folderReorderGeometry() -> (
-            folder: ResolvedLaunchpadFolder,
-            metrics: FolderGridMetrics,
-            pageStartIndex: Int,
-            visibleCount: Int
-        )? {
+        struct FolderReorderGeometry {
+            let folder: ResolvedLaunchpadFolder
+            let metrics: FolderGridMetrics
+            let pageStartIndex: Int
+            let visibleCount: Int
+        }
+
+        func folderReorderGeometry() -> FolderReorderGeometry? {
             guard
                 let openFolderID,
                 let folder = resolvedFolder(id: openFolderID)
@@ -7119,7 +7078,10 @@ private extension LaunchpadRootView {
             // page. Reorder hit-testing must use that exact same lattice too;
             // solving a second, smaller Folder for a partial page makes its cells
             // disagree with the visuals after page one.
-            return (folder, allMetrics, pageStartIndex, visibleCount)
+            return FolderReorderGeometry(
+                folder: folder, metrics: allMetrics,
+                pageStartIndex: pageStartIndex, visibleCount: visibleCount
+            )
         }
 
         // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
@@ -7198,7 +7160,7 @@ private extension LaunchpadRootView {
             rawSlot: Int,
             center: CGPoint,
             context: FolderItemDragSession,
-            geometry: (folder: ResolvedLaunchpadFolder, metrics: FolderGridMetrics, pageStartIndex: Int, visibleCount: Int)
+            geometry: FolderReorderGeometry
         ) -> Int {
             let currentLocalIndex = context.destinationAbsoluteIndex - geometry.pageStartIndex
             guard
@@ -7735,7 +7697,10 @@ private extension LaunchpadRootView {
 
             let sourceParent = context.sourceTileParent
             let sourceIndex = context.sourceTileIndex
-            let finish = { [weak self, weak proxy = context.proxyLayer, weak sourceLayer = context.sourceEntry.tileLayer, weak iconLayer = context.sourceEntry.iconLayer] in
+            let proxy = context.proxyLayer
+            let sourceLayer = context.sourceEntry.tileLayer
+            let iconLayer = context.sourceEntry.iconLayer
+            let finish = { [weak self, weak proxy, weak sourceLayer, weak iconLayer] in
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
 
@@ -7759,8 +7724,7 @@ private extension LaunchpadRootView {
                 if case let .application(application) = context.sourceEntry.item,
                    let livePresentation = self?.folderPresentations.first(where: {
                        $0.button.application.id == application.id
-                   })
-                {
+                   }) {
                     livePresentation.tileLayer.opacity = 1
                     livePresentation.button.isHidden = false
                     livePresentation.button.isEnabled = true
@@ -8350,8 +8314,7 @@ private extension LaunchpadRootView {
                 presentation.button.isHidden = animated
             }
 
-            presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer,
-                                                      weak self] isHovering in
+            presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer, weak self] isHovering in
                 self?.animateHover(on: iconLayer, isHovering: isHovering)
             }
             presentation.button.onPointerDown = { [weak self, weak presentation] event in
@@ -8603,17 +8566,19 @@ private extension LaunchpadRootView {
         return metrics.itemFrames(forItemAt: localIndex)
     }
 
+    struct FolderPageContents {
+        let layer: CALayer
+        let presentations: [AppTilePresentation]
+        let applications: [ApplicationRecord]
+    }
+
     // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
     func makeFolderPageLayer(
         folder: ResolvedLaunchpadFolder,
         metrics: FolderGridMetrics,
         pageIndex: Int,
         scale: CGFloat
-    ) -> (
-        layer: CALayer,
-        presentations: [AppTilePresentation],
-        applications: [ApplicationRecord]
-    ) {
+    ) -> FolderPageContents {
         let startIndex = pageIndex * metrics.itemsPerPage
         let endIndex = min(
             startIndex + metrics.itemsPerPage,
@@ -8625,7 +8590,7 @@ private extension LaunchpadRootView {
             emptyLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
             emptyLayer.position = metrics.panelFrame.center
             emptyLayer.contentsScale = scale
-            return (emptyLayer, [], [])
+            return FolderPageContents(layer: emptyLayer, presentations: [], applications: [])
         }
 
         let applications = Array(folder.applications[startIndex ..< endIndex])
@@ -8674,8 +8639,7 @@ private extension LaunchpadRootView {
                 dragSession?.folderCreationPreview?.sourceLandingCenter = frames.cell.center
             }
 
-            presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer,
-                                                      weak self] isHovering in
+            presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer, weak self] isHovering in
                 self?.animateHover(on: iconLayer, isHovering: isHovering)
             }
             presentation.button.onPointerDown = { [weak self, weak presentation] event in
@@ -8703,7 +8667,7 @@ private extension LaunchpadRootView {
             presentations.append(presentation)
         }
 
-        return (pageLayer, presentations, applications)
+        return FolderPageContents(layer: pageLayer, presentations: presentations, applications: applications)
     }
 
     func updateFolderPageIndicator(pageCount: Int) {
@@ -9541,10 +9505,8 @@ private extension LaunchpadRootView {
 
     func removeFolderButtons(preserving preservedButton: AppTileButton? = nil) {
         let pointerOwner = preservedButton ?? preservedFolderTrackingButton
-        for presentation in folderPresentations {
-            if presentation.button !== pointerOwner {
-                presentation.button.removeFromSuperview()
-            }
+        for presentation in folderPresentations where presentation.button !== pointerOwner {
+            presentation.button.removeFromSuperview()
         }
         folderPresentations.removeAll(keepingCapacity: true)
     }

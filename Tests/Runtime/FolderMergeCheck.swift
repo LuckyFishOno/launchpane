@@ -16,7 +16,12 @@ final class FolderMergeCheckDelegate: NSObject, NSApplicationDelegate {
     private var sourceID: ApplicationIdentity!
     private var targetIndex = 0
 
-    private var root: LaunchpadRootView { controller.window!.contentView as! LaunchpadRootView }
+    private var root: LaunchpadRootView {
+        guard let root = controller.window?.contentView as? LaunchpadRootView else {
+            fatalError("Expected the launcher window to contain LaunchpadRootView")
+        }
+        return root
+    }
     private var layoutURL: URL {
         URL(fileURLWithPath: ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"]!)
     }
@@ -165,24 +170,38 @@ final class FolderMergeCheckDelegate: NSObject, NSApplicationDelegate {
               "every original application occurs exactly once")
     }
 
+    private struct ApproachDirection {
+        let name: String
+        let horizontal: Int
+        let vertical: Int
+    }
+
     private func checkEightApproaches() async throws {
         // Each source is the genuine adjacent side/corner icon. Beginning just
         // outside the target cell must not push it away before entering its icon.
-        let directions: [(String, Int, Int)] = [
-            ("left", -1, 0), ("right", 1, 0), ("above", 0, 1), ("below", 0, -1),
-            ("upper left", -1, 1), ("upper right", 1, 1),
-            ("lower left", -1, -1), ("lower right", 1, -1),
+        let directions: [ApproachDirection] = [
+            .init(name: "left", horizontal: -1, vertical: 0),
+            .init(name: "right", horizontal: 1, vertical: 0),
+            .init(name: "above", horizontal: 0, vertical: 1),
+            .init(name: "below", horizontal: 0, vertical: -1),
+            .init(name: "upper left", horizontal: -1, vertical: 1),
+            .init(name: "upper right", horizontal: 1, vertical: 1),
+            .init(name: "lower left", horizontal: -1, vertical: -1),
+            .init(name: "lower right", horizontal: 1, vertical: -1),
         ]
-        for (name, x, y) in directions {
+        for direction in directions {
+            let name = direction.name
+            let horizontal = direction.horizontal
+            let vertical = direction.vertical
             try await openFixture()
-            let sourceColumnDelta = metrics.isRightToLeft ? -x : x
-            sourceID = references[targetIndex + sourceColumnDelta - y * metrics.columns].identity
+            let sourceColumnDelta = metrics.isRightToLeft ? -horizontal : horizontal
+            sourceID = references[targetIndex + sourceColumnDelta - vertical * metrics.columns].identity
             let identifier = LauncherLayoutItemIdentifier.application(targetID)
             let baseline = frames(identifier)!
             let destination = center(baseline.icon)
             let start = CGPoint(
-                x: x < 0 ? baseline.cell.minX - 6 : x > 0 ? baseline.cell.maxX + 6 : destination.x,
-                y: y < 0 ? baseline.cell.minY - 6 : y > 0 ? baseline.cell.maxY + 6 : destination.y
+                x: horizontal < 0 ? baseline.cell.minX - 6 : horizontal > 0 ? baseline.cell.maxX + 6 : destination.x,
+                y: vertical < 0 ? baseline.cell.minY - 6 : vertical > 0 ? baseline.cell.maxY + 6 : destination.y
             )
             let button = press()
             drag(button, to: start)

@@ -5,9 +5,9 @@ import XCTest
 final class GridReorderInsertionTests: XCTestCase {
     private func slot(_ raw: Int, from current: Int, fraction: CGFloat, rtl: Bool = false) -> Int {
         let cell = CGRect(x: 200, y: 100, width: 120, height: 90)
-        let x = rtl ? cell.maxX - cell.width * fraction : cell.minX + cell.width * fraction
+        let draggedCenterX = rtl ? cell.maxX - cell.width * fraction : cell.minX + cell.width * fraction
         return GridReorderInsertion.resolve(
-            rawSlot: raw, currentSlot: current, draggedCenterX: x,
+            rawSlot: raw, currentSlot: current, draggedCenterX: draggedCenterX,
             targetCell: cell, isRightToLeft: rtl
         )
     }

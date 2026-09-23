@@ -55,8 +55,7 @@ private enum DockLauncherIPC {
 @MainActor
 private final class DockLauncherDelegate:
     NSObject,
-    NSApplicationDelegate
-{
+    NSApplicationDelegate {
     func applicationDidFinishLaunching(
         _: Notification
     ) {

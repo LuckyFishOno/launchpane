@@ -1,12 +1,16 @@
 # Agent memory
 
-The agent retains the catalog, saved layout, search state, interaction machinery,
-original app icons, and preloaded pages. No icon resizing, bit-depth conversion,
-folder preload reduction, animation removal, or hidden-window teardown is used.
+The idle agent retains the application catalog, saved layout, and the small
+interaction model. Once dismissal finishes, it cancels presentation-only work,
+detaches page and drag layer trees, releases wallpaper references, and removes
+transient decoded icons. It keeps first-page standalone icons and the nine
+visible miniature icons for each first-page folder warm so reopening remains
+responsive. Full Retina presentation resources are rebuilt for the selected
+display immediately before the next opening.
 
 The background and cache changes reduce image storage:
 
-- The main and menu wallpaper layers share the same cached material image directly.
+- The main and menu wallpaper layers share the same cached material image directly while visible.
 - The intentionally frosted material is limited to a 1280-pixel long edge.
 - Placement is resolved in native coordinates before downsampling; blur radius scales with the material raster.
 - Only the menu-bar rows of the plain desktop are rendered and cached.
@@ -18,12 +22,14 @@ At 3840 × 2160 pixels, a single RGBA8 full-screen raster holds about 31.6 MiB;
 the 1280 × 720 frosted material holds about 3.5 MiB. This background resolution
 tradeoff is explicitly user-approved. App icon decoding, dimensions, bit depth,
 and color space remain intact. Larger icon requests still decode the original
-larger representation; late smaller loads cannot downgrade it. Cached backgrounds
-and preloaded icons remain available for reopening and display switching.
+larger representation; late smaller loads cannot downgrade it. The wallpaper
+provider cache and the bounded first-page idle icon set remain available for
+reopening. Later-page icons, full-size folder contents, and live page trees
+remain presentation-only.
 
 ## Verification
 
-`swift test` passes 170 core tests, including bounded material geometry, portrait
+`swift test` passes 185 core tests, including bounded material geometry, portrait
 displays, blur scaling, and invalid inputs. `WallpaperRasterCheck.swift` passes
 298 assertions over 1×, 1.25×, 2×, and 3× scales, all wallpaper scaling modes,
 and clipping on/off. It checks unchanged small-raster output, exact native plain
@@ -35,6 +41,11 @@ It passes 426 assertions on the three connected displays, creates no windows,
 and performs no application discovery or layout writes. `IconCacheScaleCheck`
 passes 16 deterministic assertions using 64-bit P3 images, including asynchronous
 completion order and explicit invalidation. Release compilation passes.
+
+`MenuBarOpeningAnimationCheck.swift` runs the production AppKit windows and
+Core Animation opening path. Its 20 assertions verify full-width top coverage,
+the backing-pixel overlap, whole-surface opacity synchronization, the measured
+13-frame curve and duration, and the Reduce Motion result.
 
 `AgentMemoryCheck.swift` creates a hidden window and uses a fresh temporary layout.
 Its `--cycle-displays` mode waits for real icon-prewarm completion while moving

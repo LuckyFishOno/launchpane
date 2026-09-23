@@ -3,8 +3,7 @@ import AppKit
 @MainActor
 final class LaunchPaneAppDelegate:
     NSObject,
-    NSApplicationDelegate
-{
+    NSApplicationDelegate {
     private static let toggleNotification =
         Notification.Name(
             "org.launchpane.LaunchPaneAgent.toggle"

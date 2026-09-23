@@ -173,8 +173,7 @@ public actor LauncherLayoutStore {
             .appendingPathComponent("LauncherLayout.json", isDirectory: false)
 
         if !FileManager.default.fileExists(atPath: currentURL.path),
-           FileManager.default.fileExists(atPath: legacyURL.path)
-        {
+           FileManager.default.fileExists(atPath: legacyURL.path) {
             try? FileManager.default.createDirectory(
                 at: currentURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true

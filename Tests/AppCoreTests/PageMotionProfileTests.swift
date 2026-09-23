@@ -152,15 +152,17 @@ final class PageMotionProfileTests: XCTestCase {
         var previousX = 0.0
         var previousY = 0.0
         for step in 1...200 {
-            let t = Double(step) / 200
-            let u = 1 - t
-            let x = 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t
-            let y = 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t
-            XCTAssertGreaterThan(x, previousX, file: file, line: line)
-            XCTAssertGreaterThanOrEqual(y, previousY, file: file, line: line)
-            XCTAssertLessThanOrEqual(y, 1, file: file, line: line)
-            previousX = x
-            previousY = y
+            let progress = Double(step) / 200
+            let remaining = 1 - progress
+            let sampleX = 3 * remaining * remaining * progress * p1.x
+                + 3 * remaining * progress * progress * p2.x + progress * progress * progress
+            let sampleY = 3 * remaining * remaining * progress * p1.y
+                + 3 * remaining * progress * progress * p2.y + progress * progress * progress
+            XCTAssertGreaterThan(sampleX, previousX, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(sampleY, previousY, file: file, line: line)
+            XCTAssertLessThanOrEqual(sampleY, 1, file: file, line: line)
+            previousX = sampleX
+            previousY = sampleY
         }
     }
 }
