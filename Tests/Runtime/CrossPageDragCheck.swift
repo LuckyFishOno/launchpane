@@ -11,6 +11,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
     private let previousApp = NSWorkspace.shared.frontmostApplication
     private var failures = 0
     private var fixture = LauncherLayoutDocument()
+    private var beforeDrag = LauncherLayoutDocument()
     private var sourceID: ApplicationIdentity!
     private var root: LaunchpadRootView {
         guard let root = controller.window?.contentView as? LaunchpadRootView else {
@@ -68,6 +69,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         await until("fixture catalog loaded") { value(root, "isLoadingApplications") == false }
         root.layoutSubtreeIfNeeded()
         await pause(0.3)
+        beforeDrag = try persisted()
     }
     private func event(_ type: NSEvent.EventType, at point: CGPoint) -> NSEvent {
         NSEvent.mouseEvent(with: type, location: root.convert(point, to: nil),
@@ -86,6 +88,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
         controller.window!.sendEvent(event(.leftMouseDown, at: point))
         controller.window!.sendEvent(event(.leftMouseDragged, at: edge(1)))
         check(session != nil && button.isTrackingPointer, "real source button owns active drag")
+        check((try? persisted()) == beforeDrag, "drag preview does not persist before release")
         return button
     }
     private func sourcePage(in document: LauncherLayoutDocument) -> Int? {
@@ -108,13 +111,45 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
     private func verifyCommit(page expected: Int, _ message: String) throws {
         let document = try persisted()
         check(sourcePage(in: document) == expected, message)
-        check(document.items.count == fixture.items.count, "no app lost or duplicated")
-        check(document.pages[0].count == fixture.pages[0].count - 1, "source gap does not pull later apps")
-        check(document.revision == fixture.revision + 1, "drop persisted exactly once")
+        check(document.items.count == beforeDrag.items.count, "no app lost or duplicated")
+        check(document.pages[0].count == beforeDrag.pages[0].count - 1, "source gap does not pull later apps")
+        check(document.revision == beforeDrag.revision + 1, "drop persisted exactly once")
         check(descendants(root).compactMap { $0 as? AppTileButton }
             .filter { $0.application.id == sourceID }.count == 1,
               "committed app has exactly one live pointer target")
     }
+    private func verifyReturnAndCancel() async throws {
+        try await openFixture()
+        let returning = start()
+        if await until("reached second page for reverse traversal", { page == 1 && !transitioning }) {
+            controller.window!.sendEvent(event(.leftMouseDragged, at: edge(-1)))
+            if await until("can return to original page", { page == 0 && !transitioning }) {
+                check(returning.isTrackingPointer && returning.window != nil,
+                      "return visit does not detach source pointer owner")
+                controller.window!.sendEvent(event(.leftMouseUp, at: edge(-1)))
+                await settled()
+                check(try persisted() == beforeDrag, "round trip to original slot is a no-op")
+            }
+        }
+
+        try await openFixture()
+        let cancelled = start()
+        if await until("transition began before Escape", { transitioning }) {
+            let incoming: Any = value(session!, "edgeIncomingSurface")!
+            let outgoing: Any = value(session!, "edgeOutgoingSurface")!
+            let incomingLayer: CALayer = value(incoming, "layer")!
+            let outgoingLayer: CALayer = value(outgoing, "layer")!
+            cancelled.cancelOperation(nil)
+            await settled()
+            await pause(0.6)
+            check(page == 0 && session == nil, "Escape cancels pending transition and restores source page")
+            check(try persisted() == beforeDrag, "Escape never persists preview")
+            check(incomingLayer.superlayer == nil && outgoingLayer.superlayer == nil,
+                  "rollback retires both exact transition trees")
+        }
+
+    }
+
     private func run() async throws {
         let discovery = await AppCatalogActor().refreshOutcome()
         let items = discovery.applications.map {
@@ -132,7 +167,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
             controller.window!.sendEvent(event(.leftMouseUp, at: edge(1)))
             await settled()
             try verifyCommit(page: 2, "edge mouseUp commits on third page")
-            check(try persisted().pages[1] == fixture.pages[1], "intermediate page remains unchanged")
+            check(try persisted().pages[1] == beforeDrag.pages[1], "intermediate page remains unchanged")
             await pause(0.6)
             check(page == 2 && session == nil, "mouseUp cancels the next dwell")
         }
@@ -146,39 +181,12 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
             try verifyCommit(page: 1, "mid-animation release commits incoming page")
         }
 
-        try await openFixture()
-        let returning = start()
-        if await until("reached second page for reverse traversal", { page == 1 && !transitioning }) {
-            controller.window!.sendEvent(event(.leftMouseDragged, at: edge(-1)))
-            if await until("can return to original page", { page == 0 && !transitioning }) {
-                check(returning.isTrackingPointer && returning.window != nil,
-                      "return visit does not detach source pointer owner")
-                controller.window!.sendEvent(event(.leftMouseUp, at: edge(-1)))
-                await settled()
-                check(try persisted().pages == fixture.pages, "round trip to original slot is a no-op")
-            }
-        }
-
-        try await openFixture()
-        let cancelled = start()
-        if await until("transition began before Escape", { transitioning }) {
-            let incoming: Any = value(session!, "edgeIncomingSurface")!
-            let outgoing: Any = value(session!, "edgeOutgoingSurface")!
-            let incomingLayer: CALayer = value(incoming, "layer")!
-            let outgoingLayer: CALayer = value(outgoing, "layer")!
-            cancelled.cancelOperation(nil)
-            await settled()
-            await pause(0.6)
-            check(page == 0 && session == nil, "Escape cancels pending transition and restores source page")
-            check(try persisted().pages == fixture.pages, "Escape never persists preview")
-            check(incomingLayer.superlayer == nil && outgoingLayer.superlayer == nil,
-                  "rollback retires both exact transition trees")
-        }
+        try await verifyReturnAndCancel()
 
         // Existing partial pages are preserved; holding past the last one offers
         // one new page and then stops, rather than generating infinite empties.
         try await openFixture()
-        let trailingPage = fixture.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
+        let trailingPage = beforeDrag.normalizedForPageCapacity(metrics.itemsPerPage).pages.count
         _ = start()
         if await until("held edge reaches a new trailing page", timeout: 12, {
             page == trailingPage && !transitioning
@@ -190,6 +198,10 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
             try verifyCommit(page: trailingPage, "drop persists newly created page")
         }
 
+        try await verifyFullPageOverflow(items: items)
+    }
+
+    private func verifyFullPageOverflow(items: [LauncherLayoutItem]) async throws {
         // Make the final existing page exactly full: inserting here must push
         // its last app into a new page, not refill the source page's vacancy.
         let capacity = metrics.itemsPerPage
@@ -212,6 +224,7 @@ final class CrossPageDragCheckDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             do { try await run() } catch { check(false, "unexpected error: \(error)") }

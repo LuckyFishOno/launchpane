@@ -166,36 +166,46 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
                 + "committing=\(String(describing: committing)) folderDrag=\(String(describing: folderDrag))")
         }
         if settled {
-            let document = try JSONDecoder().decode(LauncherLayoutDocument.self, from: Data(contentsOf: layoutURL))
-            let folder = document.items.compactMap { if case let .folder(folder) = $0 { folder } else { nil } }.first!
-            check(document.revision == beforeDrag.revision + 1,
-                  "folder reorder committed exactly once (before=\(beforeDrag.revision), after=\(document.revision))")
-            check(Set(folder.applications) == Set(references), "folder reorder preserves every app")
-            check(folder.applications != references, "folder order changed")
-            let current: [AppTilePresentation] = value(root, "folderPresentations")!
-            check(value(root, "folderContentAnimationLayer", as: CALayer.self) === folderChrome,
-                  "drop keeps the existing folder panel instead of rebuilding it")
-            if !duringTransition {
-                check(current.allSatisfy { presentation in
-                    landingPresentations.contains { $0 === presentation }
-                }, "landing preserves the displayed icon layers and their full-resolution contents")
-            }
-            check(current.allSatisfy { !$0.button.isHidden && $0.button.isEnabled && $0.button.window != nil },
-                  "committed folder has usable hit targets")
-            // Start another drag immediately: merely seeing a landing is insufficient.
-            let next = current.first { $0.button.application.id == source.button.application.id }!
-            let point = root.convert(CGPoint(x: next.button.bounds.midX, y: next.button.bounds.midY), from: next.button)
-            send(.leftMouseDown, at: point)
-            send(.leftMouseDragged, at: CGPoint(x: point.x + 10, y: point.y))
-            check(value(root, "folderItemDragSession", as: Any.self) != nil, "next drag starts without Escape")
-            let nextContext: Any? = value(root, "folderItemDragSession", as: Any.self)
-            check(nextContext.flatMap { value($0, "sourceAbsoluteIndex", as: Int.self) }
-                    == folder.applications.firstIndex { $0.identity == next.button.application.id },
-                  "reused button starts from its committed index")
-            next.button.cancelOperation(nil)
-            await pause(0.4)
+            try await verifyFolderLanding(
+                source: source, beforeDrag: beforeDrag, folderChrome: folderChrome,
+                landingPresentations: landingPresentations, duringTransition: duringTransition)
         }
     }
+
+    private func verifyFolderLanding(
+        source: AppTilePresentation, beforeDrag: LauncherLayoutDocument, folderChrome: CALayer?,
+        landingPresentations: [AppTilePresentation], duringTransition: Bool
+    ) async throws {
+        let document = try JSONDecoder().decode(LauncherLayoutDocument.self, from: Data(contentsOf: layoutURL))
+        let folder = document.items.compactMap { if case let .folder(folder) = $0 { folder } else { nil } }.first!
+        check(document.revision == beforeDrag.revision + 1,
+              "folder reorder committed exactly once (before=\(beforeDrag.revision), after=\(document.revision))")
+        check(Set(folder.applications) == Set(references), "folder reorder preserves every app")
+        check(folder.applications != references, "folder order changed")
+        let current: [AppTilePresentation] = value(root, "folderPresentations")!
+        check(value(root, "folderContentAnimationLayer", as: CALayer.self) === folderChrome,
+              "drop keeps the existing folder panel instead of rebuilding it")
+        if !duringTransition {
+            check(current.allSatisfy { presentation in
+                landingPresentations.contains { $0 === presentation }
+            }, "landing preserves the displayed icon layers and their full-resolution contents")
+        }
+        check(current.allSatisfy { !$0.button.isHidden && $0.button.isEnabled && $0.button.window != nil },
+              "committed folder has usable hit targets")
+        // Start another drag immediately: merely seeing a landing is insufficient.
+        let next = current.first { $0.button.application.id == source.button.application.id }!
+        let point = root.convert(CGPoint(x: next.button.bounds.midX, y: next.button.bounds.midY), from: next.button)
+        send(.leftMouseDown, at: point)
+        send(.leftMouseDragged, at: CGPoint(x: point.x + 10, y: point.y))
+        check(value(root, "folderItemDragSession", as: Any.self) != nil, "next drag starts without Escape")
+        let nextContext: Any? = value(root, "folderItemDragSession", as: Any.self)
+        check(nextContext.flatMap { value($0, "sourceAbsoluteIndex", as: Int.self) }
+                == folder.applications.firstIndex { $0.identity == next.button.application.id },
+              "reused button starts from its committed index")
+        next.button.cancelOperation(nil)
+        await pause(0.4)
+    }
+
     private func run() async throws {
         checkWindowDispatch()
         let discovery = await AppCatalogActor().refreshOutcome()

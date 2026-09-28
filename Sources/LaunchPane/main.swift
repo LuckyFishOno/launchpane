@@ -103,6 +103,10 @@ private final class DockLauncherDelegate:
             return
         }
 
+        launchAgent(at: agentURL)
+    }
+
+    private func launchAgent(at agentURL: URL) {
         let configuration =
             NSWorkspace.OpenConfiguration()
 

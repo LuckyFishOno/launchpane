@@ -4,8 +4,8 @@ import Foundation
 /// velocity and duration can be verified without running the application UI.
 public struct PageMotionProfile: Equatable, Sendable {
     public struct ControlPoint: Equatable, Sendable {
-        public let x: Double
-        public let y: Double
+        public let time: Double
+        public let progress: Double
     }
 
     public let duration: TimeInterval
@@ -16,8 +16,8 @@ public struct PageMotionProfile: Equatable, Sendable {
     /// acceleration phase instead of covering most of the screen immediately.
     public static let discrete = PageMotionProfile(
         duration: 0.56,
-        firstControlPoint: ControlPoint(x: 0.24, y: 0.12),
-        secondControlPoint: ControlPoint(x: 0.28, y: 1)
+        firstControlPoint: ControlPoint(time: 0.24, progress: 0.12),
+        secondControlPoint: ControlPoint(time: 0.28, progress: 1)
     )
 
     /// Continues a finger-driven translation using its velocity toward the final
@@ -56,8 +56,8 @@ public struct PageMotionProfile: Equatable, Sendable {
 
         return PageMotionProfile(
             duration: duration,
-            firstControlPoint: ControlPoint(x: x1, y: y1),
-            secondControlPoint: ControlPoint(x: 0.64, y: 1)
+            firstControlPoint: ControlPoint(time: x1, progress: y1),
+            secondControlPoint: ControlPoint(time: 0.64, progress: 1)
         )
     }
 }

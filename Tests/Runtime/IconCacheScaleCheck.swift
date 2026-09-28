@@ -43,6 +43,15 @@ struct IconCacheScaleCheck {
         check(cache.cgImage(for: movedApplication, pointSize: 96, scale: 1) == nil,
               "A changed bundle path cannot reuse stale artwork")
 
+        await verifyConcurrentLoads(application: application, check: check)
+        print("ICON CACHE SCALES: \(checks) assertions passed")
+    }
+
+    @MainActor
+    private static func verifyConcurrentLoads(
+        application: ApplicationRecord,
+        check: (Bool, String) -> Void
+    ) async {
         // Deliberately complete the small request AFTER the large one. Arrival
         // order must neither downgrade the cached image nor add a second key.
         let started = DispatchSemaphore(value: 0)
@@ -73,7 +82,6 @@ struct IconCacheScaleCheck {
         _ = await pendingCleared.value
         check(racing.cgImage(for: application, pointSize: 96, scale: 1) == nil,
               "A load finishing after clearing must not repopulate the cache")
-        print("ICON CACHE SCALES: \(checks) assertions passed")
     }
 
     nonisolated private static func waitForDecoder(_ semaphore: DispatchSemaphore) async {

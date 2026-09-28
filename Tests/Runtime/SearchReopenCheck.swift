@@ -81,6 +81,21 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
               "\(scenario): initial application grid restored")
     }
 
+    private func verifyIMEReopen() async {
+        search.focus(in: controller.window)
+        guard let editor = textField.currentEditor() as? NSTextView else {
+            fatalError("Expected an active NSTextView field editor before testing unfinished IME input")
+        }
+        editor.setMarkedText("ㄓ", selectedRange: NSRange(location: 1, length: 0),
+                             replacementRange: NSRange(location: NSNotFound, length: 0))
+        check(editor.hasMarkedText(), "unfinished IME input exists")
+        clickOutside()
+        open()
+        await pause()
+        checkIdle("IME reopen")
+
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller = LaunchpadWindowController()
         open()
@@ -120,17 +135,7 @@ final class SearchReopenCheckDelegate: NSObject, NSApplicationDelegate {
             await pause()
             checkIdle("rapid reopen")
 
-            search.focus(in: controller.window)
-            guard let editor = textField.currentEditor() as? NSTextView else {
-                fatalError("Expected an active NSTextView field editor before testing unfinished IME input")
-            }
-            editor.setMarkedText("ㄓ", selectedRange: NSRange(location: 1, length: 0),
-                                 replacementRange: NSRange(location: NSNotFound, length: 0))
-            check(editor.hasMarkedText(), "unfinished IME input exists")
-            clickOutside()
-            open()
-            await pause()
-            checkIdle("IME reopen")
+            await verifyIMEReopen()
 
             // Resetting does not disable search for the next session.
             search.focus(in: controller.window)

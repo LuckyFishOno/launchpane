@@ -1,17 +1,13 @@
-@testable import LayoutCore
 import XCTest
+
+@testable import LayoutCore
 
 final class GridSelectionNavigatorTests: XCTestCase {
     func testEmptySelectionBeginsOnCurrentPage() {
         let index = GridSelectionNavigator.nextIndex(
-            from: nil,
-            movement: .left,
-            currentPage: 2,
-            itemsPerPage: 12,
-            columns: 4,
-            itemCount: 30,
-            isRightToLeft: false
-        )
+            from: nil, movement: .left,
+            context: GridNavigationContext(
+                currentPage: 2, itemsPerPage: 12, columns: 4, itemCount: 30, isRightToLeft: false))
 
         XCTAssertEqual(index, 24)
     }
@@ -34,30 +30,17 @@ final class GridSelectionNavigatorTests: XCTestCase {
     }
 
     func testInvalidGeometryHasNoSelection() {
-        XCTAssertNil(GridSelectionNavigator.nextIndex(
-            from: nil,
-            movement: .right,
-            currentPage: 0,
-            itemsPerPage: 0,
-            columns: 0,
-            itemCount: 10,
-            isRightToLeft: false
-        ))
+        XCTAssertNil(
+            GridSelectionNavigator.nextIndex(
+                from: nil, movement: .right,
+                context: GridNavigationContext(
+                    currentPage: 0, itemsPerPage: 0, columns: 0, itemCount: 10, isRightToLeft: false)))
     }
 
-    private func next(
-        from index: Int,
-        movement: GridNavigationMovement,
-        isRightToLeft: Bool = false
-    ) -> Int? {
+    private func next(from index: Int, movement: GridNavigationMovement, isRightToLeft: Bool = false) -> Int? {
         GridSelectionNavigator.nextIndex(
-            from: index,
-            movement: movement,
-            currentPage: 0,
-            itemsPerPage: 20,
-            columns: 4,
-            itemCount: 20,
-            isRightToLeft: isRightToLeft
-        )
+            from: index, movement: movement,
+            context: GridNavigationContext(
+                currentPage: 0, itemsPerPage: 20, columns: 4, itemCount: 20, isRightToLeft: isRightToLeft))
     }
 }

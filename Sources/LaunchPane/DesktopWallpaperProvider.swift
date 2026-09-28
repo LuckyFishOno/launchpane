@@ -110,8 +110,8 @@ enum DesktopWallpaperProvider {
         let result = autoreleasepool { () -> Images? in
             guard let source = sourceImage(at: imageURL) else { return nil }
             return renderImages(
-                source: source, display: display, scaling: placement.scaling,
-                allowsClipping: placement.allowsClipping, fillColor: fillColor, menuBarHeight: menuBarHeight
+                source: source, display: display, placement: placement,
+                fillColor: fillColor, menuBarHeight: menuBarHeight
             )
         }
         guard let result else { return nil }
@@ -130,12 +130,12 @@ enum DesktopWallpaperProvider {
     }
 
     static func renderImages(
-        source: CIImage, display: DisplayContext, scaling: WallpaperScaling,
-        allowsClipping: Bool, fillColor: NSColor, menuBarHeight: CGFloat
+        source: CIImage, display: DisplayContext, placement: WallpaperPlacementOptions,
+        fillColor: NSColor, menuBarHeight: CGFloat
     ) -> Images? {
         guard let layout = WallpaperLayout(
             sourceExtent: source.extent, display: display,
-            scaling: scaling, allowsClipping: allowsClipping
+            scaling: placement.scaling, allowsClipping: placement.allowsClipping
         ), let frostedLayout = FrostedWallpaperRasterLayout(nativeCanvas: layout.canvasBounds)
         else { return nil }
 
@@ -167,23 +167,7 @@ enum DesktopWallpaperProvider {
             )
             .cropped(to: frostedLayout.canvasBounds)
 
-        // Make the material part of this single image. Independent live visual
-        // effect views in different windows sample different backdrops and can
-        // produce a visible seam across the menu-bar boundary.
-        // Tone compression is in perceptual sRGB: retain wallpaper color while
-        // lifting dark detail and dimming highlights behind the white labels.
-        let output = blurred
-            .applyingFilter("CILinearToSRGBToneCurve")
-            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: Metrics.saturation])
-            .applyingFilter("CIColorMatrix", parameters: [
-                "inputRVector": CIVector(x: Metrics.contrast, y: 0, z: 0, w: 0),
-                "inputGVector": CIVector(x: 0, y: Metrics.contrast, z: 0, w: 0),
-                "inputBVector": CIVector(x: 0, y: 0, z: Metrics.contrast, w: 0),
-                "inputBiasVector": CIVector(
-                    x: Metrics.shadowLift, y: Metrics.shadowLift, z: Metrics.shadowLift, w: 0
-                ),
-            ])
-            .applyingFilter("CISRGBToneCurveToLinear")
+        let output = applyMaterialTone(to: blurred)
 
         let menuGeometry = MenuBarRasterGeometry(
             displaySize: display.frame.size, canvasSize: layout.canvasBounds.size, height: menuBarHeight
@@ -206,6 +190,27 @@ enum DesktopWallpaperProvider {
             desktop: bitmapImage(desktopImage, size: menuGeometry.logicalSize),
             frosted: bitmapImage(frostedImage, size: display.frame.size)
         )
+    }
+
+    private static func applyMaterialTone(to blurred: CIImage) -> CIImage {
+        // Make the material part of this single image. Independent live visual
+        // effect views in different windows sample different backdrops and can
+        // produce a visible seam across the menu-bar boundary.
+        // Tone compression is in perceptual sRGB: retain wallpaper color while
+        // lifting dark detail and dimming highlights behind the white labels.
+        return blurred
+            .applyingFilter("CILinearToSRGBToneCurve")
+            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: Metrics.saturation])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: Metrics.contrast, y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0, y: Metrics.contrast, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: Metrics.contrast, w: 0),
+                "inputBiasVector": CIVector(
+                    x: Metrics.shadowLift, y: Metrics.shadowLift, z: Metrics.shadowLift, w: 0
+                ),
+            ])
+            .applyingFilter("CISRGBToneCurveToLinear")
+
     }
 
     private static func bitmapImage(_ raster: CGImage, size: CGSize) -> NSImage {

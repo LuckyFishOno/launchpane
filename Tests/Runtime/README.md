@@ -21,7 +21,8 @@ transparent, covers and overlaps the selected display's top boundary, and uses
 the launcher's exact measured opacity samples, key times, and duration in the
 same transaction. It also guards against accidentally applying the launcher's
 spatial scale to the top continuation. With Reduce Motion enabled, it verifies
-that both surfaces resolve together without animations.
+that both surfaces resolve together without animations. It also checks the
+synchronized 0.27-second dismissal and that the launcher is ordered out afterward.
 
 Build Debug into `Builds`, then run:
 
@@ -37,7 +38,7 @@ swiftc -swift-version 6 -parse-as-library \
 "$menu_check_dir/menu-bar-opening-check"
 ```
 
-Success ends with `MENU BAR OPENING: 20 assertions, 0 failures` when animation
+Success ends with `MENU BAR OPENING: 26 assertions, 0 failures` when animation
 is enabled. The check briefly displays the two test surfaces and then removes
 them. It does not discover apps or read or write the saved launcher layout.
 
@@ -68,6 +69,9 @@ app bundle or the user's saved launcher layout.
 and invokes cancellation on the pointer owner. Read-only reflection observes the actual
 controller state; no alternate drag implementation or production test hook is
 used. Fixtures include all discovered apps and explicit partial/full pages.
+Assertions use the persisted snapshot after catalog reconciliation as the drag
+baseline. Starting a drag must leave that snapshot unchanged; a committed drop
+must advance its revision exactly once.
 
 The check covers stationary traversal across multiple pages, returning to the
 source page without detaching the pointer owner, release at the far edge,
@@ -186,3 +190,40 @@ For the actual visible 4K case, run `zsh Tests/Runtime/SampleAgentMemory.zsh`,
 then open Launchpad on that display within eight seconds and leave it visible.
 The report is saved in `Builds`; the script neither launches nor kills the app.
 Capturing after returning to Terminal would instead measure the hidden state.
+
+## Opacity curve reversal
+
+`OpacityCurveCheck.swift` verifies the pure curve slicing used by window opening,
+closing, and rapid reversal. It covers ascending/descending interpolation, empty
+and single-sample curves, normalized key times, and every 1% opacity boundary.
+It does not create windows or read the user's layout.
+
+```zsh
+curve_check_dir=$(mktemp -d /private/tmp/launchpane-curve-check.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  Sources/LaunchPane/OpacityCurveSegment.swift Tests/Runtime/OpacityCurveCheck.swift \
+  -o "$curve_check_dir/check"
+"$curve_check_dir/check"
+```
+
+Success ends with `OPACITY CURVE: 1018 assertions passed`.
+
+## Folder merge and spring opening
+
+`FolderMergeCheck.swift` drives real tile events. `FolderMergeScenarios.swift`
+contains the eight approach directions, merge dwell, spring opening, cancellation,
+reorder, offset-grab, and existing-folder scenarios. Compile both test files:
+
+```zsh
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+folder_check_dir=$(mktemp -d /private/tmp/launchpane-folder-check.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/FolderMergeCheck.swift Tests/Runtime/FolderMergeScenarios.swift \
+  -o "$folder_check_dir/check"
+LAUNCHPANE_LAYOUT_PATH="$folder_check_dir/layout.json" "$folder_check_dir/check"
+```
+
+This requires a logged-in graphical session and at least three complete app rows.
+Success ends with `FOLDER MERGE: 0 failures`.

@@ -1,6 +1,7 @@
-@testable import AppCore
 import Foundation
 import XCTest
+
+@testable import AppCore
 
 final class LauncherLayoutStoreTests: XCTestCase {
     func testMissingFileLoadsEmptyCurrentVersionDocument() async throws {
@@ -121,10 +122,8 @@ final class LauncherLayoutStoreTests: XCTestCase {
         let fileIO = MemoryLayoutFileIO()
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO)
         let application = ApplicationRecord(
-            displayName: "New",
-            bundleIdentifier: "org.example.new",
-            bundleURL: URL(fileURLWithPath: "/Applications/New.app")
-        )
+            displayName: "New", bundleIdentifier: "org.example.new",
+            bundleURL: URL(fileURLWithPath: "/Applications/New.app"))
 
         let first = try await store.reconcileAndCommit(applications: [application])
         let second = try await store.reconcileAndCommit(applications: [application])
@@ -162,17 +161,13 @@ final class LauncherLayoutStoreTests: XCTestCase {
         let console = application("Console", path: "/System/Applications/Utilities/Console.app")
         let safari = application("Safari", path: "/System/Applications/Safari.app")
 
-        let first = try await store.reconcileAndCommit(
-            applications: [safari, terminal, console]
-        )
-        let second = try await store.reconcileAndCommit(
-            applications: [safari, terminal, console]
-        )
+        let first = try await store.reconcileAndCommit(applications: [safari, terminal, console])
+        let second = try await store.reconcileAndCommit(applications: [safari, terminal, console])
 
         XCTAssertEqual(first.document.revision, 1)
         XCTAssertEqual(second.document, first.document)
         XCTAssertEqual(fileIO.writeCount, 1)
-        guard case let .folder(folder) = first.document.items[0] else {
+        guard case .folder(let folder) = first.document.items[0] else {
             return XCTFail("Expected seeded Utilities folder")
         }
         XCTAssertEqual(folder.customTitle, "Utilities")
@@ -185,21 +180,16 @@ final class LauncherLayoutStoreTests: XCTestCase {
         let terminal = application("Terminal", path: "/System/Applications/Utilities/Terminal.app")
         let console = application("Console", path: "/System/Applications/Utilities/Console.app")
 
-        let result = try await store.reconcileAndCommit(
-            applications: [terminal, console],
-            completeness: .partial
-        )
+        let result = try await store.reconcileAndCommit(applications: [terminal, console], completeness: .partial)
 
-        XCTAssertTrue(result.document.items.allSatisfy {
-            if case .application = $0 { return true }
-            return false
-        })
+        XCTAssertTrue(
+            result.document.items.allSatisfy {
+                if case .application = $0 { return true }
+                return false
+            })
         XCTAssertEqual(fileIO.writeCount, 0)
 
-        let complete = try await store.reconcileAndCommit(
-            applications: [terminal, console],
-            completeness: .complete
-        )
+        let complete = try await store.reconcileAndCommit(applications: [terminal, console], completeness: .complete)
         XCTAssertEqual(fileIO.writeCount, 1)
         guard case .folder = complete.document.items.first else {
             return XCTFail("Expected complete retry to seed Utilities")
@@ -212,24 +202,24 @@ final class LauncherLayoutStoreTests: XCTestCase {
         let alpha = application("Alpha")
         let beta = application("Beta")
         let folder = LauncherFolder(applications: [
-            LauncherApplicationReference(application: alpha),
-            LauncherApplicationReference(application: beta),
+            LauncherApplicationReference(application: alpha), LauncherApplicationReference(application: beta),
         ])
         _ = try await store.transact(expectedRevision: 0) { document in
             document.pages = [[], [.folder(folder)]]
             return .commit
         }
 
-        let reset = try await store.reset(
-            applications: [beta, alpha, beta],
-            completeness: .complete
-        )
+        let reset = try await store.reset(applications: [beta, alpha, beta], completeness: .complete)
 
         XCTAssertEqual(reset.revision, 2)
-        XCTAssertEqual(reset.pages, [[
-            .application(LauncherApplicationReference(application: beta)),
-            .application(LauncherApplicationReference(application: alpha)),
-        ]])
+        XCTAssertEqual(
+            reset.pages,
+            [
+                [
+                    .application(LauncherApplicationReference(application: beta)),
+                    .application(LauncherApplicationReference(application: alpha)),
+                ]
+            ])
         XCTAssertEqual(fileIO.writeCount, 2)
     }
 
@@ -242,14 +232,10 @@ final class LauncherLayoutStoreTests: XCTestCase {
         do {
             _ = try await store.reset(applications: [], completeness: .partial)
             XCTFail("Expected incomplete catalog reset to be rejected")
-        } catch let error as LauncherLayoutStoreError {
-            XCTAssertEqual(error, .incompleteCatalogForReset)
-        }
+        } catch let error as LauncherLayoutStoreError { XCTAssertEqual(error, .incompleteCatalogForReset) }
 
         let unchanged = try await store.load()
-        XCTAssertEqual(unchanged.items, [
-            .application(LauncherApplicationReference(application: alpha)),
-        ])
+        XCTAssertEqual(unchanged.items, [.application(LauncherApplicationReference(application: alpha))])
         XCTAssertEqual(fileIO.writeCount, 1)
     }
 
@@ -261,20 +247,15 @@ final class LauncherLayoutStoreTests: XCTestCase {
         let safari = application("Safari", path: "/System/Applications/Safari.app")
         _ = try await store.reconcileAndCommit(applications: [safari])
 
-        let reset = try await store.reset(
-            applications: [safari, terminal, console],
-            completeness: .complete
-        )
+        let reset = try await store.reset(applications: [safari, terminal, console], completeness: .complete)
 
-        guard case let .folder(folder) = reset.items.first else {
+        guard case .folder(let folder) = reset.items.first else {
             return XCTFail("Expected Utilities in the first Launchpad position")
         }
         XCTAssertEqual(folder.id, LauncherDefaultLayoutBuilder.utilitiesFolderID)
         XCTAssertEqual(folder.applications.map(\.identity), [terminal.id, console.id])
         XCTAssertEqual(
-            Array(reset.items.dropFirst()),
-            [.application(LauncherApplicationReference(application: safari))]
-        )
+            Array(reset.items.dropFirst()), [.application(LauncherApplicationReference(application: safari))])
     }
 
     func testResetOfAlreadyCanonicalLayoutDoesNotWriteAgain() async throws {
@@ -289,12 +270,32 @@ final class LauncherLayoutStoreTests: XCTestCase {
         XCTAssertEqual(fileIO.writeCount, 1)
     }
 
+    private var testURL: URL { URL(fileURLWithPath: "/tests/LaunchPane/LauncherLayout.json") }
+
+    private func reference(_ bundleIdentifier: String) -> LauncherApplicationReference {
+        LauncherApplicationReference(
+            identity: ApplicationIdentity(
+                bundleIdentifier: bundleIdentifier,
+                bundleURL: URL(fileURLWithPath: "/Applications/\(bundleIdentifier).app")))
+    }
+
+    private func application(_ name: String, path: String? = nil) -> ApplicationRecord {
+        ApplicationRecord(
+            displayName: name, bundleIdentifier: "org.example.\(name.lowercased())",
+            bundleURL: URL(fileURLWithPath: path ?? "/Applications/\(name).app"))
+    }
+
+    private func applicationIdentities(in items: [LauncherLayoutItem]) -> [ApplicationIdentity] {
+        items.compactMap { item in
+            guard case .application(let application) = item else { return nil }
+            return application.identity
+        }
+    }
+}
+
+extension LauncherLayoutStoreTests {
     func testSequentialMigrationIsPersistedWithoutChangingRevision() async throws {
-        let legacy = LegacyLayoutDocument(
-            schemaVersion: 0,
-            revision: 4,
-            applicationPaths: ["/Applications/Legacy.app"]
-        )
+        let legacy = LegacyLayoutDocument(schemaVersion: 0, revision: 4, applicationPaths: ["/Applications/Legacy.app"])
         let fileIO = try MemoryLayoutFileIO(data: JSONEncoder().encode(legacy))
         let codec = LauncherLayoutCodec(migrations: [LegacyLayoutMigration()])
         let store = LauncherLayoutStore(fileURL: testURL, fileIO: fileIO, codec: codec)
@@ -303,11 +304,14 @@ final class LauncherLayoutStoreTests: XCTestCase {
 
         XCTAssertEqual(document.schemaVersion, 2)
         XCTAssertEqual(document.revision, 4)
-        XCTAssertEqual(document.items, [
-            .application(LauncherApplicationReference(identity: ApplicationIdentity.bundlePath(
-                for: URL(fileURLWithPath: "/Applications/Legacy.app")
-            ))),
-        ])
+        XCTAssertEqual(
+            document.items,
+            [
+                .application(
+                    LauncherApplicationReference(
+                        identity: ApplicationIdentity.bundlePath(for: URL(fileURLWithPath: "/Applications/Legacy.app")))
+                )
+            ])
         XCTAssertEqual(fileIO.writeCount, 1)
         let persistedData = try XCTUnwrap(fileIO.data)
         XCTAssertEqual(try LauncherLayoutCodec().decode(persistedData), document)
@@ -321,17 +325,15 @@ final class LauncherLayoutStoreTests: XCTestCase {
         do {
             _ = try await store.load()
             XCTFail("Expected a future-schema error")
-        } catch let error as LauncherLayoutCodingError {
-            XCTAssertEqual(error, .unsupportedSchemaVersion(3))
-        }
+        } catch let error as LauncherLayoutCodingError { XCTAssertEqual(error, .unsupportedSchemaVersion(3)) }
 
         XCTAssertEqual(fileIO.data, source)
         XCTAssertEqual(fileIO.writeCount, 0)
     }
 
     func testAtomicFileIOCreatesParentAndRoundTripsData() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("LaunchPaneLayoutStore-\(UUID().uuidString)", isDirectory: true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "LaunchPaneLayoutStore-\(UUID().uuidString)", isDirectory: true)
         let url = root.appendingPathComponent("Nested/Layout.json")
         defer { try? FileManager.default.removeItem(at: root) }
         let fileIO = AtomicLauncherLayoutFileIO()
@@ -342,36 +344,9 @@ final class LauncherLayoutStoreTests: XCTestCase {
         XCTAssertEqual(try fileIO.readData(at: url), expected)
     }
 
-    private var testURL: URL {
-        URL(fileURLWithPath: "/tests/LaunchPane/LauncherLayout.json")
-    }
-
-    private func reference(_ bundleIdentifier: String) -> LauncherApplicationReference {
-        LauncherApplicationReference(identity: ApplicationIdentity(
-            bundleIdentifier: bundleIdentifier,
-            bundleURL: URL(fileURLWithPath: "/Applications/\(bundleIdentifier).app")
-        ))
-    }
-
-    private func application(_ name: String, path: String? = nil) -> ApplicationRecord {
-        ApplicationRecord(
-            displayName: name,
-            bundleIdentifier: "org.example.\(name.lowercased())",
-            bundleURL: URL(fileURLWithPath: path ?? "/Applications/\(name).app")
-        )
-    }
-
-    private func applicationIdentities(in items: [LauncherLayoutItem]) -> [ApplicationIdentity] {
-        items.compactMap { item in
-            guard case let .application(application) = item else { return nil }
-            return application.identity
-        }
-    }
 }
 
-private enum TestError: Error {
-    case expected
-}
+private enum TestError: Error { case expected }
 
 private final class MemoryLayoutFileIO: LauncherLayoutFileIO, @unchecked Sendable {
     private let lock = NSLock()
@@ -396,9 +371,7 @@ private final class MemoryLayoutFileIO: LauncherLayoutFileIO, @unchecked Sendabl
         return storedWriteCount
     }
 
-    func readData(at _: URL) throws -> Data? {
-        data
-    }
+    func readData(at _: URL) throws -> Data? { data }
 
     func writeDataAtomically(_ data: Data, to _: URL) throws {
         lock.lock()
@@ -406,31 +379,5 @@ private final class MemoryLayoutFileIO: LauncherLayoutFileIO, @unchecked Sendabl
         guard !failsWrites else { throw TestError.expected }
         storedData = data
         storedWriteCount += 1
-    }
-}
-
-private struct LegacyLayoutDocument: Codable {
-    let schemaVersion: Int
-    let revision: UInt64
-    let applicationPaths: [String]
-}
-
-private struct LegacyLayoutMigration: LauncherLayoutMigration {
-    let sourceVersion = 0
-    let destinationVersion = 1
-
-    func migrate(_ data: Data) throws -> Data {
-        let legacy = try JSONDecoder().decode(LegacyLayoutDocument.self, from: data)
-        let items = legacy.applicationPaths.map { path in
-            LauncherLayoutItem.application(LauncherApplicationReference(
-                identity: ApplicationIdentity.bundlePath(for: URL(fileURLWithPath: path))
-            ))
-        }
-        struct VersionOne: Encodable {
-            let schemaVersion = 1
-            let revision: UInt64
-            let items: [LauncherLayoutItem]
-        }
-        return try JSONEncoder().encode(VersionOne(revision: legacy.revision, items: items))
     }
 }

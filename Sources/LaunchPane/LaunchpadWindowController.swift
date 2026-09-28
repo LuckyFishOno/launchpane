@@ -6,23 +6,17 @@ import QuartzCore
 
 // This controller owns the AppKit event surface and its tightly coupled Core Animation presentation state.
 // LAUNCHPANE_AGENT_LOW_MEMORY_V1
-// swiftlint:disable file_length type_body_length
-@MainActor
-private final class LaunchpadCanvasView: NSView {
-    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
-        true
-    }
+// swiftlint:disable file_length
+@MainActor private final class LaunchpadCanvasView: NSView {
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool { true }
 }
 
-@MainActor
-private final class ApplicationDirectoryMonitor {
+@MainActor private final class ApplicationDirectoryMonitor {
     private var sources: [DispatchSourceFileSystemObject] = []
     private var debounceTask: Task<Void, Never>?
     private let onChange: @MainActor () -> Void
 
-    init(onChange: @escaping @MainActor () -> Void) {
-        self.onChange = onChange
-    }
+    init(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
 
     deinit {
         debounceTask?.cancel()
@@ -34,24 +28,16 @@ private final class ApplicationDirectoryMonitor {
         let urls = [
             URL(fileURLWithPath: "/Applications", isDirectory: true),
             URL(fileURLWithPath: "/System/Applications", isDirectory: true),
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Applications", isDirectory: true),
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
         ]
 
         for url in urls where FileManager.default.fileExists(atPath: url.path) {
             let descriptor = open(url.path, O_EVTONLY)
             guard descriptor >= 0 else { continue }
             let source = DispatchSource.makeFileSystemObjectSource(
-                fileDescriptor: descriptor,
-                eventMask: [.write, .delete, .rename, .revoke],
-                queue: .main
-            )
-            source.setEventHandler { [weak self] in
-                self?.scheduleChange()
-            }
-            source.setCancelHandler {
-                close(descriptor)
-            }
+                fileDescriptor: descriptor, eventMask: [.write, .delete, .rename, .revoke], queue: .main)
+            source.setEventHandler { [weak self] in self?.scheduleChange() }
+            source.setCancelHandler { close(descriptor) }
             sources.append(source)
             source.resume()
         }
@@ -67,15 +53,12 @@ private final class ApplicationDirectoryMonitor {
     }
 }
 
-@MainActor
-final class LaunchpadRootView: NSView, NSTextFieldDelegate {
+// swiftlint:disable:next type_body_length
+@MainActor final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let solver = LayoutConstraintSolver()
-    private let catalog = AppCatalogActor(
-        excludedBundleIdentifiers: [
-            "org.launchpane.LaunchPane",
-            "org.launchpane.LaunchPaneAgent",
-        ]
-    )
+    private let catalog = AppCatalogActor(excludedBundleIdentifiers: [
+        "org.launchpane.LaunchPane", "org.launchpane.LaunchPaneAgent",
+    ])
     private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
     private let iconCache = AppIconCache()
     private let wallpaperView = NSView()
@@ -91,9 +74,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private let searchField = LaunchpadSearchField(frame: .zero)
     private var displayContext: DisplayContext
     private lazy var applicationDirectoryMonitor = ApplicationDirectoryMonitor { [weak self] in
-        Task { @MainActor [weak self] in
-            await self?.refreshApplicationsFromDisk()
-        }
+        Task { @MainActor [weak self] in await self?.refreshApplicationsFromDisk() }
     }
 
     private var applications: [ApplicationRecord] = []
@@ -122,9 +103,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     private var pagingDisplayLink: CADisplayLink?
 
     private var isPageTransitionActive: Bool {
-        pageTransitionAnimator.isAnimating
-            || interactivePageSwipe != nil
-            || folderPageTransitionAnimator.isAnimating
+        pageTransitionAnimator.isAnimating || interactivePageSwipe != nil || folderPageTransitionAnimator.isAnimating
             || interactiveFolderPageSwipe != nil
     }
 
@@ -211,9 +190,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     // Folder -> root extraction. The predicate is intentionally state-derived
     // so it cannot remain stuck after an interaction finishes.
     var suppressesResignActiveDismissal: Bool {
-        folderExtractionActivationShield
-            || folderItemDragSession != nil
-            || preservedFolderTrackingButton != nil
+        folderExtractionActivationShield || folderItemDragSession != nil || preservedFolderTrackingButton != nil
             || (openFolderID != nil && isCommittingLayout)
     }
 
@@ -225,13 +202,9 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     // while hidden, but does not retain Retina render trees or decoded icons.
     private var presentationResourcesActive = false
 
-    override var acceptsFirstResponder: Bool {
-        true
-    }
+    override var acceptsFirstResponder: Bool { true }
 
-    override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
-        true
-    }
+    override func acceptsFirstMouse(for _: NSEvent?) -> Bool { true }
 
     // Both window levels display this exact, already-composited desktop image.
     // Independent visual-effect backdrops cannot agree at their shared edge.
@@ -241,9 +214,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     /// The window transition scales the complete foreground around the display
     /// center. Counter-scaling this full-screen wallpaper keeps the desktop
     /// spatially fixed while icons and controls converge or disperse.
-    var presentationBackgroundLayer: CALayer? {
-        wallpaperView.layer
-    }
+    var presentationBackgroundLayer: CALayer? { wallpaperView.layer }
 
     func resetForNewPresentation() {
         searchField.resetForPresentation()
@@ -256,26 +227,19 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         applications = discovery.applications
         do {
             let reconciliation = try await layoutStore.reconcileAndCommit(
-                applications: discovery.applications,
-                completeness: discovery.completeness
-            )
+                applications: discovery.applications, completeness: discovery.completeness)
             layoutDocument = reconciliation.document
         } catch {
-            layoutDocument = LauncherLayoutReconciler.reconcile(
-                LauncherLayoutDocument(),
-                with: discovery.applications,
-                completeness: discovery.completeness
-            ).document
+            layoutDocument =
+                LauncherLayoutReconciler.reconcile(
+                    LauncherLayoutDocument(), with: discovery.applications, completeness: discovery.completeness
+                ).document
         }
 
         selectedIndex = -1
         if searchField.stringValue.isEmpty, let metrics = currentMetrics {
             let pages = ResolvedLaunchpadItemFactory.makePages(
-                document: layoutDocument,
-                applications: applications,
-                query: "",
-                pageCapacity: metrics.itemsPerPage
-            )
+                document: layoutDocument, applications: applications, query: "", pageCapacity: metrics.itemsPerPage)
             currentPage = min(currentPage, max(0, pages.pageCount - 1))
         } else {
             currentPage = 0
@@ -285,9 +249,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         invalidatePageSurfaceCache()
         needsLayout = true
 
-        if presentationResourcesActive {
-            scheduleIdleFirstPageIconWarm()
-        }
+        if presentationResourcesActive { scheduleIdleFirstPageIconWarm() }
     }
 
     func prepareForPresentation(displayContext: DisplayContext) {
@@ -296,11 +258,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         // keeping the background agent independent of 1x/2x display cost.
         presentationResourcesActive = true
 
-        if self.displayContext != displayContext {
-            update(displayContext: displayContext)
-        } else {
-            updateWallpaper()
-        }
+        if self.displayContext != displayContext { update(displayContext: displayContext) } else { updateWallpaper() }
 
         needsLayout = true
         layoutSubtreeIfNeeded()
@@ -318,49 +276,9 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         folderIconTask?.cancel()
         folderIconTask = nil
 
-        pagingDisplayLink?.isPaused = true
-        interactivePageGeneration &+= 1
-        interactivePageSwipe = nil
-        pendingPageDirection = 0
-        pageScrollGesture = PageScrollGesture()
-        pageSwipeInputGate = PageSwipeInputGate()
-        pageTransitionAnimator.reset(
-            contentLayer: pageContentLayer,
-            canvasBounds: bounds
-        )
+        resetIdlePagingState()
 
-        // A dismissal may race with a drag/folder gesture. Do not animate a
-        // rollback while hidden: discard transient presentation state and let
-        // the next opening rebuild from the committed layout document.
-        dragSession?.edgePagingTask?.cancel()
-        dragSession?.proxyLayer.removeAllAnimations()
-        dragSession?.proxyLayer.removeFromSuperlayer()
-        dragSession = nil
-        dragCommitContext = nil
-        pendingPress = nil
-        pendingFolderPress = nil
-        if let folderItemDragSession {
-            cancelFolderItemDragEdgePaging(folderItemDragSession)
-        }
-
-        // A presentation can disappear while a drag is still active (display
-        // change, launcher dismissal, termination). End the tracking state
-        // silently before detaching the preserved AppKit mouse owner.
-        preservedFolderTrackingButton?.endPointerTrackingWithoutCallback()
-        preservedFolderTrackingButton?.removeFromSuperview()
-        preservedFolderTrackingButton = nil
-        folderExtractionActivationShield = false
-
-        folderItemDragSession = nil
-        dragStateMachine = LauncherDragStateMachine()
-        isCommittingLayout = false
-        isFinishingDragVisuals = false
-
-        if openFolderID != nil {
-            closeFolder(animated: false)
-        }
-        removeFolderButtons()
-        cleanupFolderOverlay()
+        discardIdleInteractionState()
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -376,8 +294,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         // Preview/drag page trees can be attached directly to rootLayer and
         // are not necessarily present in pageSurfaces. Keep only the two fixed
         // structural layers while the launcher is idle.
-        for layer in rootLayer.sublayers ?? []
-        where layer !== fixedBackgroundLayer && layer !== fixedOverlayLayer {
+        for layer in rootLayer.sublayers ?? [] where layer !== fixedBackgroundLayer && layer !== fixedOverlayLayer {
             layer.removeAllAnimations()
             layer.shouldRasterize = false
             layer.removeFromSuperlayer()
@@ -418,6 +335,49 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         scheduleIdleFirstPageIconWarm()
     }
 
+    private func resetIdlePagingState() {
+        pagingDisplayLink?.isPaused = true
+        interactivePageGeneration &+= 1
+        interactivePageSwipe = nil
+        pendingPageDirection = 0
+        pageScrollGesture = PageScrollGesture()
+        pageSwipeInputGate = PageSwipeInputGate()
+        pageTransitionAnimator.reset(contentLayer: pageContentLayer, canvasBounds: bounds)
+
+    }
+
+    private func discardIdleInteractionState() {
+        // A dismissal may race with a drag/folder gesture. Do not animate a
+        // rollback while hidden: discard transient presentation state and let
+        // the next opening rebuild from the committed layout document.
+        dragSession?.edgePagingTask?.cancel()
+        dragSession?.proxyLayer.removeAllAnimations()
+        dragSession?.proxyLayer.removeFromSuperlayer()
+        dragSession = nil
+        dragCommitContext = nil
+        pendingPress = nil
+        pendingFolderPress = nil
+        if let folderItemDragSession { cancelFolderItemDragEdgePaging(folderItemDragSession) }
+
+        // A presentation can disappear while a drag is still active (display
+        // change, launcher dismissal, termination). End the tracking state
+        // silently before detaching the preserved AppKit mouse owner.
+        preservedFolderTrackingButton?.endPointerTrackingWithoutCallback()
+        preservedFolderTrackingButton?.removeFromSuperview()
+        preservedFolderTrackingButton = nil
+        folderExtractionActivationShield = false
+
+        folderItemDragSession = nil
+        dragStateMachine = LauncherDragStateMachine()
+        isCommittingLayout = false
+        isFinishingDragVisuals = false
+
+        if openFolderID != nil { closeFolder(animated: false) }
+        removeFolderButtons()
+        cleanupFolderOverlay()
+
+    }
+
     init(frame frameRect: NSRect, displayContext: DisplayContext) {
         self.displayContext = displayContext
         super.init(frame: frameRect)
@@ -425,22 +385,13 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         configureCanvas()
         setAccessibilityRole(.group)
         setAccessibilityLabel("LaunchPane")
-        searchField.onTextChanged = { [weak self] in
-            self?.searchDidChange()
-        }
-        searchField.onCancel = { [weak self] in
-            self?.requestClose()
-        }
-        searchField.onResetRequested = { [weak self] in
-            self?.confirmResetLaunchpad()
-        }
+        searchField.onTextChanged = { [weak self] in self?.searchDidChange() }
+        searchField.onCancel = { [weak self] in self?.requestClose() }
+        searchField.onResetRequested = { [weak self] in self?.confirmResetLaunchpad() }
         addSubview(searchField)
     }
 
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        nil
-    }
+    @available(*, unavailable) required init?(coder _: NSCoder) { nil }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -496,12 +447,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard
-            !isPageTransitionActive,
-            dragSession == nil,
-            !isFinishingDragVisuals,
-            !isResettingLayout
-        else { return }
+        guard !isPageTransitionActive, dragSession == nil, !isFinishingDragVisuals, !isResettingLayout else { return }
         let point = convert(event.locationInWindow, from: nil)
         if openFolderID != nil {
             // The native title sits above the translucent panel. Treat it as an
@@ -513,9 +459,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
                 return
             }
 
-            if !folderPanelFrame.contains(point) {
-                closeFolder()
-            }
+            if !folderPanelFrame.contains(point) { closeFolder() }
             return
         }
 
@@ -523,7 +467,7 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
             // Normally an AppTileButton/FolderTileButton receives this event.
             // Reaching the root means a transient hit-target lifecycle gap. Never
             // interpret a geometrically valid tile click as a background dismiss.
-            if case let .folder(folder) = fallbackEntry.item {
+            if case .folder(let folder) = fallbackEntry.item {
                 openFolder(folder.id, sourceFrame: visibleIconFrame(for: fallbackEntry))
             }
             return
@@ -549,54 +493,39 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
             return
         }
         if openFolderID != nil {
-            switch event.keyCode {
-            case 53:
-                closeFolder()
-            case 123:
-                moveFolderSelection(.left)
-            case 124:
-                moveFolderSelection(.right)
-            case 125:
-                moveFolderSelection(.down)
-            case 126:
-                moveFolderSelection(.up)
-            case 36, 76:
-                activateSelectedFolderItem()
-            case 116:
-                changeFolderPage(by: -1)
-            case 121:
-                changeFolderPage(by: 1)
-            default:
-                break
-            }
+            handleFolderKeyDown(event)
             return
         }
 
         switch event.keyCode {
-        case 53:
-            requestClose()
-        case 123:
-            moveSelection(.left)
-        case 124:
-            moveSelection(.right)
-        case 125:
-            moveSelection(.down)
-        case 126:
-            moveSelection(.up)
-        case 36, 76:
-            activateSelectedItem()
-        default:
-            focusSearch(with: event)
+        case 53: requestClose()
+        case 123: moveSelection(.left)
+        case 124: moveSelection(.right)
+        case 125: moveSelection(.down)
+        case 126: moveSelection(.up)
+        case 36, 76: activateSelectedItem()
+        default: focusSearch(with: event)
+        }
+    }
+
+    private func handleFolderKeyDown(_ event: NSEvent) {
+        switch event.keyCode {
+        case 53: closeFolder()
+        case 123: moveFolderSelection(.left)
+        case 124: moveFolderSelection(.right)
+        case 125: moveFolderSelection(.down)
+        case 126: moveFolderSelection(.up)
+        case 36, 76: activateSelectedFolderItem()
+        case 116: changeFolderPage(by: -1)
+        case 121: changeFolderPage(by: 1)
+        default: break
         }
     }
 
     override func scrollWheel(with event: NSEvent) {
-        guard
-            dragStateMachine.state == .idle,
-            !isCommittingLayout,
-            !isFinishingDragVisuals,
-            !isResettingLayout
-        else { return }
+        guard dragStateMachine.state == .idle, !isCommittingLayout, !isFinishingDragVisuals, !isResettingLayout else {
+            return
+        }
 
         if openFolderID != nil {
             // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
@@ -605,22 +534,16 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
             // refresh boundary. Wheel/phase-less input keeps the discrete path.
             if !event.phase.isEmpty || !event.momentumPhase.isEmpty {
                 if folderPageSwipeInputGate.consumes(
-                    phase: PageScrollPhase(event.phase),
-                    momentum: PageScrollMomentum(event.momentumPhase),
+                    phase: PageScrollPhase(event.phase), momentum: PageScrollMomentum(event.momentumPhase),
                     isAnimating: folderPageTransitionAnimator.isAnimating
-                        || interactiveFolderPageSwipe?.phase == .settling
-                ) {
+                        || interactiveFolderPageSwipe?.phase == .settling) {
                     return
                 }
             }
 
-            if handleInteractiveFolderPageSwipe(event) {
-                return
-            }
+            if handleInteractiveFolderPageSwipe(event) { return }
 
-            if let direction = folderPageScrollGesture.consume(event) {
-                changeFolderPage(by: direction)
-            }
+            if let direction = folderPageScrollGesture.consume(event) { changeFolderPage(by: direction) }
             return
         }
 
@@ -630,49 +553,36 @@ final class LaunchpadRootView: NSView, NSTextFieldDelegate {
         // otherwise a long burst could be mistaken for a second page turn.
         if !event.phase.isEmpty || !event.momentumPhase.isEmpty {
             if pageSwipeInputGate.consumes(
-                phase: PageScrollPhase(event.phase),
-                momentum: PageScrollMomentum(event.momentumPhase),
-                isAnimating: pageTransitionAnimator.isAnimating
-                    || interactivePageSwipe?.phase == .settling
-            ) {
+                phase: PageScrollPhase(event.phase), momentum: PageScrollMomentum(event.momentumPhase),
+                isAnimating: pageTransitionAnimator.isAnimating || interactivePageSwipe?.phase == .settling) {
                 return
             }
         }
 
         // Precise trackpad gestures use direct manipulation:
         // the page follows the fingers, then settles after release.
-        if handleInteractivePageSwipe(event) {
-            return
-        }
+        if handleInteractivePageSwipe(event) { return }
 
         // Mouse wheels / phase-less events keep the discrete fallback.
-        if let direction = pageScrollGesture.consume(event) {
-            changePage(
-                by: direction,
-                queuesDuringTransition: false
-            )
-        }
+        if let direction = pageScrollGesture.consume(event) { changePage(by: direction, queuesDuringTransition: false) }
     }
 }
 
-private extension LaunchpadRootView {
-    var layoutPreferences: UserLayoutPreferences {
+extension LaunchpadRootView {
+    fileprivate var layoutPreferences: UserLayoutPreferences {
         UserLayoutPreferences(isRightToLeft: userInterfaceLayoutDirection == .rightToLeft)
     }
 
-    var resolvedItems: [ResolvedLaunchpadItem] {
+    fileprivate var resolvedItems: [ResolvedLaunchpadItem] {
         ResolvedLaunchpadItemFactory.makeItems(
-            document: layoutDocument,
-            applications: applications,
-            query: searchField.stringValue
-        )
+            document: layoutDocument, applications: applications, query: searchField.stringValue)
     }
 
-    var isSearchActive: Bool {
+    fileprivate var isSearchActive: Bool {
         !searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    func configureCanvas() {
+    fileprivate func configureCanvas() {
         // Host the provider's cached material pixels directly. NSImageView
         // draws the same image into an additional full-screen backing store.
         // Set the layer BEFORE wantsLayer to opt into AppKit layer hosting.
@@ -705,67 +615,43 @@ private extension LaunchpadRootView {
         folderOverlayLayer.isHidden = true
     }
 
-    func updateWallpaper() {
+    fileprivate func updateWallpaper() {
         let images = DesktopWallpaperProvider.images(for: displayContext.displayID)
         desktopImage = images?.desktop
         desktopBackdropImage = images?.frosted
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        wallpaperView.layer?.contents = images?.frosted.cgImage(
-            forProposedRect: nil, context: nil, hints: nil
-        )
+        wallpaperView.layer?.contents = images?.frosted.cgImage(forProposedRect: nil, context: nil, hints: nil)
         wallpaperView.layer?.contentsScale = displayContext.backingScaleFactor
         wallpaperView.layer?.backgroundColor = DesktopWallpaperProvider.fallbackColor.cgColor
         CATransaction.commit()
     }
 
-    func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil) -> ResolvedLaunchpadPages {
+    fileprivate func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil)
+        -> ResolvedLaunchpadPages {
         ResolvedLaunchpadItemFactory.makePages(
-            document: document ?? layoutDocument,
-            applications: applications,
-            query: searchField.stringValue,
-            pageCapacity: metrics.itemsPerPage
-        )
+            document: document ?? layoutDocument, applications: applications, query: searchField.stringValue,
+            pageCapacity: metrics.itemsPerPage)
     }
 
-    func render() {
-        guard
-            !isPageTransitionActive,
-            dragSession == nil,
-            !isCommittingLayout,
-            !isFinishingDragVisuals,
+    fileprivate func render() {
+        guard !isPageTransitionActive, dragSession == nil, !isCommittingLayout, !isFinishingDragVisuals,
             !isResettingLayout
         else { return }
 
-        let scale =
-            window?.backingScaleFactor
-                ?? NSScreen.main?.backingScaleFactor
-                ?? 1
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 1
 
         updateCanvasGeometry(scale: scale)
 
         let items = resolvedItems
-        let metrics = solver.solve(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: items.count
-        )
+        let metrics = solver.solve(display: displayContext, requested: layoutPreferences, itemCount: items.count)
         currentMetrics = metrics
         positionSearchField(in: metrics.searchReservedFrame)
 
         let configuration = PageSurfaceConfiguration(
-            bounds: bounds,
-            scale: scale,
-            contentRevision: contentRevision,
-            metrics: metrics
-        )
+            bounds: bounds, scale: scale, contentRevision: contentRevision, metrics: metrics)
         if configuration != renderedConfiguration {
-            rebuildPageSurfaces(
-                items: items,
-                metrics: metrics,
-                scale: scale,
-                configuration: configuration
-            )
+            rebuildPageSurfaces(items: items, metrics: metrics, scale: scale, configuration: configuration)
         }
 
         let pageCount = pageProjection(metrics: metrics).pageCount
@@ -773,16 +659,8 @@ private extension LaunchpadRootView {
         let direction = pendingPageDirection
         pendingPageDirection = 0
 
-        activatePageSurface(
-            at: currentPage,
-            direction: direction,
-            scale: scale
-        )
-        updatePageIndicator(
-            pageCount: pageCount,
-            metrics: metrics,
-            scale: scale
-        )
+        activatePageSurface(at: currentPage, direction: direction, scale: scale)
+        updatePageIndicator(pageCount: pageCount, metrics: metrics, scale: scale)
         updateSelectionAppearance()
 
         if !isPageTransitionActive {
@@ -792,7 +670,7 @@ private extension LaunchpadRootView {
         }
     }
 
-    func updateCanvasGeometry(scale: CGFloat) {
+    fileprivate func updateCanvasGeometry(scale: CGFloat) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         wallpaperView.frame = bounds
@@ -803,8 +681,7 @@ private extension LaunchpadRootView {
             wallpaperLayer.bounds = wallpaperView.bounds
             wallpaperLayer.position = CGPoint(
                 x: wallpaperView.frame.minX + wallpaperView.frame.width * wallpaperLayer.anchorPoint.x,
-                y: wallpaperView.frame.minY + wallpaperView.frame.height * wallpaperLayer.anchorPoint.y
-            )
+                y: wallpaperView.frame.minY + wallpaperView.frame.height * wallpaperLayer.anchorPoint.y)
             wallpaperLayer.contentsScale = displayContext.backingScaleFactor
         }
         canvasView.frame = bounds
@@ -818,11 +695,8 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func rebuildPageSurfaces(
-        items: [ResolvedLaunchpadItem],
-        metrics: GridMetrics,
-        scale: CGFloat,
-        configuration: PageSurfaceConfiguration
+    fileprivate func rebuildPageSurfaces(
+        items: [ResolvedLaunchpadItem], metrics: GridMetrics, scale: CGFloat, configuration: PageSurfaceConfiguration
     ) {
         cancelIconPrewarming()
 
@@ -841,9 +715,7 @@ private extension LaunchpadRootView {
         }
 
         for surface in pageSurfaces.values {
-            guard retired.insert(ObjectIdentifier(surface)).inserted else {
-                continue
-            }
+            guard retired.insert(ObjectIdentifier(surface)).inserted else { continue }
             detachButtons(from: surface)
             surface.layer.removeAllAnimations()
             surface.layer.opacity = 0
@@ -857,22 +729,15 @@ private extension LaunchpadRootView {
         activeSurface = nil
 
         let pageCount = pageProjection(metrics: metrics).pageCount
-        for pageIndex in 0 ..< pageCount {
+        for pageIndex in 0..<pageCount {
             pageSurfaces[pageIndex] = makePageSurface(
-                pageIndex: pageIndex,
-                items: items,
-                metrics: metrics,
-                scale: scale
-            )
+                pageIndex: pageIndex, items: items, metrics: metrics, scale: scale)
         }
         renderedConfiguration = configuration
     }
 
-    func makePageSurface(
-        pageIndex: Int,
-        items: [ResolvedLaunchpadItem],
-        metrics: GridMetrics,
-        scale: CGFloat,
+    fileprivate func makePageSurface(
+        pageIndex: Int, items: [ResolvedLaunchpadItem], metrics: GridMetrics, scale: CGFloat,
         projection: ResolvedLaunchpadPages? = nil
     ) -> LaunchpadPageSurface {
         let layer = CALayer()
@@ -882,10 +747,7 @@ private extension LaunchpadRootView {
 
         guard !items.isEmpty else {
             addStatusText(
-                isLoadingApplications ? "Loading applications…" : "No matching applications",
-                to: layer,
-                scale: scale
-            )
+                isLoadingApplications ? "Loading applications…" : "No matching applications", to: layer, scale: scale)
             return surface
         }
 
@@ -897,79 +759,52 @@ private extension LaunchpadRootView {
         let visibleCount = endIndex - startIndex
         let centersSearchResults = isSearchActive
 
-        for (localIndex, item) in items[startIndex ..< endIndex].enumerated() {
-            let frames = centersSearchResults
+        for (localIndex, item) in items[startIndex..<endIndex].enumerated() {
+            let frames =
+                centersSearchResults
                 ? metrics.centeredItemFrames(forItemAt: localIndex, visibleItemCount: visibleCount)
                 : metrics.itemFrames(forItemAt: localIndex)
             guard let frames else { continue }
             let entry = makePageEntry(
-                item: item,
-                absoluteIndex: startIndex + localIndex,
-                frames: frames,
-                metrics: metrics,
-                scale: scale
-            )
+                item: item, absoluteIndex: startIndex + localIndex, frames: frames, metrics: metrics, scale: scale)
             layer.addSublayer(entry.tileLayer)
             surface.entries.append(entry)
         }
         return surface
     }
 
-    func makePageEntry(
-        item: ResolvedLaunchpadItem,
-        absoluteIndex: Int,
-        frames: GridItemFrames,
-        metrics: GridMetrics,
-        scale: CGFloat
+    fileprivate func makePageEntry(
+        item: ResolvedLaunchpadItem, absoluteIndex: Int, frames: GridItemFrames, metrics: GridMetrics, scale: CGFloat
     ) -> LaunchpadPageEntry {
         let presentation: LaunchpadTilePresentation
         switch item {
-        case let .application(application):
-            presentation = .application(AppTilePresentationFactory.make(AppTileRenderInput(
-                application: application,
-                cellFrame: frames.cell,
-                iconFrame: frames.icon,
-                labelFrame: frames.label,
-                scale: scale,
-                selected: absoluteIndex == selectedIndex,
-                icon: iconCache.cgImage(for: application, pointSize: metrics.iconSize, scale: scale)
-            )))
-        case let .folder(folder):
-            let miniaturePointSize = AppTilePresentationFactory
-                .folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize)
-            let childIcons = folder.applications
-                .prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
-                .compactMap {
-                    iconCache.cgImage(
-                        for: $0,
-                        pointSize: miniaturePointSize,
-                        scale: scale
-                    )
-                }
-            presentation = .folder(AppTilePresentationFactory.make(FolderTileRenderInput(
-                folderID: folder.id,
-                title: folder.title,
-                cellFrame: frames.cell,
-                iconFrame: frames.icon,
-                labelFrame: frames.label,
-                scale: scale,
-                selected: absoluteIndex == selectedIndex,
-                childIcons: childIcons,
-                layoutDirection: userInterfaceLayoutDirection
-            )))
+        case .application(let application):
+            presentation = .application(
+                AppTilePresentationFactory.make(
+                    AppTileRenderInput(
+                        application: application, cellFrame: frames.cell, iconFrame: frames.icon,
+                        labelFrame: frames.label, scale: scale, selected: absoluteIndex == selectedIndex,
+                        icon: iconCache.cgImage(for: application, pointSize: metrics.iconSize, scale: scale))))
+        case .folder(let folder):
+            let miniaturePointSize = AppTilePresentationFactory.folderMiniatureIconPointSize(
+                forRootIconSize: metrics.iconSize)
+            let childIcons = folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
+                .compactMap { iconCache.cgImage(for: $0, pointSize: miniaturePointSize, scale: scale) }
+            presentation = .folder(
+                AppTilePresentationFactory.make(
+                    FolderTileRenderInput(
+                        folderID: folder.id, title: folder.title, cellFrame: frames.cell, iconFrame: frames.icon,
+                        labelFrame: frames.label, scale: scale, selected: absoluteIndex == selectedIndex,
+                        childIcons: childIcons, layoutDirection: userInterfaceLayoutDirection)))
         }
 
         let entry = LaunchpadPageEntry(
-            item: item,
-            absoluteIndex: absoluteIndex,
-            frames: frames,
-            presentation: presentation
-        )
+            item: item, absoluteIndex: absoluteIndex, frames: frames, presentation: presentation)
         configurePageEntry(entry)
         return entry
     }
 
-    func configurePageEntry(_ entry: LaunchpadPageEntry) {
+    fileprivate func configurePageEntry(_ entry: LaunchpadPageEntry) {
         let button = entry.button
         button.frame = entry.frames.icon
         button.target = self
@@ -982,25 +817,13 @@ private extension LaunchpadRootView {
         button.onHoverChanged = { [weak self, weak iconLayer = entry.iconLayer] isHovering in
             self?.animateHover(on: iconLayer, isHovering: isHovering)
         }
-        button.onPointerDown = { [weak self, weak entry] event in
-            self?.tilePointerDown(entry: entry, event: event)
-        }
-        button.onPointerDragged = { [weak self] update in
-            self?.tilePointerDragged(update)
-        }
-        button.onPointerUp = { [weak self] release in
-            self?.tilePointerUp(release)
-        }
-        button.onPointerCancelled = { [weak self] in
-            self?.tilePointerCancelled()
-        }
+        button.onPointerDown = { [weak self, weak entry] event in self?.tilePointerDown(entry: entry, event: event) }
+        button.onPointerDragged = { [weak self] update in self?.tilePointerDragged(update) }
+        button.onPointerUp = { [weak self] release in self?.tilePointerUp(release) }
+        button.onPointerCancelled = { [weak self] in self?.tilePointerCancelled() }
     }
 
-    func activatePageSurface(
-        at pageIndex: Int,
-        direction: Int,
-        scale: CGFloat
-    ) {
+    fileprivate func activatePageSurface(at pageIndex: Int, direction: Int, scale: CGFloat) {
         guard let incomingSurface = pageSurfaces[pageIndex] else { return }
         let outgoingSurface = activeSurface
 
@@ -1009,9 +832,7 @@ private extension LaunchpadRootView {
             return
         }
 
-        if let outgoingSurface {
-            attachButtons(to: outgoingSurface, hidden: true)
-        }
+        if let outgoingSurface { attachButtons(to: outgoingSurface, hidden: true) }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -1020,10 +841,7 @@ private extension LaunchpadRootView {
         incomingSurface.layer.opacity = openFolderID == nil ? 1 : 0.10
         incomingSurface.layer.isHidden = false
         if incomingSurface.layer.superlayer == nil {
-            rootLayer.insertSublayer(
-                incomingSurface.layer,
-                below: fixedOverlayLayer
-            )
+            rootLayer.insertSublayer(incomingSurface.layer, below: fixedOverlayLayer)
         }
         CATransaction.commit()
 
@@ -1031,10 +849,7 @@ private extension LaunchpadRootView {
         activeSurface = incomingSurface
 
         let transition = outgoingSurface.flatMap { _ in
-            LaunchpadVisualStyle.pageTransition(
-                direction: direction,
-                displayWidth: bounds.width
-            )
+            LaunchpadVisualStyle.pageTransition(direction: direction, displayWidth: bounds.width)
         }
 
         guard let outgoingSurface, let transition else {
@@ -1044,11 +859,7 @@ private extension LaunchpadRootView {
         }
 
         beginPageTransition(
-            from: outgoingSurface.layer,
-            to: incomingSurface.layer,
-            direction: direction,
-            style: transition
-        )
+            from: outgoingSurface.layer, to: incomingSurface.layer, direction: direction, style: transition)
     }
 
     // LAUNCHPANE_ULTRA_SMOOTH_PAGING_V1
@@ -1056,7 +867,7 @@ private extension LaunchpadRootView {
     // Keep currentPage and the immediate neighbours already attached one viewport
     // off-screen. A trackpad gesture then starts by changing only two CALayer
     // positions; it does not construct a page tree or churn the NSView hierarchy.
-    func stageAdjacentPageSurfaces(scale: CGFloat) {
+    fileprivate func stageAdjacentPageSurfaces(scale: CGFloat) {
         // LAUNCHPANE_PAGING_LONG_SESSION_PERF_V1
         //
         // Paging visuals and pointer hit-targets have different lifetimes:
@@ -1067,15 +878,9 @@ private extension LaunchpadRootView {
         // Previously every visited adjacent page's hidden buttons stayed in the
         // NSView hierarchy. Because each tile owns an NSTrackingArea, repeated
         // paging steadily increased AppKit hit-testing / tracking bookkeeping.
-        guard
-            interactivePageSwipe == nil,
-            !pageTransitionAnimator.isAnimating
-        else { return }
+        guard interactivePageSwipe == nil, !pageTransitionAnimator.isAnimating else { return }
 
-        let restingPosition = CGPoint(
-            x: bounds.midX,
-            y: bounds.midY
-        )
+        let restingPosition = CGPoint(x: bounds.midX, y: bounds.midY)
         let width = max(1, bounds.width)
 
         // First update compositor topology only. Do not mix NSView hierarchy
@@ -1091,19 +896,11 @@ private extension LaunchpadRootView {
                 surface.layer.frame = bounds
                 surface.layer.contentsScale = scale
                 surface.layer.position = CGPoint(
-                    x: restingPosition.x
-                        + CGFloat(pageDistance) * width,
-                    y: restingPosition.y
-                )
+                    x: restingPosition.x + CGFloat(pageDistance) * width, y: restingPosition.y)
                 surface.layer.opacity = 1
                 surface.layer.isHidden = false
 
-                if surface.layer.superlayer == nil {
-                    rootLayer.insertSublayer(
-                        surface.layer,
-                        below: fixedOverlayLayer
-                    )
-                }
+                if surface.layer.superlayer == nil { rootLayer.insertSublayer(surface.layer, below: fixedOverlayLayer) }
             } else {
                 surface.layer.removeAllAnimations()
                 surface.layer.removeFromSuperlayer()
@@ -1117,86 +914,64 @@ private extension LaunchpadRootView {
         // their icon/label CALayers are sufficient for rendering.
         for (pageIndex, surface) in pageSurfaces {
             if pageIndex == currentPage {
-                attachButtons(
-                    to: surface,
-                    hidden: false
-                )
+                attachButtons(to: surface, hidden: false)
             } else {
                 detachButtons(from: surface)
             }
         }
 
         #if DEBUG
-        if ProcessInfo.processInfo.environment[
-            "LAUNCHPANE_PAGING_DIAGNOSTICS"
-        ] == "1" {
-            let attachedTileButtons = pageSurfaces.values.reduce(into: 0) { total, surface in
-                total += surface.entries.reduce(into: 0) { pageTotal, entry in
-                    if entry.button.superview != nil {
-                        pageTotal += 1
+            if ProcessInfo.processInfo.environment["LAUNCHPANE_PAGING_DIAGNOSTICS"] == "1" {
+                let attachedTileButtons = pageSurfaces.values.reduce(into: 0) { total, surface in
+                    total += surface.entries.reduce(into: 0) { pageTotal, entry in
+                        if entry.button.superview != nil { pageTotal += 1 }
                     }
                 }
-            }
 
-            let stagedPageLayers = pageSurfaces.values.reduce(into: 0) { total, surface in
-                if surface.layer.superlayer != nil {
-                    total += 1
+                let stagedPageLayers = pageSurfaces.values.reduce(into: 0) { total, surface in
+                    if surface.layer.superlayer != nil { total += 1 }
                 }
+
+                // Count from the actual compositor tree as well as the cache. A
+                // dropped cache entry must not hide an attached, retired page tree.
+                let trackedPageLayers = Set(pageSurfaces.values.map { ObjectIdentifier($0.layer) })
+                let orphanPageTrees = (rootLayer.sublayers ?? []).filter {
+                    $0 !== fixedBackgroundLayer && $0 !== fixedOverlayLayer
+                        && !trackedPageLayers.contains(ObjectIdentifier($0)) && !($0.sublayers?.isEmpty ?? true)
+                }.count
+
+                print(
+                    "[PagingPerf] current=\(currentPage) " + "buttons=\(attachedTileButtons) "
+                        + "stagedLayers=\(stagedPageLayers) " + "orphanPageTrees=\(orphanPageTrees) "
+                        + "pages=\(pageSurfaces.count)")
             }
-
-            // Count from the actual compositor tree as well as the cache. A
-            // dropped cache entry must not hide an attached, retired page tree.
-            let trackedPageLayers = Set(pageSurfaces.values.map {
-                ObjectIdentifier($0.layer)
-            })
-            let orphanPageTrees = (rootLayer.sublayers ?? []).filter {
-                $0 !== fixedBackgroundLayer
-                    && $0 !== fixedOverlayLayer
-                    && !trackedPageLayers.contains(ObjectIdentifier($0))
-                    && !($0.sublayers?.isEmpty ?? true)
-            }.count
-
-            print(
-                "[PagingPerf] current=\(currentPage) "
-                    + "buttons=\(attachedTileButtons) "
-                    + "stagedLayers=\(stagedPageLayers) "
-                    + "orphanPageTrees=\(orphanPageTrees) "
-                    + "pages=\(pageSurfaces.count)"
-            )
-        }
         #endif
     }
 
-    func attachButtons(to surface: LaunchpadPageSurface, hidden: Bool) {
+    fileprivate func attachButtons(to surface: LaunchpadPageSurface, hidden: Bool) {
         for entry in surface.entries {
             let button = entry.button
-            if button.superview == nil {
-                addSubview(button, positioned: .below, relativeTo: searchField)
-            }
+            if button.superview == nil { addSubview(button, positioned: .below, relativeTo: searchField) }
             button.frame = entry.frames.icon
             button.isEnabled = !hidden
             button.isHidden = hidden || openFolderID != nil
         }
     }
 
-    func detachButtons(from surface: LaunchpadPageSurface) {
-        for entry in surface.entries {
-            entry.button.removeFromSuperview()
-        }
+    fileprivate func detachButtons(from surface: LaunchpadPageSurface) {
+        for entry in surface.entries { entry.button.removeFromSuperview() }
     }
 
-    func updatePageIndicator(pageCount: Int, metrics: GridMetrics, scale: CGFloat) {
+    fileprivate func updatePageIndicator(pageCount: Int, metrics: GridMetrics, scale: CGFloat) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         pageIndicatorLayer.frame = metrics.pageIndicatorReservedFrame
-        pageIndicatorLayer.string = (0 ..< pageCount)
-            .map { $0 == currentPage ? "●" : "○" }
-            .joined(separator: "  ")
+        pageIndicatorLayer.string = (0..<pageCount).map { $0 == currentPage ? "●" : "○" }.joined(separator: "  ")
         pageIndicatorLayer.contentsScale = scale
         CATransaction.commit()
     }
 
-    func addStatusText(_ text: String, to layer: CALayer, scale: CGFloat) {
+    fileprivate func addStatusText(_ text: String, to layer: CALayer, scale: CGFloat) {
         let statusLayer = CATextLayer()
         statusLayer.frame = CGRect(x: 0, y: bounds.midY - 12, width: bounds.width, height: 24)
         statusLayer.string = text
@@ -1207,53 +982,38 @@ private extension LaunchpadRootView {
         layer.addSublayer(statusLayer)
     }
 
-    func positionSearchField(in reservedFrame: CGRect) {
+    fileprivate func positionSearchField(in reservedFrame: CGRect) {
         let size = LaunchpadVisualStyle.searchFieldSize(forDisplayWidth: bounds.width)
         searchField.frame = CGRect(
-            x: bounds.midX - size.width / 2,
-            y: reservedFrame.midY - size.height / 2,
-            width: size.width,
-            height: size.height
-        )
+            x: bounds.midX - size.width / 2, y: reservedFrame.midY - size.height / 2, width: size.width,
+            height: size.height)
     }
 
-    func animatePressed(
-        on iconLayer: CALayer?,
-        isPressed: Bool
-    ) {
+    fileprivate func animatePressed(on iconLayer: CALayer?, isPressed: Bool) {
         guard let iconLayer else { return }
 
-        let targetOpacity: Float =
-            isPressed ? 0.78 : 1.0
+        let targetOpacity: Float = isPressed ? 0.78 : 1.0
 
-        let currentOpacity =
-            iconLayer.presentation()?.opacity
-            ?? iconLayer.opacity
+        let currentOpacity = iconLayer.presentation()?.opacity ?? iconLayer.opacity
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         iconLayer.opacity = targetOpacity
         CATransaction.commit()
 
-        let animation =
-            CABasicAnimation(keyPath: "opacity")
+        let animation = CABasicAnimation(keyPath: "opacity")
 
         animation.fromValue = currentOpacity
         animation.toValue = targetOpacity
 
-        animation.duration =
-            isPressed ? 0.07 : 0.10
+        animation.duration = isPressed ? 0.07 : 0.10
 
-        animation.timingFunction =
-            CAMediaTimingFunction(name: .easeOut)
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
 
-        iconLayer.add(
-            animation,
-            forKey: "iconPressedOpacity"
-        )
+        iconLayer.add(animation, forKey: "iconPressedOpacity")
     }
 
-    func animateHover(on iconLayer: CALayer?, isHovering: Bool) {
+    fileprivate func animateHover(on iconLayer: CALayer?, isHovering: Bool) {
         guard let iconLayer else { return }
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.14)
@@ -1262,7 +1022,7 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func invalidatePageSurfaceCache() {
+    fileprivate func invalidatePageSurfaceCache() {
         cancelIconPrewarming()
         contentRevision &+= 1
         renderedConfiguration = nil
@@ -1272,26 +1032,24 @@ private extension LaunchpadRootView {
     }
 }
 
-private extension LaunchpadRootView {
-    func moveSelection(_ movement: GridNavigationMovement) {
+extension LaunchpadRootView {
+    fileprivate func moveSelection(_ movement: GridNavigationMovement) {
         guard !isPageTransitionActive, let metrics = currentMetrics else { return }
         let items = resolvedItems
-        let currentSelection = items.indices.contains(selectedIndex)
-            ? selectedIndex
-            : pageProjection(metrics: metrics).range(forPage: currentPage).first
-        guard let index = GridSelectionNavigator.nextIndex(
-            from: currentSelection,
-            movement: movement,
-            currentPage: currentPage,
-            itemsPerPage: metrics.itemsPerPage,
-            columns: metrics.columns,
-            itemCount: items.count,
-            isRightToLeft: metrics.isRightToLeft
-        ) else { return }
+        let currentSelection =
+            items.indices.contains(selectedIndex)
+            ? selectedIndex : pageProjection(metrics: metrics).range(forPage: currentPage).first
+        guard
+            let index = GridSelectionNavigator.nextIndex(
+                from: currentSelection, movement: movement,
+                context: GridNavigationContext(
+                    currentPage: currentPage, itemsPerPage: metrics.itemsPerPage, columns: metrics.columns,
+                    itemCount: items.count, isRightToLeft: metrics.isRightToLeft))
+        else { return }
         select(index: index, itemsPerPage: metrics.itemsPerPage)
     }
 
-    func select(index: Int, itemsPerPage: Int) {
+    fileprivate func select(index: Int, itemsPerPage: Int) {
         let items = resolvedItems
         guard !items.isEmpty else { return }
         let previousPage = currentPage
@@ -1302,25 +1060,16 @@ private extension LaunchpadRootView {
         needsLayout = true
     }
 
-    func updateSelectionAppearance() {
+    fileprivate func updateSelectionAppearance() {
         for surface in pageSurfaces.values {
-            for entry in surface.entries {
-                entry.selectionLayer.opacity = entry.absoluteIndex == selectedIndex ? 1 : 0
-            }
+            for entry in surface.entries { entry.selectionLayer.opacity = entry.absoluteIndex == selectedIndex ? 1 : 0 }
         }
     }
 
-    func changePage(
-        by offset: Int,
-        queuesDuringTransition: Bool = true
-    ) {
+    fileprivate func changePage(by offset: Int, queuesDuringTransition: Bool = true) {
         guard interactivePageSwipe == nil else { return }
         if pageTransitionAnimator.isAnimating {
-            if queuesDuringTransition {
-                _ = pageTransitionAnimator.queueLatestIfAnimating(
-                    direction: offset
-                )
-            }
+            if queuesDuringTransition { _ = pageTransitionAnimator.queueLatestIfAnimating(direction: offset) }
             return
         }
         guard let metrics = currentMetrics else { return }
@@ -1334,54 +1083,39 @@ private extension LaunchpadRootView {
         needsLayout = true
     }
 
-    func activateSelectedItem() {
+    fileprivate func activateSelectedItem() {
         guard !isPageTransitionActive else { return }
         let items = resolvedItems
         guard items.indices.contains(selectedIndex) else { return }
         activate(items[selectedIndex])
     }
 
-    func activate(_ item: ResolvedLaunchpadItem) {
+    fileprivate func activate(_ item: ResolvedLaunchpadItem) {
         switch item {
-        case let .application(application):
-            launch(application)
-        case let .folder(folder):
-            openFolder(folder.id, sourceFrame: folderSourceFrame(for: folder.id))
+        case .application(let application): launch(application)
+        case .folder(let folder): openFolder(folder.id, sourceFrame: folderSourceFrame(for: folder.id))
         }
     }
 
-    func launch(_ application: ApplicationRecord) {
-        if NSWorkspace.shared.open(application.bundleURL) {
-            requestClose()
-        }
+    fileprivate func launch(_ application: ApplicationRecord) {
+        if NSWorkspace.shared.open(application.bundleURL) { requestClose() }
     }
 
-    @objc func applicationButtonPressed(_ sender: AppTileButton) {
-        guard
-            !isPageTransitionActive,
-            dragSession == nil,
-            !isFinishingDragVisuals,
-            !suppressesResignActiveDismissal
+    @objc fileprivate func applicationButtonPressed(_ sender: AppTileButton) {
+        guard !isPageTransitionActive, dragSession == nil, !isFinishingDragVisuals, !suppressesResignActiveDismissal
         else { return }
         launch(sender.application)
     }
 
-    @objc func folderButtonPressed(_ sender: FolderTileButton) {
-        guard
-            !isPageTransitionActive,
-            dragSession == nil,
-            !isFinishingDragVisuals
-        else { return }
+    @objc fileprivate func folderButtonPressed(_ sender: FolderTileButton) {
+        guard !isPageTransitionActive, dragSession == nil, !isFinishingDragVisuals else { return }
         openFolder(sender.folderID, sourceFrame: sender.frame)
     }
 
-    func focusSearch(with event: NSEvent) {
+    fileprivate func focusSearch(with event: NSEvent) {
         let commandModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
-        guard
-            event.modifierFlags.isDisjoint(with: commandModifiers),
-            let characters = event.characters,
-            !characters.isEmpty,
-            characters.rangeOfCharacter(from: .controlCharacters) == nil
+        guard event.modifierFlags.isDisjoint(with: commandModifiers), let characters = event.characters,
+            !characters.isEmpty, characters.rangeOfCharacter(from: .controlCharacters) == nil
         else {
             super.keyDown(with: event)
             return
@@ -1391,7 +1125,7 @@ private extension LaunchpadRootView {
         searchField.insertText(characters)
     }
 
-    func searchDidChange() {
+    fileprivate func searchDidChange() {
         cancelDragInteraction(animated: false)
         closeFolder(animated: false)
         resetPageTransition()
@@ -1402,7 +1136,7 @@ private extension LaunchpadRootView {
         needsLayout = true
     }
 
-    func requestClose() {
+    fileprivate func requestClose() {
         // The Folder -> root ownership handoff is not a user dismissal gesture.
         // Ignore any transient click-through/activation side effect until the
         // committed root surface owns both visuals and AppKit hit targets.
@@ -1411,14 +1145,9 @@ private extension LaunchpadRootView {
         (window as? LaunchpadWindow)?.dismiss()
     }
 
-    func confirmResetLaunchpad() {
-        guard
-            !isResettingLayout,
-            !isPageTransitionActive,
-            dragSession == nil,
-            !isCommittingLayout,
-            !isFinishingDragVisuals,
-            let window
+    fileprivate func confirmResetLaunchpad() {
+        guard !isResettingLayout, !isPageTransitionActive, dragSession == nil, !isCommittingLayout,
+            !isFinishingDragVisuals, let window
         else {
             NSSound.beep()
             return
@@ -1444,7 +1173,7 @@ private extension LaunchpadRootView {
         }
     }
 
-    func resetLaunchpad() async {
+    fileprivate func resetLaunchpad() async {
         cancelDragInteraction(animated: false)
         closeFolder(animated: false)
         searchField.resetForPresentation()
@@ -1453,9 +1182,7 @@ private extension LaunchpadRootView {
         let discovery = await catalog.refreshOutcome()
         do {
             let resetDocument = try await layoutStore.reset(
-                applications: discovery.applications,
-                completeness: discovery.completeness
-            )
+                applications: discovery.applications, completeness: discovery.completeness)
             applications = discovery.applications
             layoutDocument = resetDocument
             currentPage = 0
@@ -1474,13 +1201,14 @@ private extension LaunchpadRootView {
         }
     }
 
-    func presentResetFailure(_ error: Error) {
+    fileprivate func presentResetFailure(_ error: Error) {
         guard let window else { return }
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Launchpad Couldn’t Be Reset"
         if error as? LauncherLayoutStoreError == .incompleteCatalogForReset {
-            alert.informativeText = "The application scan was incomplete, so your current layout was kept unchanged. "
+            alert.informativeText =
+                "The application scan was incomplete, so your current layout was kept unchanged. "
                 + "Try again in a moment."
         } else {
             alert.informativeText = "Your current layout was kept unchanged."
@@ -1490,29 +1218,21 @@ private extension LaunchpadRootView {
     }
 }
 
-private extension LaunchpadRootView {
-    func beginPageTransition(
-        from outgoingLayer: CALayer,
-        to incomingLayer: CALayer,
-        direction: Int,
+extension LaunchpadRootView {
+    fileprivate func beginPageTransition(
+        from outgoingLayer: CALayer, to incomingLayer: CALayer, direction: Int,
         style: LaunchpadVisualStyle.PageTransition
     ) {
         cancelIconPrewarming()
         setPageHitTargetsEnabled(false)
 
         let request = PageTransitionAnimator.Request(
-            outgoingLayer: outgoingLayer,
-            incomingLayer: incomingLayer,
-            direction: direction,
-            style: style,
-            canvasBounds: bounds
-        )
+            outgoingLayer: outgoingLayer, incomingLayer: incomingLayer, direction: direction, style: style,
+            canvasBounds: bounds)
         pageTransitionAnimator.start(request) { [weak self] queuedDirection in
             guard let self else { return }
 
-            if let activeSurface {
-                attachButtons(to: activeSurface, hidden: false)
-            }
+            if let activeSurface { attachButtons(to: activeSurface, hidden: false) }
             setPageHitTargetsEnabled(true)
 
             if queuedDirection != 0 {
@@ -1529,70 +1249,48 @@ private extension LaunchpadRootView {
         }
     }
 
-    func configurePagingDisplayLink() {
+    fileprivate func configurePagingDisplayLink() {
         pagingDisplayLink?.invalidate()
 
         // NSView.displayLink(...) follows the physical display containing this
         // view. Keep the default frame-rate range so Core Animation can use the
         // display's native cadence: typically 60 Hz, or up to 120 Hz on
         // ProMotion displays.
-        let link = displayLink(
-            target: self,
-            selector: #selector(pagingDisplayLinkDidFire(_:))
-        )
+        let link = displayLink(target: self, selector: #selector(pagingDisplayLinkDidFire(_:)))
 
         link.isPaused = true
-        link.add(
-            to: RunLoop.main,
-            forMode: .common
-        )
+        link.add(to: RunLoop.main, forMode: .common)
 
         pagingDisplayLink = link
     }
 
-    @objc
-    func pagingDisplayLinkDidFire(_ link: CADisplayLink) {
+    @objc fileprivate func pagingDisplayLinkDidFire(_ link: CADisplayLink) {
         // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
         // Folder and root direct-manipulation share one display link. Only one
         // can exist at a time; presenting at most once per refresh prevents a
         // burst of trackpad events from turning into redundant CA commits.
-        if let folderSwipe = interactiveFolderPageSwipe,
-           folderSwipe.phase == .tracking,
-           folderSwipe.needsPresentationUpdate {
+        if let folderSwipe = interactiveFolderPageSwipe, folderSwipe.phase == .tracking,
+            folderSwipe.needsPresentationUpdate {
             presentInteractiveFolderPageSwipe(folderSwipe)
             return
         }
 
-        guard
-            !link.isPaused,
-            let swipe = interactivePageSwipe,
-            swipe.phase == .tracking,
-            swipe.needsPresentationUpdate
-        else {
-            return
-        }
+        guard !link.isPaused, let swipe = interactivePageSwipe, swipe.phase == .tracking, swipe.needsPresentationUpdate
+        else { return }
 
         presentInteractivePageSwipe(swipe)
     }
 
-    func presentInteractivePageSwipe(
-        _ swipe: InteractivePageSwipe
-    ) {
+    fileprivate func presentInteractivePageSwipe(_ swipe: InteractivePageSwipe) {
         guard swipe.phase == .tracking else { return }
 
         swipe.needsPresentationUpdate = false
 
-        let outgoingPosition = CGPoint(
-            x: swipe.restingPosition.x + swipe.translation,
-            y: swipe.restingPosition.y
-        )
+        let outgoingPosition = CGPoint(x: swipe.restingPosition.x + swipe.translation, y: swipe.restingPosition.y)
 
         let incomingPosition = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width
-                + swipe.translation,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + swipe.translation,
+            y: swipe.restingPosition.y)
 
         // One compositor transaction per physical display refresh.
         //
@@ -1608,57 +1306,39 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func handleInteractivePageSwipe(_ event: NSEvent) -> Bool {
-        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else {
-            return false
-        }
+    fileprivate func handleInteractivePageSwipe(_ event: NSEvent) -> Bool {
+        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else { return false }
 
         let disposition = InteractivePageSwipeDecision.disposition(
-            hasActiveSwipe: interactivePageSwipe != nil,
-            phase: PageScrollPhase(event.phase),
+            hasActiveSwipe: interactivePageSwipe != nil, phase: PageScrollPhase(event.phase),
             hasHorizontalMovement: event.scrollingDeltaX != 0,
             isHorizontalDominant: abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        )
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
 
         switch disposition {
         case .useDiscretePaging:
-            if interactivePageSwipe != nil {
-                cancelInteractivePageSwipeImmediately()
-            }
+            if interactivePageSwipe != nil { cancelInteractivePageSwipeImmediately() }
             return false
         case .cancel:
             finishInteractivePageSwipe(commit: false)
             return true
-        case .finish:
-            return finishInteractivePageSwipeAfterRelease()
-        case .beginOrUpdate:
-            return continueInteractivePageSwipe(event)
+        case .finish: return finishInteractivePageSwipeAfterRelease()
+        case .beginOrUpdate: return continueInteractivePageSwipe(event)
         }
     }
 
-    func finishInteractivePageSwipeAfterRelease() -> Bool {
+    fileprivate func finishInteractivePageSwipeAfterRelease() -> Bool {
         guard let swipe = interactivePageSwipe else { return false }
         guard swipe.phase == .tracking else { return true }
         let width = max(1, swipe.width)
 
-        let progress = min(
-            1,
-            max(
-                0,
-                -swipe.translation
-                    * CGFloat(swipe.direction)
-                    / width
-            )
-        )
-        let forwardVelocity =
-            -swipe.velocity * CGFloat(swipe.direction)
+        let progress = min(1, max(0, -swipe.translation * CGFloat(swipe.direction) / width))
+        let forwardVelocity = -swipe.velocity * CGFloat(swipe.direction)
         let normalizedForwardVelocity = forwardVelocity / width
         // A native-feeling trackpad flick should not require dragging a large
         // fraction of the screen. Project the release briefly forward and allow
         // a short, intentional flick to commit while still rejecting tiny jitter.
-        let projectedProgress =
-            progress + normalizedForwardVelocity * 0.10
+        let projectedProgress = progress + normalizedForwardVelocity * 0.10
 
         // Launchpad paging should react to intent, not require a long drag.
         //
@@ -1669,39 +1349,24 @@ private extension LaunchpadRootView {
         // Horizontal-dominance filtering and the one-page-per-gesture gate
         // still protect against ordinary trackpad jitter.
         let commit =
-            progress >= 0.025
-                || (
-                    progress >= 0.012
-                        && projectedProgress >= 0.040
-                )
-                || (
-                    progress >= 0.008
-                        && normalizedForwardVelocity >= 0.25
-                )
+            progress >= 0.025 || (progress >= 0.012 && projectedProgress >= 0.040)
+            || (progress >= 0.008 && normalizedForwardVelocity >= 0.25)
 
         finishInteractivePageSwipe(commit: commit)
         return true
     }
 
-    func continueInteractivePageSwipe(_ event: NSEvent) -> Bool {
+    fileprivate func continueInteractivePageSwipe(_ event: NSEvent) -> Bool {
         guard interactivePageSwipe?.phase != .settling else { return true }
         // Native paging ignores inertial scrolling after the finger releases.
-        if !event.momentumPhase.isEmpty {
-            return true
-        }
+        if !event.momentumPhase.isEmpty { return true }
 
-        if event.phase.contains(.began) {
-            cancelInteractivePageSwipeImmediately()
-        }
+        if event.phase.contains(.began) { cancelInteractivePageSwipeImmediately() }
 
         if interactivePageSwipe == nil {
-            let direction =
-                event.scrollingDeltaX < 0 ? 1 : -1
+            let direction = event.scrollingDeltaX < 0 ? 1 : -1
 
-            let didBegin = beginInteractivePageSwipe(
-                direction: direction,
-                timestamp: event.timestamp
-            )
+            let didBegin = beginInteractivePageSwipe(direction: direction, timestamp: event.timestamp)
             if didBegin {
                 // Do not let partial vertical accumulation from an earlier event
                 // leak into the discrete gesture that follows this swipe.
@@ -1709,49 +1374,27 @@ private extension LaunchpadRootView {
             }
         }
 
-        if let swipe = interactivePageSwipe,
-           event.scrollingDeltaX != 0 {
-            updateInteractivePageSwipe(
-                swipe,
-                deltaX: event.scrollingDeltaX,
-                timestamp: event.timestamp
-            )
+        if let swipe = interactivePageSwipe, event.scrollingDeltaX != 0 {
+            updateInteractivePageSwipe(swipe, deltaX: event.scrollingDeltaX, timestamp: event.timestamp)
         }
 
         return true
     }
 
-    @discardableResult
-    func beginInteractivePageSwipe(
-        direction: Int,
-        timestamp: TimeInterval
-    ) -> Bool {
-        guard
-            !pageTransitionAnimator.isAnimating,
-            interactivePageSwipe == nil,
-            let metrics = currentMetrics,
+    @discardableResult fileprivate func beginInteractivePageSwipe(direction: Int, timestamp: TimeInterval) -> Bool {
+        guard !pageTransitionAnimator.isAnimating, interactivePageSwipe == nil, let metrics = currentMetrics,
             let outgoingSurface = activeSurface
-        else {
-            return false
-        }
+        else { return false }
 
         let pageCount = pageProjection(metrics: metrics).pageCount
         let targetPage = currentPage + direction
-        guard
-            (0 ..< pageCount).contains(targetPage),
-            let incomingSurface = pageSurfaces[targetPage]
-        else {
-            return false
-        }
+        guard (0..<pageCount).contains(targetPage), let incomingSurface = pageSurfaces[targetPage] else { return false }
 
         cancelIconPrewarming()
         setPageHitTargetsEnabled(false)
 
         let scale = window?.backingScaleFactor ?? 1
-        let restingPosition = CGPoint(
-            x: bounds.midX,
-            y: bounds.midY
-        )
+        let restingPosition = CGPoint(x: bounds.midX, y: bounds.midY)
         let width = max(1, bounds.width)
 
         CATransaction.begin()
@@ -1769,17 +1412,12 @@ private extension LaunchpadRootView {
         incomingSurface.layer.frame = bounds
         incomingSurface.layer.contentsScale = scale
         incomingSurface.layer.position = CGPoint(
-            x: restingPosition.x + CGFloat(direction) * width,
-            y: restingPosition.y
-        )
+            x: restingPosition.x + CGFloat(direction) * width, y: restingPosition.y)
         incomingSurface.layer.opacity = 1
         incomingSurface.layer.isHidden = false
 
         if incomingSurface.layer.superlayer == nil {
-            rootLayer.insertSublayer(
-                incomingSurface.layer,
-                below: fixedOverlayLayer
-            )
+            rootLayer.insertSublayer(incomingSurface.layer, below: fixedOverlayLayer)
         }
 
         CATransaction.commit()
@@ -1791,28 +1429,16 @@ private extension LaunchpadRootView {
 
         interactivePageGeneration &+= 1
         interactivePageSwipe = InteractivePageSwipe(
-            outgoingSurface: outgoingSurface,
-            incomingSurface: incomingSurface,
-            targetPage: targetPage,
-            direction: direction,
-            restingPosition: restingPosition,
-            width: width,
-            timestamp: timestamp
-        )
+            outgoingSurface: outgoingSurface, incomingSurface: incomingSurface, targetPage: targetPage,
+            direction: direction, restingPosition: restingPosition, width: width, timestamp: timestamp)
         return true
     }
 
-    func updateInteractivePageSwipe(
-        _ swipe: InteractivePageSwipe,
-        deltaX: CGFloat,
-        timestamp: TimeInterval
-    ) {
+    fileprivate func updateInteractivePageSwipe(
+        _ swipe: InteractivePageSwipe, deltaX: CGFloat, timestamp: TimeInterval) {
         guard swipe.phase == .tracking else { return }
         let rawElapsed = timestamp - swipe.lastTimestamp
-        let elapsed = min(
-            1.0 / 24.0,
-            max(1.0 / 240.0, rawElapsed)
-        )
+        let elapsed = min(1.0 / 24.0, max(1.0 / 240.0, rawElapsed))
         swipe.lastTimestamp = timestamp
 
         // Protect against a rare huge NSEvent delta without adding any filter or
@@ -1823,26 +1449,18 @@ private extension LaunchpadRootView {
         let trackingGain: CGFloat = 1.60
         let adjustedDelta = deltaX * trackingGain
         let maximumDelta = swipe.width * 0.18
-        let boundedDelta = min(
-            maximumDelta,
-            max(-maximumDelta, adjustedDelta)
-        )
+        let boundedDelta = min(maximumDelta, max(-maximumDelta, adjustedDelta))
 
         let instantaneousVelocity = boundedDelta / elapsed
         let maximumVelocity = swipe.width * 8.0
-        let boundedVelocity = min(
-            maximumVelocity,
-            max(-maximumVelocity, instantaneousVelocity)
-        )
+        let boundedVelocity = min(maximumVelocity, max(-maximumVelocity, instantaneousVelocity))
 
         // Fixed 0.72/0.28 filtering changes behaviour with event frequency.
         // A time-constant filter feels the same at 60 Hz, 120 Hz and under
         // irregular event delivery. It affects release physics only.
         let velocityTimeConstant = 0.034
-        let velocityAlpha =
-            1 - exp(-Double(elapsed) / velocityTimeConstant)
-        swipe.velocity +=
-            (boundedVelocity - swipe.velocity) * CGFloat(velocityAlpha)
+        let velocityAlpha = 1 - exp(-Double(elapsed) / velocityTimeConstant)
+        swipe.velocity += (boundedVelocity - swipe.velocity) * CGFloat(velocityAlpha)
 
         let proposed = swipe.translation + boundedDelta
         if swipe.direction > 0 {
@@ -1868,14 +1486,12 @@ private extension LaunchpadRootView {
         }
     }
 
-    func finishInteractivePageSwipe(commit: Bool) {
+    fileprivate func finishInteractivePageSwipe(commit: Bool) {
         guard let swipe = interactivePageSwipe, swipe.phase == .tracking else { return }
 
         // Make the last input sample available to Core Animation before the
         // compositor-driven settle begins.
-        if swipe.needsPresentationUpdate {
-            presentInteractivePageSwipe(swipe)
-        }
+        if swipe.needsPresentationUpdate { presentInteractivePageSwipe(swipe) }
 
         pagingDisplayLink?.isPaused = true
         swipe.phase = .settling
@@ -1883,28 +1499,21 @@ private extension LaunchpadRootView {
         let generation = interactivePageGeneration
 
         let finalTranslation = commit ? -CGFloat(swipe.direction) * swipe.width : 0
-        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position
-            ?? swipe.outgoingSurface.layer.position
-        let incomingStart = swipe.incomingSurface.layer.presentation()?.position
-            ?? swipe.incomingSurface.layer.position
-        let outgoingEnd = CGPoint(
-            x: swipe.restingPosition.x + finalTranslation,
-            y: swipe.restingPosition.y
-        )
+        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position ?? swipe.outgoingSurface.layer.position
+        let incomingStart = swipe.incomingSurface.layer.presentation()?.position ?? swipe.incomingSurface.layer.position
+        let outgoingEnd = CGPoint(x: swipe.restingPosition.x + finalTranslation, y: swipe.restingPosition.y)
         let incomingEnd = CGPoint(
             x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + finalTranslation,
-            y: swipe.restingPosition.y
-        )
+            y: swipe.restingPosition.y)
 
         // Use the position actually displayed, not a potentially newer input
         // sample. One cubic preserves release velocity all the way into rest;
         // stretching its duration afterward would introduce a sudden slowdown.
-        guard let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
-            direction: swipe.direction,
-            displayWidth: swipe.width,
-            releaseVelocity: swipe.velocity,
-            targetDelta: outgoingEnd.x - outgoingStart.x
-        ) else {
+        guard
+            let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
+                direction: swipe.direction, displayWidth: swipe.width, releaseVelocity: swipe.velocity,
+                targetDelta: outgoingEnd.x - outgoingStart.x)
+        else {
             completeInteractivePageSwipe(swipe, commit: commit)
             return
         }
@@ -1924,31 +1533,18 @@ private extension LaunchpadRootView {
         CATransaction.setDisableActions(true)
         CATransaction.setCompletionBlock { [weak self] in
             Task { @MainActor [weak self] in
-                guard
-                    let self,
-                    generation == interactivePageGeneration,
-                    interactivePageSwipe === swipe
-                else { return }
+                guard let self, generation == interactivePageGeneration, interactivePageSwipe === swipe else { return }
                 completeInteractivePageSwipe(swipe, commit: commit)
             }
         }
         swipe.outgoingSurface.layer.position = outgoingEnd
         swipe.incomingSurface.layer.position = incomingEnd
-        swipe.outgoingSurface.layer.add(
-            animation(from: outgoingStart, to: outgoingEnd),
-            forKey: "interactivePageOut"
-        )
-        swipe.incomingSurface.layer.add(
-            animation(from: incomingStart, to: incomingEnd),
-            forKey: "interactivePageIn"
-        )
+        swipe.outgoingSurface.layer.add(animation(from: outgoingStart, to: outgoingEnd), forKey: "interactivePageOut")
+        swipe.incomingSurface.layer.add(animation(from: incomingStart, to: incomingEnd), forKey: "interactivePageIn")
         CATransaction.commit()
     }
 
-    func completeInteractivePageSwipe(
-        _ swipe: InteractivePageSwipe,
-        commit: Bool
-    ) {
+    fileprivate func completeInteractivePageSwipe(_ swipe: InteractivePageSwipe, commit: Bool) {
         pagingDisplayLink?.isPaused = true
 
         swipe.outgoingSurface.layer.removeAllAnimations()
@@ -1962,17 +1558,11 @@ private extension LaunchpadRootView {
         if commit {
             swipe.incomingSurface.layer.position = swipe.restingPosition
             swipe.outgoingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x
-                    - CGFloat(swipe.direction) * swipe.width,
-                y: swipe.restingPosition.y
-            )
+                x: swipe.restingPosition.x - CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
         } else {
             swipe.outgoingSurface.layer.position = swipe.restingPosition
             swipe.incomingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x
-                    + CGFloat(swipe.direction) * swipe.width,
-                y: swipe.restingPosition.y
-            )
+                x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
         }
 
         CATransaction.commit()
@@ -1987,17 +1577,11 @@ private extension LaunchpadRootView {
             currentPage = swipe.targetPage
             selectedIndex = -1
 
-            attachButtons(
-                to: swipe.incomingSurface,
-                hidden: false
-            )
+            attachButtons(to: swipe.incomingSurface, hidden: false)
         } else {
             // Cancelled incoming pages never need pointer hit targets.
             detachButtons(from: swipe.incomingSurface)
-            attachButtons(
-                to: swipe.outgoingSurface,
-                hidden: false
-            )
+            attachButtons(to: swipe.outgoingSurface, hidden: false)
         }
 
         interactivePageSwipe = nil
@@ -2006,11 +1590,7 @@ private extension LaunchpadRootView {
 
         if let metrics = currentMetrics {
             let pageCount = pageProjection(metrics: metrics).pageCount
-            updatePageIndicator(
-                pageCount: pageCount,
-                metrics: metrics,
-                scale: scale
-            )
+            updatePageIndicator(pageCount: pageCount, metrics: metrics, scale: scale)
 
             // Visible motion is already complete; topology maintenance cannot
             // steal time from the settle animation anymore.
@@ -2019,7 +1599,7 @@ private extension LaunchpadRootView {
         }
     }
 
-    func cancelInteractivePageSwipeImmediately() {
+    fileprivate func cancelInteractivePageSwipeImmediately() {
         guard let swipe = interactivePageSwipe else { return }
 
         pagingDisplayLink?.isPaused = true
@@ -2031,26 +1611,18 @@ private extension LaunchpadRootView {
         CATransaction.setDisableActions(true)
         swipe.outgoingSurface.layer.position = swipe.restingPosition
         swipe.incomingSurface.layer.position = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
         CATransaction.commit()
 
         interactivePageSwipe = nil
         detachButtons(from: swipe.incomingSurface)
-        attachButtons(
-            to: swipe.outgoingSurface,
-            hidden: false
-        )
+        attachButtons(to: swipe.outgoingSurface, hidden: false)
         setPageHitTargetsEnabled(true)
 
-        stageAdjacentPageSurfaces(
-            scale: window?.backingScaleFactor ?? 1
-        )
+        stageAdjacentPageSurfaces(scale: window?.backingScaleFactor ?? 1)
     }
 
-    func resetPageTransition() {
+    fileprivate func resetPageTransition() {
         cancelIconPrewarming()
         cancelInteractivePageSwipeImmediately()
         pageSwipeInputGate = PageSwipeInputGate()
@@ -2059,9 +1631,8 @@ private extension LaunchpadRootView {
         setPageHitTargetsEnabled(true)
     }
 
-    func setPageHitTargetsEnabled(
-        _ enabled: Bool,
-        preserving preservedButton: PointerTrackingTileButton? = nil
+    fileprivate func setPageHitTargetsEnabled(
+        _ enabled: Bool, preserving preservedButton: PointerTrackingTileButton? = nil
     ) {
         guard let activeSurface else { return }
         for entry in activeSurface.entries {
@@ -2078,24 +1649,12 @@ private extension LaunchpadRootView {
         }
     }
 
-    func scheduleIdleFirstPageIconWarm() {
-        guard
-            !presentationResourcesActive,
-            !applications.isEmpty,
-            !isLoadingApplications
-        else { return }
+    fileprivate func scheduleIdleFirstPageIconWarm() {
+        guard !presentationResourcesActive, !applications.isEmpty, !isLoadingApplications else { return }
 
-        let metrics = solver.solve(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: applications.count
-        )
+        let metrics = solver.solve(display: displayContext, requested: layoutPreferences, itemCount: applications.count)
         let pages = ResolvedLaunchpadItemFactory.makePages(
-            document: layoutDocument,
-            applications: applications,
-            query: "",
-            pageCapacity: metrics.itemsPerPage
-        )
+            document: layoutDocument, applications: applications, query: "", pageCapacity: metrics.itemsPerPage)
 
         let firstPageItems = pages.pages.first ?? []
         var firstPageStandalone: [ApplicationRecord] = []
@@ -2104,12 +1663,10 @@ private extension LaunchpadRootView {
 
         for item in firstPageItems {
             switch item {
-            case let .application(application):
-                firstPageStandalone.append(application)
-            case let .folder(folder):
-                for application in folder.applications.prefix(
-                    AppTilePresentationFactory.folderMaximumVisibleChildren
-                ) where seenFolderMiniatures.insert(application.id).inserted {
+            case .application(let application): firstPageStandalone.append(application)
+            case .folder(let folder):
+                for application in folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
+                where seenFolderMiniatures.insert(application.id).inserted {
                     firstPageFolderMiniatures.append(application)
                 }
             }
@@ -2135,18 +1692,11 @@ private extension LaunchpadRootView {
             // P0: standalone icons dominate first-frame perception. Warm them
             // first, then use otherwise-idle time for tiny folder previews.
             await iconCache.warmPinnedFirstPage(
-                firstPageStandalone,
-                pointSize: metrics.iconSize,
-                scale: pinnedScale,
-                maximumConcurrentLoads: 2
-            )
+                firstPageStandalone, pointSize: metrics.iconSize, scale: pinnedScale, maximumConcurrentLoads: 2)
             guard !Task.isCancelled else { return }
 
             await iconCache.warmPinnedFirstPageFolderMiniatures(
-                firstPageFolderMiniatures,
-                pixelSize: 64,
-                maximumConcurrentLoads: 2
-            )
+                firstPageFolderMiniatures, pixelSize: 64, maximumConcurrentLoads: 2)
         }
     }
 
@@ -2159,14 +1709,8 @@ private extension LaunchpadRootView {
     /// Those are the only icons a user can plausibly request immediately after
     /// launch that are not already covered by the pinned first-page standalone
     /// cache. Once phase 0 completes, the remaining pages fill opportunistically.
-    func scheduleSessionHighQualityIconWarm(
-        metrics: GridMetrics,
-        scale: CGFloat
-    ) {
-        guard
-            presentationResourcesActive,
-            !applications.isEmpty,
-            !isLoadingApplications,
+    fileprivate func scheduleSessionHighQualityIconWarm(metrics: GridMetrics, scale: CGFloat) {
+        guard presentationResourcesActive, !applications.isEmpty, !isLoadingApplications,
             sessionHighQualityIconWarmTask == nil
         else { return }
 
@@ -2186,39 +1730,25 @@ private extension LaunchpadRootView {
             // four background workers so an actively opened folder can start its
             // own four priority loads without creating a decode storm.
             await iconCache.warm(
-                plan.firstPageFolderContents,
-                pointSize: metrics.iconSize,
-                scale: scale,
-                maximumConcurrentLoads: 4
-            )
+                plan.firstPageFolderContents, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 4)
             guard presentationResourcesActive, !Task.isCancelled else { return }
 
             // P1+: all remaining apps in page order. Use only two opportunistic
             // workers after the first-page folders are warm; interaction wins over
             // background completion if the user opens a folder immediately.
-            await iconCache.warm(
-                plan.remaining,
-                pointSize: metrics.iconSize,
-                scale: scale,
-                maximumConcurrentLoads: 2
-            )
+            await iconCache.warm(plan.remaining, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 2)
             guard presentationResourcesActive, !Task.isCancelled else { return }
 
             // Rebind any surfaces that are currently staged. This is cosmetic:
             // folders opened after the warm already read the same cache directly.
-            for surface in pageSurfaces.values {
-                refreshIcons(in: surface, pointSize: metrics.iconSize, scale: scale)
-            }
+            for surface in pageSurfaces.values { refreshIcons(in: surface, pointSize: metrics.iconSize, scale: scale) }
 
             if openFolderID != nil {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 for presentation in folderPresentations {
                     presentation.iconLayer.contents = iconCache.cgImage(
-                        for: presentation.button.application,
-                        pointSize: metrics.iconSize,
-                        scale: scale
-                    )
+                        for: presentation.button.application, pointSize: metrics.iconSize, scale: scale)
                 }
                 CATransaction.commit()
             }
@@ -2229,170 +1759,62 @@ private extension LaunchpadRootView {
     /// page's folder contents are isolated so they finish before any later-page
     /// work. Remaining apps follow page order, then the catalog is appended as a
     /// safety net for any record temporarily absent from the persisted layout.
-    func highQualityIconWarmPlan(
-        metrics: GridMetrics
-    ) -> (firstPageFolderContents: [ApplicationRecord], remaining: [ApplicationRecord]) {
+    fileprivate func highQualityIconWarmPlan(metrics: GridMetrics) -> (
+        firstPageFolderContents: [ApplicationRecord], remaining: [ApplicationRecord]
+    ) {
         let pages = ResolvedLaunchpadItemFactory.makePages(
-            document: layoutDocument,
-            applications: applications,
-            query: "",
-            pageCapacity: metrics.itemsPerPage
-        )
+            document: layoutDocument, applications: applications, query: "", pageCapacity: metrics.itemsPerPage)
 
         var seen: Set<ApplicationIdentity> = []
-        var firstPageFolderContents: [ApplicationRecord] = []
-        var remaining: [ApplicationRecord] = []
-
-        if let firstPage = pages.pages.first {
-            // Highest priority: all full-size children, not only the nine closed
-            // folder miniatures. This removes the open-folder icon pop-in.
-            for item in firstPage {
-                guard case let .folder(folder) = item else { continue }
-                for application in folder.applications
-                where seen.insert(application.id).inserted {
-                    firstPageFolderContents.append(application)
-                }
-            }
-
-            // Standalone first-page apps are kept in the 2x pinned cache while
-            // idle, but keep them in the plan as a correctness fallback.
-            for item in firstPage {
-                guard case let .application(application) = item else { continue }
-                if seen.insert(application.id).inserted {
-                    remaining.append(application)
-                }
-            }
+        let firstPage = pages.pages.first ?? []
+        let folderChildren = firstPage.flatMap { item -> [ApplicationRecord] in
+            guard case .folder(let folder) = item else { return [] }
+            return folder.applications
         }
-
-        // Page 2 onward. Preserve visual page order so the next likely swipe is
-        // decoded before remote pages. Every folder contributes all children.
-        for page in pages.pages.dropFirst() {
-            for item in page {
+        let firstPageFolderContents = folderChildren.filter { seen.insert($0.id).inserted }
+        let standalone = firstPage.compactMap { item -> ApplicationRecord? in
+            guard case .application(let application) = item else { return nil }
+            return application
+        }
+        let laterPages = pages.pages.dropFirst().flatMap { page in
+            page.flatMap { item -> [ApplicationRecord] in
                 switch item {
-                case let .application(application):
-                    if seen.insert(application.id).inserted {
-                        remaining.append(application)
-                    }
-                case let .folder(folder):
-                    for application in folder.applications
-                    where seen.insert(application.id).inserted {
-                        remaining.append(application)
-                    }
+                case .application(let application): [application]
+                case .folder(let folder): folder.applications
                 }
             }
         }
-
-        // Defensive fallback: keep HQ preload complete even if a catalog record
-        // has not yet been represented by the current layout document.
-        for application in applications where seen.insert(application.id).inserted {
-            remaining.append(application)
-        }
-
+        let remaining = (standalone + laterPages + applications).filter { seen.insert($0.id).inserted }
         return (firstPageFolderContents, remaining)
     }
 
-    func scheduleIconPrewarming(
-        metrics: GridMetrics,
-        scale: CGFloat
-    ) {
-        guard
-            !applications.isEmpty,
-            !isLoadingApplications,
-            !isPageTransitionActive
-        else { return }
+    fileprivate func scheduleIconPrewarming(metrics: GridMetrics, scale: CGFloat) {
+        guard !applications.isEmpty, !isLoadingApplications, !isPageTransitionActive else { return }
 
         let revision = contentRevision
         let currentSurface = pageSurfaces[currentPage]
-        let adjacentPageIndices = [
-            currentPage - 1,
-            currentPage + 1,
-        ].filter {
-            pageSurfaces[$0] != nil
-        }
+        let adjacentPageIndices = [currentPage - 1, currentPage + 1].filter { pageSurfaces[$0] != nil }
 
         iconPrewarmTask?.cancel()
 
         iconPrewarmTask = Task { @MainActor [weak self] in
             guard let self else { return }
 
-            // P0: standalone apps on the visible page. On page one these should
-            // already be pinned, making this phase almost entirely cache hits.
             if let currentSurface {
-                await iconCache.warm(
-                    standaloneApplications(in: currentSurface),
-                    pointSize: metrics.iconSize,
-                    scale: scale,
-                    maximumConcurrentLoads: 2
-                )
-
-                guard
-                    !Task.isCancelled,
-                    revision == contentRevision,
-                    !isPageTransitionActive
-                else { return }
-
-                refreshIcons(
-                    in: currentSurface,
-                    pointSize: metrics.iconSize,
-                    scale: scale
-                )
-
-                // P1: only the nine miniatures a closed folder can actually show.
-                // Do not decode every child of a large folder during launch.
-                await iconCache.warm(
-                    folderMiniatureApplications(in: currentSurface),
-                    pointSize: AppTilePresentationFactory
-                        .folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
-                    scale: scale,
-                    maximumConcurrentLoads: 2
-                )
-
-                guard
-                    !Task.isCancelled,
-                    revision == contentRevision,
-                    !isPageTransitionActive
-                else { return }
-
-                refreshIcons(
-                    in: currentSurface,
-                    pointSize: metrics.iconSize,
-                    scale: scale
-                )
+                guard await warmVisiblePage(currentSurface, metrics: metrics, scale: scale, revision: revision) else {
+                    return
+                }
             }
 
             // P2: adjacent standalone apps first, then only their visible folder
             // miniatures. This keeps the next swipe responsive without a folder
             // containing dozens of apps stealing decoder slots.
-            var adjacentStandalone: [ApplicationRecord] = []
-            var adjacentFolderMiniatures: [ApplicationRecord] = []
-            var seenStandalone: Set<ApplicationIdentity> = []
-            var seenFolder: Set<ApplicationIdentity> = []
-
-            for pageIndex in adjacentPageIndices {
-                guard let surface = pageSurfaces[pageIndex] else { continue }
-
-                for application in standaloneApplications(in: surface)
-                where seenStandalone.insert(application.id).inserted {
-                    adjacentStandalone.append(application)
-                }
-                for application in folderMiniatureApplications(in: surface)
-                where seenFolder.insert(application.id).inserted {
-                    adjacentFolderMiniatures.append(application)
-                }
-            }
+            let (adjacentStandalone, adjacentFolderMiniatures) = adjacentIconWarmPlan(adjacentPageIndices)
 
             await iconCache.warm(
-                adjacentStandalone,
-                pointSize: metrics.iconSize,
-                scale: scale,
-                maximumConcurrentLoads: 2
-            )
+                adjacentStandalone, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 2)
 
-            guard
-                !Task.isCancelled,
-                revision == contentRevision,
-                !isPageTransitionActive
-            else { return }
+            guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return }
 
             for pageIndex in adjacentPageIndices {
                 guard let surface = pageSurfaces[pageIndex] else { continue }
@@ -2401,17 +1823,10 @@ private extension LaunchpadRootView {
 
             await iconCache.warm(
                 adjacentFolderMiniatures,
-                pointSize: AppTilePresentationFactory
-                    .folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
-                scale: scale,
-                maximumConcurrentLoads: 2
-            )
+                pointSize: AppTilePresentationFactory.folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
+                scale: scale, maximumConcurrentLoads: 2)
 
-            guard
-                !Task.isCancelled,
-                revision == contentRevision,
-                !isPageTransitionActive
-            else { return }
+            guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return }
 
             for pageIndex in adjacentPageIndices {
                 guard let surface = pageSurfaces[pageIndex] else { continue }
@@ -2420,111 +1835,120 @@ private extension LaunchpadRootView {
         }
     }
 
-    func standaloneApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
+    private func adjacentIconWarmPlan(_ adjacentPageIndices: [Int]) -> ([ApplicationRecord], [ApplicationRecord]) {
+        var adjacentStandalone: [ApplicationRecord] = []
+        var adjacentFolderMiniatures: [ApplicationRecord] = []
+        var seenStandalone: Set<ApplicationIdentity> = []
+        var seenFolder: Set<ApplicationIdentity> = []
+
+        for pageIndex in adjacentPageIndices {
+            guard let surface = pageSurfaces[pageIndex] else { continue }
+
+            for application in standaloneApplications(in: surface)
+                where seenStandalone.insert(application.id).inserted {
+                adjacentStandalone.append(application)
+            }
+            for application in folderMiniatureApplications(in: surface)
+                where seenFolder.insert(application.id).inserted {
+                adjacentFolderMiniatures.append(application)
+            }
+        }
+        return (adjacentStandalone, adjacentFolderMiniatures)
+    }
+
+    private func warmVisiblePage(
+        _ currentSurface: LaunchpadPageSurface, metrics: GridMetrics, scale: CGFloat, revision: Int
+    ) async -> Bool {
+        await iconCache.warm(
+            standaloneApplications(in: currentSurface), pointSize: metrics.iconSize, scale: scale,
+            maximumConcurrentLoads: 2)
+
+        guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return false }
+
+        refreshIcons(in: currentSurface, pointSize: metrics.iconSize, scale: scale)
+
+        // P1: only the nine miniatures a closed folder can actually show.
+        // Do not decode every child of a large folder during launch.
+        await iconCache.warm(
+            folderMiniatureApplications(in: currentSurface),
+            pointSize: AppTilePresentationFactory.folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
+            scale: scale, maximumConcurrentLoads: 2)
+
+        guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return false }
+
+        refreshIcons(in: currentSurface, pointSize: metrics.iconSize, scale: scale)
+        return true
+    }
+
+    fileprivate func standaloneApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
         var seen: Set<ApplicationIdentity> = []
         return surface.entries.compactMap { entry -> ApplicationRecord? in
-            guard case let .application(application) = entry.item else { return nil }
+            guard case .application(let application) = entry.item else { return nil }
             return seen.insert(application.id).inserted ? application : nil
         }
     }
 
-    func folderMiniatureApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
+    fileprivate func folderMiniatureApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
         var seen: Set<ApplicationIdentity> = []
         var result: [ApplicationRecord] = []
         for entry in surface.entries {
-            guard case let .folder(folder) = entry.item else { continue }
-            for application in folder.applications.prefix(
-                AppTilePresentationFactory.folderMaximumVisibleChildren
-            ) where seen.insert(application.id).inserted {
-                result.append(application)
-            }
+            guard case .folder(let folder) = entry.item else { continue }
+            for application in folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
+            where seen.insert(application.id).inserted { result.append(application) }
         }
         return result
     }
 
-    func refreshIcons(in surface: LaunchpadPageSurface, pointSize: CGFloat, scale: CGFloat) {
+    fileprivate func refreshIcons(in surface: LaunchpadPageSurface, pointSize: CGFloat, scale: CGFloat) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for entry in surface.entries {
             switch entry.presentation {
-            case let .application(presentation):
-                guard case let .application(application) = entry.item else { continue }
+            case .application(let presentation):
+                guard case .application(let application) = entry.item else { continue }
                 presentation.iconLayer.contents = iconCache.cgImage(
-                    for: application,
-                    pointSize: pointSize,
-                    scale: scale
-                )
-            case let .folder(presentation):
-                guard case let .folder(folder) = entry.item else { continue }
-                let miniaturePointSize = AppTilePresentationFactory
-                    .folderMiniatureIconPointSize(forRootIconSize: pointSize)
-                let childIcons = folder.applications
-                    .prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
-                    .compactMap {
-                        iconCache.cgImage(
-                            for: $0,
-                            pointSize: miniaturePointSize,
-                            scale: scale
-                        )
-                    }
+                    for: application, pointSize: pointSize, scale: scale)
+            case .folder(let presentation):
+                guard case .folder(let folder) = entry.item else { continue }
+                let miniaturePointSize = AppTilePresentationFactory.folderMiniatureIconPointSize(
+                    forRootIconSize: pointSize)
+                let childIcons = folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
+                    .compactMap { iconCache.cgImage(for: $0, pointSize: miniaturePointSize, scale: scale) }
                 AppTilePresentationFactory.updateFolderIcon(
-                    presentation,
-                    childIcons: childIcons,
-                    scale: scale,
-                    layoutDirection: userInterfaceLayoutDirection
-                )
+                    presentation, childIcons: childIcons, scale: scale, layoutDirection: userInterfaceLayoutDirection)
             }
         }
         CATransaction.commit()
     }
 
-    func cancelIconPrewarming() {
+    fileprivate func cancelIconPrewarming() {
         iconPrewarmTask?.cancel()
         iconPrewarmTask = nil
     }
 }
 
-private extension LaunchpadRootView {
-    func tilePointerDown(entry: LaunchpadPageEntry?, event: NSEvent) {
-        guard
-            let entry,
-            !isSearchActive,
-            openFolderID == nil,
-            !isPageTransitionActive,
-            !isCommittingLayout,
-            !isFinishingDragVisuals,
-            dragStateMachine.pointerDown(on: entry.item.id)
+extension LaunchpadRootView {
+    fileprivate func tilePointerDown(entry: LaunchpadPageEntry?, event: NSEvent) {
+        guard let entry, !isSearchActive, openFolderID == nil, !isPageTransitionActive, !isCommittingLayout,
+            !isFinishingDragVisuals, dragStateMachine.pointerDown(on: entry.item.id)
         else { return }
 
-        pendingPress = PendingTilePress(
-            entry: entry,
-            point: convert(event.locationInWindow, from: nil)
-        )
+        pendingPress = PendingTilePress(entry: entry, point: convert(event.locationInWindow, from: nil))
 
-        animatePressed(
-            on: entry.iconLayer,
-            isPressed: true
-        )
+        animatePressed(on: entry.iconLayer, isPressed: true)
     }
 
-    func tilePointerDragged(_ update: TilePointerDragUpdate) {
+    fileprivate func tilePointerDragged(_ update: TilePointerDragUpdate) {
         guard update.hasExceededActivationDistance else { return }
         let point = convert(update.event.locationInWindow, from: nil)
-        if dragSession == nil {
-            beginDragInteraction(at: point)
-        }
+        if dragSession == nil { beginDragInteraction(at: point) }
         updateDragInteraction(at: point)
     }
 
-    func tilePointerUp(_ release: TilePointerRelease) {
+    fileprivate func tilePointerUp(_ release: TilePointerRelease) {
         defer { pendingPress = nil }
         guard release.wasDrag else {
-            if let pendingPress {
-                animatePressed(
-                    on: pendingPress.entry.iconLayer,
-                    isPressed: false
-                )
-            }
+            if let pendingPress { animatePressed(on: pendingPress.entry.iconLayer, isPressed: false) }
 
             dragStateMachine.finish()
             return
@@ -2532,54 +1956,34 @@ private extension LaunchpadRootView {
         completeDragInteraction(at: convert(release.event.locationInWindow, from: nil))
     }
 
-    func tilePointerCancelled() {
+    fileprivate func tilePointerCancelled() {
         if dragSession != nil {
             cancelDragInteraction()
         } else {
-            if let pendingPress {
-                animatePressed(
-                    on: pendingPress.entry.iconLayer,
-                    isPressed: false
-                )
-            }
+            if let pendingPress { animatePressed(on: pendingPress.entry.iconLayer, isPressed: false) }
 
             pendingPress = nil
             dragStateMachine.finish()
         }
     }
 
-    func beginDragInteraction(at point: CGPoint) {
-        guard
-            let pendingPress,
-            let originalSurface = activeSurface,
-            dragStateMachine.beginDragging(),
+    fileprivate func beginDragInteraction(at point: CGPoint) {
+        guard let pendingPress, let originalSurface = activeSurface, dragStateMachine.beginDragging(),
             let draft = try? LauncherLayoutDraft(
-                document: layoutDocument.normalizedForPageCapacity(currentMetrics?.itemsPerPage ?? 1)
-            )
+                document: layoutDocument.normalizedForPageCapacity(currentMetrics?.itemsPerPage ?? 1))
         else { return }
 
         cancelIconPrewarming()
 
         let pointerOffset = CGVector(
-            dx: pendingPress.point.x
-                - pendingPress.entry.frames.cell.midX,
-            dy: pendingPress.point.y
-                - pendingPress.entry.frames.cell.midY
-        )
+            dx: pendingPress.point.x - pendingPress.entry.frames.cell.midX,
+            dy: pendingPress.point.y - pendingPress.entry.frames.cell.midY)
 
-        let proxyLayer = makeDragProxy(
-            for: pendingPress.entry,
-            initialPoint: pendingPress.point
-        )
+        let proxyLayer = makeDragProxy(for: pendingPress.entry, initialPoint: pendingPress.point)
 
         let session = LaunchpadDragSession(
-            sourceEntry: pendingPress.entry,
-            draft: draft,
-            proxyLayer: proxyLayer,
-            pointerOffset: pointerOffset,
-            originalSurface: originalSurface,
-            sourcePage: currentPage
-        )
+            sourceEntry: pendingPress.entry, draft: draft, proxyLayer: proxyLayer, pointerOffset: pointerOffset,
+            originalSurface: originalSurface, sourcePage: currentPage)
 
         dragSession = session
 
@@ -2593,22 +1997,16 @@ private extension LaunchpadRootView {
         // the real tile instead of leaving a transparent copy in the render
         // tree; it will be reattached atomically when the landing completes.
         pendingPress.entry.tileLayer.removeFromSuperlayer()
-        animateDragLift(
-            proxyLayer,
-            from: pendingPress.entry.frames.cell.center,
-            to: point,
-            offset: pointerOffset
-        )
+        animateDragLift(proxyLayer, from: pendingPress.entry.frames.cell.center, to: point, offset: pointerOffset)
         CATransaction.commit()
     }
 
-    func updateDragInteraction(at point: CGPoint, allowsEdgePaging: Bool = true) {
+    fileprivate func updateDragInteraction(at point: CGPoint, allowsEdgePaging: Bool = true) {
         guard let session = dragSession else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         session.proxyLayer.position = CGPoint(
-            x: point.x - session.pointerOffset.dx, y: point.y - session.pointerOffset.dy
-        )
+            x: point.x - session.pointerOffset.dx, y: point.y - session.pointerOffset.dy)
         CATransaction.commit()
         session.lastPointerPoint = point
         guard !session.isEdgePageTransitionActive else { return }
@@ -2616,17 +2014,13 @@ private extension LaunchpadRootView {
         // Once native-style folder creation has opened the provisional folder,
         // root-page reorder/edge logic is suspended. The drag proxy remains the
         // only moving visual and continues to follow the original pointer owner.
-        if session.folderCreationPreview != nil {
-            return
-        }
+        if session.folderCreationPreview != nil { return }
 
-        if allowsEdgePaging && !session.hasReleased {
-            updateDragEdgePaging(at: point, session: session)
-        }
+        if allowsEdgePaging && !session.hasReleased { updateDragEdgePaging(at: point, session: session) }
         // An edge is outside the icon grid, but a page already reached by this
         // drag has a valid landing slot. Keep it valid even on the first/last page.
-        if session.hasCrossedPages, let metrics = currentMetrics,
-           dragEdgeDirection(at: point, metrics: metrics) != nil {
+        if session.hasCrossedPages, let metrics = currentMetrics, dragEdgeDirection(at: point,
+            metrics: metrics) != nil {
             clearDragIntent(session)
             if let location = session.previewLocation {
                 setDragTarget(.pageInsertion(page: location.page, index: location.index), session: session)
@@ -2639,17 +2033,19 @@ private extension LaunchpadRootView {
             return
         }
 
+        updateDragIntent(session)
+    }
+
+    fileprivate func updateDragIntent(_ session: LaunchpadDragSession) {
         let hits = dragHitTargets(session)
         let candidate = hits.merge ?? (hits.insertion == .outside ? nil : hits.insertion)
         let generation = session.intentState.generation
         let decision = session.intentState.update(
-            candidate: candidate,
-            at: CACurrentMediaTime(),
+            candidate: candidate, at: CACurrentMediaTime(),
             // Spatial hysteresis now decides whether an insertion is valid.
             // Continuous pointer movement inside that valid zone must NOT keep
             // restarting the reorder timer.
-            restartDwell: false
-        )
+            restartDwell: false)
         if generation != session.intentState.generation {
             session.intentTask?.cancel()
             session.intentTask = nil
@@ -2661,11 +2057,7 @@ private extension LaunchpadRootView {
             // A quick drop still means insertion. Waiting for merge never
             // moves the target, but must not turn an early release into a no-op.
             let target: LauncherDropTarget
-            if case let .ready(ready) = decision, !ready.isInsertion {
-                target = ready
-            } else {
-                target = hits.insertion
-            }
+            if case .ready(let ready) = decision, !ready.isInsertion { target = ready } else { target = hits.insertion }
             applyDragPreviewTarget(target, session: session)
             return
         }
@@ -2674,12 +2066,11 @@ private extension LaunchpadRootView {
         case .hold:
             // Do not materialize the insertion fallback while acquiring a
             // folder, even when this drag has not created its first preview.
-            let heldTarget: LauncherDropTarget = session.previewLocation.map {
-                .pageInsertion(page: $0.page, index: $0.index)
-            } ?? .outside
+            let heldTarget: LauncherDropTarget =
+                session.previewLocation.map { .pageInsertion(page: $0.page, index: $0.index) } ?? .outside
             setDragTarget(candidate == nil ? .outside : heldTarget, session: session)
             scheduleDragIntent(session)
-        case let .ready(target):
+        case .ready(let target):
             session.intentTask?.cancel()
             session.intentTask = nil
             switch target {
@@ -2699,14 +2090,10 @@ private extension LaunchpadRootView {
     }
 
     // LAUNCHPANE_NATIVE_FOLDER_CREATION_V2
-    @discardableResult
-    func beginFolderCreationPreview(
-        _ target: LauncherDropTarget,
-        session: LaunchpadDragSession
+    @discardableResult fileprivate func beginFolderCreationPreview(
+        _ target: LauncherDropTarget, session: LaunchpadDragSession
     ) -> Bool {
-        guard
-            session.folderCreationPreview == nil,
-            case let .application(sourceIdentity) = session.sourceEntry.item.id
+        guard session.folderCreationPreview == nil, case .application(let sourceIdentity) = session.sourceEntry.item.id
         else { return false }
 
         let surface = session.previewSurface ?? activeSurface
@@ -2714,12 +2101,9 @@ private extension LaunchpadRootView {
             guard let surface else { return nil }
             return surface.entries.first { entry in
                 switch target {
-                case let .application(identity):
-                    return entry.item.id == .application(identity)
-                case let .folder(folderID):
-                    return entry.item.id == .folder(folderID)
-                case .insertion, .pageInsertion, .outside:
-                    return false
+                case .application(let identity): return entry.item.id == .application(identity)
+                case .folder(let folderID): return entry.item.id == .folder(folderID)
+                case .insertion, .pageInsertion, .outside: return false
                 }
             }.map { visibleIconFrame(for: $0) }
         }()
@@ -2727,23 +2111,16 @@ private extension LaunchpadRootView {
         let folderID: UUID
         do {
             switch target {
-            case let .application(targetIdentity):
+            case .application(let targetIdentity):
                 folderID = UUID()
                 try session.draft.mergeApplications(
-                    source: sourceIdentity,
-                    target: targetIdentity,
-                    folderID: folderID,
-                    customTitle: "Untitled"
-                )
-            case let .folder(existingFolderID):
+                    source: sourceIdentity, target: targetIdentity, folderID: folderID, customTitle: "Untitled")
+            case .folder(let existingFolderID):
                 folderID = existingFolderID
                 try session.draft.addApplication(sourceIdentity, toFolder: existingFolderID)
-            case .insertion, .pageInsertion, .outside:
-                return false
+            case .insertion, .pageInsertion, .outside: return false
             }
-        } catch {
-            return false
-        }
+        } catch { return false }
 
         session.intentTask?.cancel()
         session.intentTask = nil
@@ -2751,10 +2128,7 @@ private extension LaunchpadRootView {
         session.folderSpringOpenTask = nil
         setDragTarget(target, session: session)
         session.folderCreationPreview = FolderCreationPreview(
-            folderID: folderID,
-            target: target,
-            sourceIdentity: sourceIdentity
-        )
+            folderID: folderID, target: target, sourceIdentity: sourceIdentity)
         folderHiddenApplicationID = sourceIdentity
 
         folderAnimationSourceFrame = targetFrame
@@ -2769,21 +2143,21 @@ private extension LaunchpadRootView {
         return true
     }
 
-    func applyDragPreviewTarget(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
-        if case let .pageInsertion(page, index) = target, let metrics = currentMetrics {
-            updateDragPreviewLayout(session, location: DragPageLocation(page: page, index: index),
-                                    animated: true, metrics: metrics)
+    fileprivate func applyDragPreviewTarget(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
+        if case .pageInsertion(let page, let index) = target, let metrics = currentMetrics {
+            updateDragPreviewLayout(
+                session, location: DragPageLocation(page: page, index: index), animated: true, metrics: metrics)
         }
         setDragTarget(target, session: session)
     }
 
-    func setDragTarget(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
+    fileprivate func setDragTarget(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
         session.target = target
         _ = dragStateMachine.update(target: target)
         updateDropHighlight(target)
     }
 
-    func clearDragIntent(_ session: LaunchpadDragSession) {
+    fileprivate func clearDragIntent(_ session: LaunchpadDragSession) {
         session.intentTask?.cancel()
         session.intentTask = nil
         session.folderSpringOpenTask?.cancel()
@@ -2791,23 +2165,16 @@ private extension LaunchpadRootView {
         session.intentState.reset()
     }
 
-    func scheduleDragIntent(_ session: LaunchpadDragSession) {
-        guard session.intentTask == nil, let deadline = session.intentState.deadline,
-              !session.hasReleased else { return }
+    fileprivate func scheduleDragIntent(_ session: LaunchpadDragSession) {
+        guard session.intentTask == nil, let deadline = session.intentState.deadline, !session.hasReleased else {
+            return
+        }
         let generation = session.intentState.generation
         session.intentTask = Task { @MainActor [weak self, weak session] in
             try? await Task.sleep(for: .seconds(max(0, deadline - CACurrentMediaTime())))
-            guard
-                !Task.isCancelled,
-                let self,
-                let session,
-                self.dragSession === session,
-                !session.hasReleased,
-                !session.isEdgePageTransitionActive,
-                session.intentState.generation == generation
-            else {
-                return
-            }
+            guard !Task.isCancelled, let self, let session, self.dragSession === session, !session.hasReleased,
+                !session.isEdgePageTransitionActive, session.intentState.generation == generation
+            else { return }
 
             session.intentTask = nil
             // Re-sample visible target geometry: an in-flight reflow may have
@@ -2816,38 +2183,20 @@ private extension LaunchpadRootView {
         }
     }
 
-    func scheduleFolderSpringOpen(
-        _ target: LauncherDropTarget,
-        session: LaunchpadDragSession
-    ) {
-        guard
-            session.folderCreationPreview == nil,
-            session.folderSpringOpenTask == nil,
-            !session.hasReleased,
-            !session.isEdgePageTransitionActive,
-            session.intentState.isReady,
-            session.intentState.candidate == target,
-            let beganAt = session.intentState.beganAt,
-            !target.isInsertion,
-            target != .outside
+    fileprivate func scheduleFolderSpringOpen(_ target: LauncherDropTarget, session: LaunchpadDragSession) {
+        guard session.folderCreationPreview == nil, session.folderSpringOpenTask == nil, !session.hasReleased,
+            !session.isEdgePageTransitionActive, session.intentState.isReady, session.intentState.candidate == target,
+            let beganAt = session.intentState.beganAt, !target.isInsertion, target != .outside
         else { return }
 
         let generation = session.intentState.generation
         let deadline = beganAt + FolderSpringOpenMetrics.dwell
         session.folderSpringOpenTask = Task { @MainActor [weak self, weak session] in
             try? await Task.sleep(for: .seconds(max(0, deadline - CACurrentMediaTime())))
-            guard
-                !Task.isCancelled,
-                let self,
-                let session,
-                self.dragSession === session,
-                !session.hasReleased,
-                !session.isEdgePageTransitionActive,
-                session.folderCreationPreview == nil,
-                session.intentState.generation == generation,
-                session.intentState.isReady,
-                session.intentState.candidate == target,
-                self.dragHitTargets(session).merge == target
+            guard !Task.isCancelled, let self, let session, self.dragSession === session, !session.hasReleased,
+                !session.isEdgePageTransitionActive, session.folderCreationPreview == nil,
+                session.intentState.generation == generation, session.intentState.isReady,
+                session.intentState.candidate == target, self.dragHitTargets(session).merge == target
             else { return }
 
             session.folderSpringOpenTask = nil
@@ -2938,23 +2287,25 @@ private extension LaunchpadRootView {
         static let normalSelectionBorderWidth: CGFloat = 0.7
     }
 
-    func dragEdgeDirection(at point: CGPoint, metrics: GridMetrics) -> Int? {
-        let edgeWidth = min(DragEdgeMetrics.maximumWidth,
-                            max(DragEdgeMetrics.minimumWidth, bounds.width * DragEdgeMetrics.widthFraction))
-        guard point.y >= metrics.contentFrame.minY, point.y <= metrics.contentFrame.maxY,
-              point.x >= bounds.minX, point.x <= bounds.maxX else { return nil }
+    fileprivate func dragEdgeDirection(at point: CGPoint, metrics: GridMetrics) -> Int? {
+        let edgeWidth = min(
+            DragEdgeMetrics.maximumWidth,
+            max(DragEdgeMetrics.minimumWidth, bounds.width * DragEdgeMetrics.widthFraction))
+        guard point.y >= metrics.contentFrame.minY, point.y <= metrics.contentFrame.maxY, point.x >= bounds.minX,
+            point.x <= bounds.maxX
+        else { return nil }
         if point.x <= bounds.minX + edgeWidth { return metrics.isRightToLeft ? 1 : -1 }
         if point.x >= bounds.maxX - edgeWidth { return metrics.isRightToLeft ? -1 : 1 }
         return nil
     }
 
-    func updateDragEdgePaging(at point: CGPoint, session: LaunchpadDragSession) {
+    fileprivate func updateDragEdgePaging(at point: CGPoint, session: LaunchpadDragSession) {
         guard let metrics = currentMetrics, !session.isEdgePageTransitionActive, !session.hasReleased else { return }
         let direction = dragEdgeDirection(at: point, metrics: metrics)
         // Existing pages may be traversed freely. Offer one temporary trailing
         // page, not an unbounded train of empty pages while the pointer rests.
-        let existingCount = session.projectionBaselineDocument
-            .normalizedForPageCapacity(metrics.itemsPerPage).pages.count
+        let existingCount = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage).pages
+            .count
         guard let direction, (0...existingCount).contains(currentPage + direction) else {
             session.edgePagingTask?.cancel()
             session.edgePagingTask = nil
@@ -2966,31 +2317,32 @@ private extension LaunchpadRootView {
         session.edgePagingDirection = direction
         session.edgePagingTask = Task { @MainActor [weak self, weak session] in
             try? await Task.sleep(for: DragEdgeMetrics.dwell)
-            guard !Task.isCancelled, let self, let session,
-                  self.dragSession === session, !session.hasReleased,
-                  !session.isEdgePageTransitionActive,
-                  session.edgePagingDirection == direction,
-                  let metrics = self.currentMetrics,
-                  self.dragEdgeDirection(at: session.lastPointerPoint, metrics: metrics) == direction else { return }
+            guard !Task.isCancelled, let self, let session, self.dragSession === session, !session.hasReleased,
+                !session.isEdgePageTransitionActive, session.edgePagingDirection == direction,
+                let metrics = self.currentMetrics,
+                self.dragEdgeDirection(at: session.lastPointerPoint, metrics: metrics) == direction
+            else { return }
             session.edgePagingTask = nil
             self.performDragEdgePageTurn(direction: direction, session: session)
         }
     }
 
-    func projectedDocument(_ session: LaunchpadDragSession, location: DragPageLocation,
-                           metrics: GridMetrics) -> LauncherLayoutDocument? {
+    fileprivate func projectedDocument(
+        _ session: LaunchpadDragSession, location: DragPageLocation, metrics: GridMetrics
+    ) -> LauncherLayoutDocument? {
         guard var draft = try? LauncherLayoutDraft(document: session.projectionBaselineDocument) else { return nil }
         do {
-            try draft.moveRootItem(session.sourceEntry.item.id, toPage: location.page,
-                                   at: location.index, pageCapacity: metrics.itemsPerPage)
+            try draft.moveRootItem(
+                session.sourceEntry.item.id, toPage: location.page, at: location.index,
+                pageCapacity: metrics.itemsPerPage)
             return draft.document
         } catch { return nil }
     }
 
-    func performDragEdgePageTurn(direction: Int, session: LaunchpadDragSession) {
-        guard dragSession === session, !session.hasReleased,
-              !session.isEdgePageTransitionActive, let metrics = currentMetrics,
-              let outgoing = session.previewSurface ?? activeSurface else { return }
+    fileprivate func performDragEdgePageTurn(direction: Int, session: LaunchpadDragSession) {
+        guard dragSession === session, !session.hasReleased, !session.isEdgePageTransitionActive,
+            let metrics = currentMetrics, let outgoing = session.previewSurface ?? activeSurface
+        else { return }
         let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
         let targetPage = currentPage + direction
         guard (0...baseline.pages.count).contains(targetPage) else { return }
@@ -2998,21 +2350,20 @@ private extension LaunchpadRootView {
         let sourceID = session.sourceEntry.item.id
         let targetCount = targetItems.filter { item in
             switch (item, sourceID) {
-            case let (.application(ref), .application(id)): return ref.identity != id
-            case let (.folder(folder), .folder(id)): return folder.id != id
+            case (.application(let ref), .application(let id)): return ref.identity != id
+            case (.folder(let folder), .folder(let id)): return folder.id != id
             default: return true
             }
         }.count
         // Reserve an actual slot on a full page, so the dragged app stays here;
         // the previous final app overflows forward. A partial page may append.
         let location = DragPageLocation(
-            page: targetPage, index: direction > 0 ? min(targetCount, metrics.itemsPerPage - 1) : 0
-        )
+            page: targetPage, index: direction > 0 ? min(targetCount, metrics.itemsPerPage - 1) : 0)
         guard let document = projectedDocument(session, location: location, metrics: metrics) else { return }
         let projection = pageProjection(metrics: metrics, document: document)
         let scale = window?.backingScaleFactor ?? 1
-        let incoming = makePageSurface(pageIndex: targetPage, items: projection.items,
-                                       metrics: metrics, scale: scale, projection: projection)
+        let incoming = makePageSurface(
+            pageIndex: targetPage, items: projection.items, metrics: metrics, scale: scale, projection: projection)
         incoming.entries.first { $0.item.id == sourceID }?.tileLayer.removeFromSuperlayer()
         clearDragIntent(session)
         session.previewLocation = location
@@ -3025,6 +2376,29 @@ private extension LaunchpadRootView {
         session.edgeOutgoingSurface = outgoing
         setDragTarget(.pageInsertion(page: location.page, index: location.index), session: session)
 
+        let transition = prepareDragEdgeTransition(
+            outgoing: outgoing, incoming: incoming, metrics: metrics, direction: direction)
+        let finish: @MainActor () -> Void = { [weak self, weak session] in
+            guard let self, let session, self.dragSession === session, session.edgeGeneration == generation else {
+                return
+            }
+            self.finishDragEdgeTransition(
+                session, transition: transition, pageCount: projection.pageCount, scale: scale)
+        }
+        animateDragEdgeTransition(transition, finish: finish)
+    }
+
+    fileprivate struct DragEdgeTransition {
+        let outgoing: LaunchpadPageSurface
+        let incoming: LaunchpadPageSurface
+        let metrics: GridMetrics
+        let resting: CGPoint
+        let distance: CGFloat
+    }
+
+    fileprivate func prepareDragEdgeTransition(
+        outgoing: LaunchpadPageSurface, incoming: LaunchpadPageSurface, metrics: GridMetrics, direction: Int
+    ) -> DragEdgeTransition {
         // Retire every other visible page tree before bringing in the projection.
         // The source button stays attached until mouseUp even on a return visit.
         CATransaction.begin()
@@ -3044,40 +2418,60 @@ private extension LaunchpadRootView {
         rootLayer.insertSublayer(incoming.layer, below: fixedOverlayLayer)
         CATransaction.commit()
 
-        let finish = { [weak self, weak session] in
-            guard let self, let session, self.dragSession === session,
-                  session.edgeGeneration == generation else { return }
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            outgoing.layer.removeAllAnimations()
-            outgoing.layer.removeFromSuperlayer()
-            incoming.layer.removeAllAnimations()
-            incoming.layer.position = resting
-            CATransaction.commit()
-            if let stale = self.pageSurfaces[targetPage], stale !== incoming {
-                if stale !== session.originalSurface { self.detachButtons(from: stale) }
-                stale.layer.removeFromSuperlayer()
-            }
-            self.currentPage = targetPage
-            self.activeSurface = incoming
-            self.pageContentLayer = incoming.layer
-            self.pageSurfaces[targetPage] = incoming
-            session.previewSurface = incoming
-            session.usesInPlacePreview = false
-            session.isEdgePageTransitionActive = false
-            session.edgeIncomingSurface = nil
-            session.edgeOutgoingSurface = nil
-            session.edgePagingDirection = nil
-            self.updatePageIndicator(pageCount: projection.pageCount, metrics: metrics, scale: scale)
-            if let point = session.pendingCompletionPoint {
-                session.pendingCompletionPoint = nil
-                self.completeDragInteraction(at: point)
-            } else {
-                // Re-arm from this page; no exit/re-entry requirement.
-                self.updateDragInteraction(at: session.lastPointerPoint)
-            }
+        return DragEdgeTransition(
+            outgoing: outgoing, incoming: incoming, metrics: metrics, resting: resting, distance: distance)
+    }
+
+    fileprivate func finishDragEdgeTransition(
+        _ session: LaunchpadDragSession, transition: DragEdgeTransition, pageCount: Int, scale: CGFloat
+    ) {
+        let outgoing = transition.outgoing
+        let incoming = transition.incoming
+        let resting = transition.resting
+        let targetPage = incoming.pageIndex
+        let metrics = transition.metrics
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outgoing.layer.removeAllAnimations()
+        outgoing.layer.removeFromSuperlayer()
+        incoming.layer.removeAllAnimations()
+        incoming.layer.position = resting
+        CATransaction.commit()
+        if let stale = self.pageSurfaces[targetPage], stale !== incoming {
+            if stale !== session.originalSurface { self.detachButtons(from: stale) }
+            stale.layer.removeFromSuperlayer()
         }
-        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { finish(); return }
+        self.currentPage = targetPage
+        self.activeSurface = incoming
+        self.pageContentLayer = incoming.layer
+        self.pageSurfaces[targetPage] = incoming
+        session.previewSurface = incoming
+        session.usesInPlacePreview = false
+        session.isEdgePageTransitionActive = false
+        session.edgeIncomingSurface = nil
+        session.edgeOutgoingSurface = nil
+        session.edgePagingDirection = nil
+        self.updatePageIndicator(pageCount: pageCount, metrics: metrics, scale: scale)
+        if let point = session.pendingCompletionPoint {
+            session.pendingCompletionPoint = nil
+            self.completeDragInteraction(at: point)
+        } else {
+            // Re-arm from this page; no exit/re-entry requirement.
+            self.updateDragInteraction(at: session.lastPointerPoint)
+        }
+    }
+
+    fileprivate func animateDragEdgeTransition(
+        _ transition: DragEdgeTransition, finish: @escaping @MainActor () -> Void
+    ) {
+        let outgoing = transition.outgoing
+        let incoming = transition.incoming
+        let resting = transition.resting
+        let distance = transition.distance
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            finish()
+            return
+        }
         let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
         func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
             let result = CABasicAnimation(keyPath: "position")
@@ -3098,15 +2492,13 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func updateDragPreviewLayout(
-        _ session: LaunchpadDragSession,
-        location: DragPageLocation,
-        animated: Bool,
-        metrics: GridMetrics
+    fileprivate func updateDragPreviewLayout(
+        _ session: LaunchpadDragSession, location: DragPageLocation, animated: Bool, metrics: GridMetrics
     ) {
         let previousLocation = session.previewLocation
         guard previousLocation != location,
-              let document = projectedDocument(session, location: location, metrics: metrics) else { return }
+            let document = projectedDocument(session, location: location, metrics: metrics)
+        else { return }
         session.previewLocation = location
         session.projectedDocument = document
         let projection = pageProjection(metrics: metrics, document: document)
@@ -3120,678 +2512,422 @@ private extension LaunchpadRootView {
                 targetIndices[item.id] = range.lowerBound + localIndex
             }
         }
-        let previousRank = (previousLocation?.page ?? session.sourcePage) * metrics.itemsPerPage
-            + (previousLocation?.index ?? 0)
+        let previousRank =
+            (previousLocation?.page ?? session.sourcePage) * metrics.itemsPerPage + (previousLocation?.index ?? 0)
         let transition = LaunchpadVisualStyle.dragReflowTransition(
-            movedForward: location.page * metrics.itemsPerPage + location.index > previousRank
-        )
+            movedForward: location.page * metrics.itemsPerPage + location.index > previousRank)
         let scale = window?.backingScaleFactor ?? 1
         let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        let workingSurface:
-            LaunchpadPageSurface = {
-                if session
-                    .usesInPlacePreview {
-                    return session
-                        .originalSurface
-                }
+        let workingSurface: LaunchpadPageSurface = {
+            if session.usesInPlacePreview { return session.originalSurface }
 
-                if let previewSurface =
-                    session.previewSurface {
-                    return previewSurface
-                }
+            if let previewSurface = session.previewSurface { return previewSurface }
 
-                return session
-                    .originalSurface
-            }()
+            return session.originalSurface
+        }()
 
-        let workingIDs =
-            Set(
-                workingSurface
-                    .entries
-                    .map {
-                        $0.item.id
-                    }
-            )
+        let workingIDs = Set(workingSurface.entries.map { $0.item.id })
 
-        let targetIDs =
-            Set(
-                targetFrames.keys
-            )
+        let targetIDs = Set(targetFrames.keys)
 
+        let animation = DragReflowAnimation(transition: transition, enabled: shouldAnimate, scale: scale)
         if workingIDs == targetIDs {
-            if session.previewSurface == nil {
-                session
-                    .usesInPlacePreview = true
-
-                activeSurface =
-                    session
-                        .originalSurface
-
-                pageContentLayer =
-                    session
-                        .originalSurface
-                        .layer
-            }
-
-            CATransaction.begin()
-
-            CATransaction
-                .setDisableActions(
-                    true
-                )
-
-            // One wall-clock start for the complete reflow batch. Every displaced
-            // tile converts this exact media time into its own layer time.
-            let reflowBatchMediaTime = CACurrentMediaTime()
-
-            workingSurface
-                .layer
-                .opacity = 1
-
-            workingSurface
-                .layer
-                .isHidden = false
-
-            for entry
-                in workingSurface.entries {
-                guard
-                    let targetFrame =
-                        targetFrames[
-                            entry.item.id
-                        ],
-                    let targetIndex =
-                        targetIndices[
-                            entry.item.id
-                        ]
-                else {
-                    continue
-                }
-
-                // 取真正螢幕上目前的位置。
-                //
-                // 如果使用者很快從 A -> B -> C，
-                // 新動畫直接從 presentation position
-                // 接續，不跳回上一個 model position。
-                let visiblePosition =
-                    entry
-                        .tileLayer
-                        .presentation()?
-                        .position
-                        ?? entry
-                            .tileLayer
-                            .position
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowPosition"
-                    )
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragRollbackPosition"
-                    )
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowOpacity"
-                    )
-
-                entry
-                    .tileLayer
-                    .position =
-                        targetFrame
-                            .cell
-                            .center
-
-                entry
-                    .tileLayer
-                    .opacity = 1
-
-                entry.frames =
-                    targetFrame
-
-                entry.absoluteIndex =
-                    targetIndex
-
-                if entry.item.id
-                    == session
-                        .sourceEntry
-                        .item
-                        .id {
-                    // Source item 仍然只有 drag proxy
-                    // 是唯一 visual owner。
-                    //
-                    // source NSButton 不在 drag 中移動，
-                    // 避免 AppKit mouse tracking view
-                    // 在 mouseDown -> mouseUp 中途換 frame。
-                    entry
-                        .tileLayer
-                        .removeFromSuperlayer()
-
-                    continue
-                }
-
-                entry.button.frame =
-                    targetFrame.icon
-
-                guard
-                    shouldAnimate,
-                    visiblePosition
-                        != targetFrame
-                            .cell
-                            .center
-                else {
-                    continue
-                }
-
-                let move =
-                    CABasicAnimation(
-                        keyPath:
-                            "position"
-                    )
-
-                move.fromValue =
-                    NSValue(
-                        point:
-                            visiblePosition
-                    )
-
-                move.toValue =
-                    NSValue(
-                        point:
-                            targetFrame
-                                .cell
-                                .center
-                    )
-
-                move.duration =
-                    transition.duration
-
-                move.timingFunction =
-                    transition
-                        .timingFunction
-
-                move.beginTime =
-                    entry.tileLayer.convertTime(
-                        reflowBatchMediaTime,
-                        from: nil
-                    )
-
-                entry
-                    .tileLayer
-                    .add(
-                        move,
-                        forKey:
-                            "dragReflowPosition"
-                    )
-            }
-
-            CATransaction.commit()
-
+            reflowExistingDragSurface(
+                session, surface: workingSurface, targetFrames: targetFrames, targetIndices: targetIndices,
+                animation: animation)
             return
         }
+        let newSurface = makePageSurface(
+            pageIndex: currentPage, items: items, metrics: metrics, scale: scale, projection: projection)
+        replaceDragPreviewSurface(
+            session, previousSurface: workingSurface, newSurface: newSurface, animation: animation)
+    }
 
-        // ----------------------------------------------------
-        // Defensive fallback.
-        //
-        // 理論上目前同頁 drag 不會走到這裡。
-        // 只有未來真的加入 cross-page membership change
-        // 才需要 materialize 新 surface。
-        // ----------------------------------------------------
+    fileprivate struct DragReflowAnimation {
+        let transition: LaunchpadVisualStyle.DragReflowTransition
+        let enabled: Bool
+        let scale: CGFloat
+    }
 
-        let previousSurface =
-            workingSurface
+    fileprivate func reflowExistingDragSurface(
+        _ session: LaunchpadDragSession, surface workingSurface: LaunchpadPageSurface,
+        targetFrames: [LauncherLayoutItemIdentifier: GridItemFrames],
+        targetIndices: [LauncherLayoutItemIdentifier: Int], animation: DragReflowAnimation
+    ) {
+        let transition = animation.transition
+        let shouldAnimate = animation.enabled
+        if session.previewSurface == nil {
+            session.usesInPlacePreview = true
 
-        let newSurface =
-            makePageSurface(
-                pageIndex:
-                    currentPage,
-                items:
-                    items,
-                metrics:
-                    metrics,
-                scale: scale,
-                projection: projection
-            )
+            activeSurface = session.originalSurface
 
-        var oldPositions:
-            [
-                LauncherLayoutItemIdentifier:
-                    CGPoint
-            ] = [:]
-
-        for entry
-            in previousSurface.entries {
-            oldPositions[
-                entry.item.id
-            ] =
-                entry
-                    .tileLayer
-                    .presentation()?
-                    .position
-                    ?? entry
-                        .tileLayer
-                        .position
+            pageContentLayer = session.originalSurface.layer
         }
 
         CATransaction.begin()
 
-        CATransaction
-            .setDisableActions(
-                true
-            )
+        CATransaction.setDisableActions(true)
+
+        // One wall-clock start for the complete reflow batch. Every displaced
+        // tile converts this exact media time into its own layer time.
+        let reflowBatchMediaTime = CACurrentMediaTime()
+
+        workingSurface.layer.opacity = 1
+
+        workingSurface.layer.isHidden = false
+
+        for entry in workingSurface.entries {
+            guard let targetFrame = targetFrames[entry.item.id], let targetIndex = targetIndices[entry.item.id] else {
+                continue
+            }
+
+            // 取真正螢幕上目前的位置。
+            //
+            // 如果使用者很快從 A -> B -> C，
+            // 新動畫直接從 presentation position
+            // 接續，不跳回上一個 model position。
+            let visiblePosition = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
+
+            entry.tileLayer.removeAnimation(forKey: "dragReflowPosition")
+
+            entry.tileLayer.removeAnimation(forKey: "dragRollbackPosition")
+
+            entry.tileLayer.removeAnimation(forKey: "dragReflowOpacity")
+
+            entry.tileLayer.position = targetFrame.cell.center
+
+            entry.tileLayer.opacity = 1
+
+            entry.frames = targetFrame
+
+            entry.absoluteIndex = targetIndex
+
+            if entry.item.id == session.sourceEntry.item.id {
+                // Source item 仍然只有 drag proxy
+                // 是唯一 visual owner。
+                //
+                // source NSButton 不在 drag 中移動，
+                // 避免 AppKit mouse tracking view
+                // 在 mouseDown -> mouseUp 中途換 frame。
+                entry.tileLayer.removeFromSuperlayer()
+
+                continue
+            }
+
+            entry.button.frame = targetFrame.icon
+
+            guard shouldAnimate, visiblePosition != targetFrame.cell.center else { continue }
+
+            let move = CABasicAnimation(keyPath: "position")
+
+            move.fromValue = NSValue(point: visiblePosition)
+
+            move.toValue = NSValue(point: targetFrame.cell.center)
+
+            move.duration = transition.duration
+
+            move.timingFunction = transition.timingFunction
+
+            move.beginTime = entry.tileLayer.convertTime(reflowBatchMediaTime, from: nil)
+
+            entry.tileLayer.add(move, forKey: "dragReflowPosition")
+        }
+
+        CATransaction.commit()
+
+    }
+
+    fileprivate func replaceDragPreviewSurface(
+        _ session: LaunchpadDragSession, previousSurface: LaunchpadPageSurface, newSurface: LaunchpadPageSurface,
+        animation: DragReflowAnimation
+    ) {
+        let transition = animation.transition
+        var oldPositions: [LauncherLayoutItemIdentifier: CGPoint] = [:]
+
+        for entry in previousSurface.entries {
+            oldPositions[entry.item.id] = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
+        }
+
+        CATransaction.begin()
+
+        CATransaction.setDisableActions(true)
 
         let fallbackReflowBatchMediaTime = CACurrentMediaTime()
 
-        newSurface.layer.frame =
-            bounds
+        newSurface.layer.frame = bounds
 
-        newSurface
-            .layer
-            .contentsScale =
-                scale
+        newSurface.layer.contentsScale = animation.scale
 
-        newSurface
-            .layer
-            .opacity = 1
+        newSurface.layer.opacity = 1
 
-        newSurface
-            .layer
-            .isHidden = false
+        newSurface.layer.isHidden = false
 
-        for entry
-            in newSurface.entries {
-            let targetPosition =
-                entry
-                    .tileLayer
-                    .position
+        for entry in newSurface.entries {
+            let targetPosition = entry.tileLayer.position
 
-            if entry.item.id
-                == session
-                    .sourceEntry
-                    .item
-                    .id {
-                entry
-                    .tileLayer
-                    .removeFromSuperlayer()
+            if entry.item.id == session.sourceEntry.item.id {
+                entry.tileLayer.removeFromSuperlayer()
 
                 continue
             }
 
-            guard shouldAnimate else {
-                continue
-            }
+            guard animation.enabled else { continue }
 
-            let startPosition:
-                CGPoint
+            let startPosition: CGPoint
 
-            if let oldPosition =
-                oldPositions[
-                    entry.item.id
-                ] {
-                startPosition =
-                    oldPosition
+            if let oldPosition = oldPositions[entry.item.id] {
+                startPosition = oldPosition
             } else {
-                startPosition =
-                    CGPoint(
-                        x:
-                            targetPosition.x
-                                + transition
-                                    .enteringItemOffset,
-                        y:
-                            targetPosition.y
-                    )
+                startPosition = CGPoint(x: targetPosition.x + transition.enteringItemOffset, y: targetPosition.y)
 
-                let fade =
-                    CABasicAnimation(
-                        keyPath:
-                            "opacity"
-                    )
+                let fade = CABasicAnimation(keyPath: "opacity")
 
                 fade.fromValue = 0
                 fade.toValue = 1
 
-                fade.duration =
-                    transition
-                        .enteringItemFadeDuration
+                fade.duration = transition.enteringItemFadeDuration
 
-                fade.timingFunction =
-                    transition
-                        .timingFunction
+                fade.timingFunction = transition.timingFunction
 
-                fade.beginTime =
-                    entry.tileLayer.convertTime(
-                        fallbackReflowBatchMediaTime,
-                        from: nil
-                    )
+                fade.beginTime = entry.tileLayer.convertTime(fallbackReflowBatchMediaTime, from: nil)
 
-                entry
-                    .tileLayer
-                    .add(
-                        fade,
-                        forKey:
-                            "dragReflowOpacity"
-                    )
+                entry.tileLayer.add(fade, forKey: "dragReflowOpacity")
             }
 
-            guard
-                startPosition
-                    != targetPosition
-            else {
-                continue
-            }
+            guard startPosition != targetPosition else { continue }
 
-            let move =
-                CABasicAnimation(
-                    keyPath:
-                        "position"
-                )
+            let move = CABasicAnimation(keyPath: "position")
 
-            move.fromValue =
-                NSValue(
-                    point:
-                        startPosition
-                )
+            move.fromValue = NSValue(point: startPosition)
 
-            move.toValue =
-                NSValue(
-                    point:
-                        targetPosition
-                )
+            move.toValue = NSValue(point: targetPosition)
 
-            move.duration =
-                transition.duration
+            move.duration = transition.duration
 
-            move.timingFunction =
-                transition
-                    .timingFunction
+            move.timingFunction = transition.timingFunction
 
-            move.beginTime =
-                entry.tileLayer.convertTime(
-                    fallbackReflowBatchMediaTime,
-                    from: nil
-                )
+            move.beginTime = entry.tileLayer.convertTime(fallbackReflowBatchMediaTime, from: nil)
 
-            entry
-                .tileLayer
-                .add(
-                    move,
-                    forKey:
-                        "dragReflowPosition"
-                )
+            entry.tileLayer.add(move, forKey: "dragReflowPosition")
         }
 
         // 如果未來真的進入 fallback，
         // 舊 surface 必須先失去 render ownership。
-        previousSurface
-            .layer
-            .removeAllAnimations()
+        previousSurface.layer.removeAllAnimations()
 
-        previousSurface
-            .layer
-            .opacity = 0
+        previousSurface.layer.opacity = 0
 
-        previousSurface
-            .layer
-            .isHidden = true
+        previousSurface.layer.isHidden = true
 
-        previousSurface
-            .layer
-            .removeFromSuperlayer()
+        previousSurface.layer.removeFromSuperlayer()
 
-        rootLayer.insertSublayer(
-            newSurface.layer,
-            below:
-                fixedOverlayLayer
-        )
+        rootLayer.insertSublayer(newSurface.layer, below: fixedOverlayLayer)
 
         CATransaction.commit()
 
-        session.previewSurface =
-            newSurface
+        session.previewSurface = newSurface
 
-        session
-            .usesInPlacePreview = false
+        session.usesInPlacePreview = false
     }
 
-    func visibleIconFrame(for entry: LaunchpadPageEntry) -> CGRect {
+    fileprivate func visibleIconFrame(for entry: LaunchpadPageEntry) -> CGRect {
         let visibleCenter = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
         return entry.frames.icon.offsetBy(
-            dx: visibleCenter.x - entry.frames.cell.midX,
-            dy: visibleCenter.y - entry.frames.cell.midY
-        )
+            dx: visibleCenter.x - entry.frames.cell.midX, dy: visibleCenter.y - entry.frames.cell.midY)
     }
 
-    func draggedIconFrame(for session: LaunchpadDragSession) -> CGRect {
-        let frames = session.originalFramesByIdentifier[session.sourceEntry.item.id]
-            ?? session.sourceEntry.frames
+    fileprivate func draggedIconFrame(for session: LaunchpadDragSession) -> CGRect {
+        let frames = session.originalFramesByIdentifier[session.sourceEntry.item.id] ?? session.sourceEntry.frames
         // The dragged end follows this event, not last frame's presentation.
         // Immutable grab geometry also survives in-place reflow and page turns.
         let center = CGPoint(
             x: session.lastPointerPoint.x - session.pointerOffset.dx,
-            y: session.lastPointerPoint.y - session.pointerOffset.dy
-        )
-        return frames.icon.offsetBy(dx: center.x - frames.cell.midX,
-                                    dy: center.y - frames.cell.midY)
+            y: session.lastPointerPoint.y - session.pointerOffset.dy)
+        return frames.icon.offsetBy(dx: center.x - frames.cell.midX, dy: center.y - frames.cell.midY)
     }
     // Root and folder reorder share the same model-cell midpoint rule,
     // including diagonal entry from another row and coarse pointer updates.
-    func stabilizedReorderVisibleSlot(
-        rawSlot: Int,
-        draggedFrame: CGRect,
-        session: LaunchpadDragSession,
-        metrics: GridMetrics
+    fileprivate func stabilizedReorderVisibleSlot(
+        rawSlot: Int, draggedFrame: CGRect, session: LaunchpadDragSession, metrics: GridMetrics
     ) -> Int {
         let surface = session.previewSurface ?? session.originalSurface
         let activeDragPage = session.previewLocation?.page ?? session.sourcePage
 
-        guard
-            activeDragPage == currentPage,
-            let layoutSource = surface.entries.first(where: {
-                $0.item.id == session.sourceEntry.item.id
-            }),
-            let currentSlot = (0 ..< metrics.itemsPerPage).first(where: {
+        guard activeDragPage == currentPage,
+            let layoutSource = surface.entries.first(where: { $0.item.id == session.sourceEntry.item.id }),
+            let currentSlot = (0..<metrics.itemsPerPage).first(where: {
                 metrics.cellFrame(forItemAt: $0)?.contains(layoutSource.frames.cell.center) == true
-            }),
-            rawSlot != currentSlot
-        else {
-            return rawSlot
-        }
+            }), rawSlot != currentSlot
+        else { return rawSlot }
 
-        guard let rawCell = metrics.cellFrame(forItemAt: rawSlot)
-        else {
-            return rawSlot
-        }
+        guard let rawCell = metrics.cellFrame(forItemAt: rawSlot) else { return rawSlot }
 
         return GridReorderInsertion.resolve(
-            rawSlot: rawSlot, currentSlot: currentSlot,
-            draggedCenterX: draggedFrame.midX, targetCell: rawCell,
-            isRightToLeft: metrics.isRightToLeft
-        )
+            rawSlot: rawSlot, currentSlot: currentSlot, draggedCenterX: draggedFrame.midX, targetCell: rawCell,
+            isRightToLeft: metrics.isRightToLeft)
     }
 
-    func dragHitTargets(
-        _ session: LaunchpadDragSession
-    ) -> (insertion: LauncherDropTarget, merge: LauncherDropTarget?) {
+    fileprivate func dragHitTargets(_ session: LaunchpadDragSession) -> (
+        insertion: LauncherDropTarget, merge: LauncherDropTarget?
+    ) {
         guard let metrics = currentMetrics else { return (.outside, nil) }
         let source = session.sourceEntry
         let draggedFrame = draggedIconFrame(for: session)
-        let point = draggedFrame.center
-        let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
-        let pageItems = baseline.pages.indices.contains(currentPage) ? baseline.pages[currentPage] : []
-        let pageIDs = pageItems.map { item -> LauncherLayoutItemIdentifier in
-            switch item {
-            case let .application(reference): return .application(reference.identity)
-            case let .folder(folder): return .folder(folder.id)
-            }
-        }
-        let countWithoutSource = pageIDs.filter { $0 != source.item.id }.count
-        let insertion: LauncherDropTarget = {
-            guard metrics.contentFrame.contains(point),
-                  let rawSlot = (0..<metrics.itemsPerPage).first(where: {
-                      metrics.cellFrame(forItemAt: $0)?.contains(point) == true
-                  }) else { return .outside }
-            let slot = stabilizedReorderVisibleSlot(
-                rawSlot: rawSlot, draggedFrame: draggedFrame, session: session, metrics: metrics
-            )
-            let projection = pageProjection(metrics: metrics, document: baseline)
-            let visibleIDs = projection.pages.indices.contains(currentPage)
-                ? projection.pages[currentPage].map(\.id) : []
-            guard let index = ResolvedLaunchpadInsertionIndex.resolve(
-                visibleSlot: min(slot, countWithoutSource), pageIdentifiers: pageIDs,
-                visibleIdentifiers: visibleIDs, sourceIdentifier: source.item.id
-            ) else { return .outside }
-            return .pageInsertion(page: currentPage, index: index)
-        }()
+        let insertion = dragInsertionTarget(session, draggedFrame: draggedFrame, metrics: metrics)
 
-        guard case .application = source.item,
-              let surface = session.previewSurface ?? activeSurface else {
+        guard case .application = source.item, let surface = session.previewSurface ?? activeSurface else {
             return (insertion, nil)
         }
         let retaining: LauncherLayoutItemIdentifier?
         switch session.intentState.candidate {
-        case let .application(identity): retaining = .application(identity)
-        case let .folder(folderID): retaining = .folder(folderID)
+        case .application(let identity): retaining = .application(identity)
+        case .folder(let folderID): retaining = .folder(folderID)
         default: retaining = nil
         }
-        let targets = surface.entries.filter {
-            $0.item.id != source.item.id && $0.tileLayer.superlayer != nil
-        }.map {
+        let targets = surface.entries.filter { $0.item.id != source.item.id && $0.tileLayer.superlayer != nil }.map {
             FolderMergeGeometry.Target(id: $0.item.id, iconFrame: visibleIconFrame(for: $0))
         }
         // Only visible icons participate. Old snapshot slots remain exclusively
         // rollback data, never invisible merge anchors after an exchange.
-        let selected = FolderMergeGeometry.target(
-            draggedIcon: draggedFrame, targets: targets, retaining: retaining
-        )
+        let selected = FolderMergeGeometry.target(draggedIcon: draggedFrame, targets: targets, retaining: retaining)
         let merge: LauncherDropTarget?
         switch selected {
-        case let .application(identity): merge = .application(identity)
-        case let .folder(folderID): merge = .folder(folderID)
+        case .application(let identity): merge = .application(identity)
+        case .folder(let folderID): merge = .folder(folderID)
         case nil: merge = nil
         }
-        if merge == nil,
-           FolderMergeGeometry.isApproachingTarget(draggedIcon: draggedFrame, targets: targets) {
+        if merge == nil, FolderMergeGeometry.isApproachingTarget(draggedIcon: draggedFrame, targets: targets) {
             return (.outside, nil)
         }
         return (insertion, merge)
     }
 
-    func updateDropHighlight(
-        _ target: LauncherDropTarget
-    ) {
+    fileprivate func dragInsertionTarget(_ session: LaunchpadDragSession, draggedFrame: CGRect, metrics: GridMetrics)
+        -> LauncherDropTarget {
+        let source = session.sourceEntry
+        let point = draggedFrame.center
+        let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
+        let pageItems = baseline.pages.indices.contains(currentPage) ? baseline.pages[currentPage] : []
+        let pageIDs = pageItems.map { item -> LauncherLayoutItemIdentifier in
+            switch item {
+            case .application(let reference): return .application(reference.identity)
+            case .folder(let folder): return .folder(folder.id)
+            }
+        }
+        let countWithoutSource = pageIDs.filter { $0 != source.item.id }.count
+        return {
+            guard metrics.contentFrame.contains(point),
+                let rawSlot = (0..<metrics.itemsPerPage).first(where: {
+                    metrics.cellFrame(forItemAt: $0)?.contains(point) == true
+                })
+            else { return .outside }
+            let slot = stabilizedReorderVisibleSlot(
+                rawSlot: rawSlot, draggedFrame: draggedFrame, session: session, metrics: metrics)
+            let projection = pageProjection(metrics: metrics, document: baseline)
+            let visibleIDs =
+                projection.pages.indices.contains(currentPage) ? projection.pages[currentPage].map(\.id) : []
+            guard
+                let index = ResolvedLaunchpadInsertionIndex.resolve(
+                    visibleSlot: min(slot, countWithoutSource), pageIdentifiers: pageIDs,
+                    visibleIdentifiers: visibleIDs, sourceIdentifier: source.item.id)
+            else { return .outside }
+            return .pageInsertion(page: currentPage, index: index)
+        }()
+
+    }
+
+    fileprivate func applyDropHighlight(to entry: LaunchpadPageEntry, mergeTarget: LauncherLayoutItemIdentifier?) {
+        let isMergeTarget = entry.item.id == mergeTarget
+        let isApplicationTarget: Bool
+        let isFolderTarget: Bool
+        switch entry.item {
+        case .application:
+            isApplicationTarget = isMergeTarget
+            isFolderTarget = false
+        case .folder:
+            isApplicationTarget = false
+            isFolderTarget = isMergeTarget
+        }
+
+        // Restore the normal selection style before applying merge-ready visuals.
+        entry.selectionLayer.backgroundColor =
+            NSColor.white.withAlphaComponent(FolderMergeVisualMetrics.normalSelectionBackgroundOpacity).cgColor
+        entry.selectionLayer.borderColor =
+            NSColor.white.withAlphaComponent(FolderMergeVisualMetrics.normalSelectionBorderOpacity).cgColor
+        entry.selectionLayer.borderWidth = FolderMergeVisualMetrics.normalSelectionBorderWidth
+        entry.selectionLayer.setAffineTransform(.identity)
+
+        if isApplicationTarget {
+            // App -> App: keep both app icons visible. Add a compact,
+            // folder-colored rounded surface behind the target and only fade
+            // the two names. This reads as "these apps will group" instead of
+            // prematurely replacing the target with a folder.
+            entry.selectionLayer.backgroundColor =
+                NSColor.white.withAlphaComponent(FolderMergeVisualMetrics.folderBackgroundOpacity).cgColor
+            entry.selectionLayer.borderColor =
+                NSColor.white.withAlphaComponent(FolderMergeVisualMetrics.folderBorderOpacity).cgColor
+            entry.selectionLayer.borderWidth = FolderMergeVisualMetrics.folderBorderWidth
+            entry.selectionLayer.setAffineTransform(
+                .init(
+                    scaleX: FolderMergeVisualMetrics.appTargetFrameScale,
+                    y: FolderMergeVisualMetrics.appTargetFrameScale))
+            entry.selectionLayer.opacity = 1
+            entry.iconLayer.opacity = 1
+            entry.iconLayer.setAffineTransform(.identity)
+            setMergeLabelOpacity(entry.labelLayer, to: 0)
+        } else if isFolderTarget {
+            // App -> Folder: the folder itself becomes the merge-ready surface.
+            // Enlarge it to the same footprint as the App -> App preview and
+            // fade both labels, without drawing a second frame around it.
+            entry.selectionLayer.opacity = 0
+            entry.iconLayer.opacity = 1
+            entry.iconLayer.setAffineTransform(
+                .init(scaleX: FolderMergeVisualMetrics.folderTargetScale, y: FolderMergeVisualMetrics.folderTargetScale)
+            )
+            setMergeLabelOpacity(entry.labelLayer, to: 0)
+        } else {
+            entry.selectionLayer.opacity = entry.absoluteIndex == selectedIndex ? 1 : 0
+            entry.iconLayer.opacity = 1
+            entry.iconLayer.setAffineTransform(.identity)
+            setMergeLabelOpacity(entry.labelLayer, to: 1)
+        }
+    }
+
+    fileprivate func updateDropHighlight(_ target: LauncherDropTarget) {
         let surface = dragSession?.previewSurface ?? activeSurface
         guard let surface else { return }
 
         let mergeTarget: LauncherLayoutItemIdentifier?
         switch target {
-        case let .application(identity):
-            mergeTarget = .application(identity)
-        case let .folder(folderID):
-            mergeTarget = .folder(folderID)
-        case .insertion, .pageInsertion, .outside:
-            mergeTarget = nil
+        case .application(let identity): mergeTarget = .application(identity)
+        case .folder(let folderID): mergeTarget = .folder(folderID)
+        case .insertion, .pageInsertion, .outside: mergeTarget = nil
         }
 
         if let session = dragSession {
             let keepHiddenForMergeLanding: Bool
             if session.hasReleased {
                 switch session.target {
-                case .application, .folder:
-                    keepHiddenForMergeLanding = true
-                case .insertion, .pageInsertion, .outside:
-                    keepHiddenForMergeLanding = false
+                case .application, .folder: keepHiddenForMergeLanding = true
+                case .insertion, .pageInsertion, .outside: keepHiddenForMergeLanding = false
                 }
             } else {
                 keepHiddenForMergeLanding = false
             }
-            updateDragProxyMergeLabel(
-                session,
-                hidden: mergeTarget != nil || keepHiddenForMergeLanding
-            )
+            updateDragProxyMergeLabel(session, hidden: mergeTarget != nil || keepHiddenForMergeLanding)
         }
 
         CATransaction.begin()
         CATransaction.setAnimationDuration(FolderMergeVisualMetrics.transitionDuration)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
 
-        for entry in surface.entries {
-            let isMergeTarget = entry.item.id == mergeTarget
-            let isApplicationTarget: Bool
-            let isFolderTarget: Bool
-            switch entry.item {
-            case .application:
-                isApplicationTarget = isMergeTarget
-                isFolderTarget = false
-            case .folder:
-                isApplicationTarget = false
-                isFolderTarget = isMergeTarget
-            }
-
-            // Restore the normal selection style before applying merge-ready visuals.
-            entry.selectionLayer.backgroundColor = NSColor.white
-                .withAlphaComponent(FolderMergeVisualMetrics.normalSelectionBackgroundOpacity)
-                .cgColor
-            entry.selectionLayer.borderColor = NSColor.white
-                .withAlphaComponent(FolderMergeVisualMetrics.normalSelectionBorderOpacity)
-                .cgColor
-            entry.selectionLayer.borderWidth = FolderMergeVisualMetrics.normalSelectionBorderWidth
-            entry.selectionLayer.setAffineTransform(.identity)
-
-            if isApplicationTarget {
-                // App -> App: keep both app icons visible. Add a compact,
-                // folder-colored rounded surface behind the target and only fade
-                // the two names. This reads as "these apps will group" instead of
-                // prematurely replacing the target with a folder.
-                entry.selectionLayer.backgroundColor = NSColor.white
-                    .withAlphaComponent(FolderMergeVisualMetrics.folderBackgroundOpacity)
-                    .cgColor
-                entry.selectionLayer.borderColor = NSColor.white
-                    .withAlphaComponent(FolderMergeVisualMetrics.folderBorderOpacity)
-                    .cgColor
-                entry.selectionLayer.borderWidth = FolderMergeVisualMetrics.folderBorderWidth
-                entry.selectionLayer.setAffineTransform(.init(
-                    scaleX: FolderMergeVisualMetrics.appTargetFrameScale,
-                    y: FolderMergeVisualMetrics.appTargetFrameScale
-                ))
-                entry.selectionLayer.opacity = 1
-                entry.iconLayer.opacity = 1
-                entry.iconLayer.setAffineTransform(.identity)
-                setMergeLabelOpacity(entry.labelLayer, to: 0)
-            } else if isFolderTarget {
-                // App -> Folder: the folder itself becomes the merge-ready surface.
-                // Enlarge it to the same footprint as the App -> App preview and
-                // fade both labels, without drawing a second frame around it.
-                entry.selectionLayer.opacity = 0
-                entry.iconLayer.opacity = 1
-                entry.iconLayer.setAffineTransform(.init(
-                    scaleX: FolderMergeVisualMetrics.folderTargetScale,
-                    y: FolderMergeVisualMetrics.folderTargetScale
-                ))
-                setMergeLabelOpacity(entry.labelLayer, to: 0)
-            } else {
-                entry.selectionLayer.opacity =
-                    entry.absoluteIndex == selectedIndex ? 1 : 0
-                entry.iconLayer.opacity = 1
-                entry.iconLayer.setAffineTransform(.identity)
-                setMergeLabelOpacity(entry.labelLayer, to: 1)
-            }
-        }
+        for entry in surface.entries { applyDropHighlight(to: entry, mergeTarget: mergeTarget) }
 
         CATransaction.commit()
     }
 
-    func setMergeLabelOpacity(
-        _ labelLayer: CALayer,
-        to targetOpacity: Float
-    ) {
+    fileprivate func setMergeLabelOpacity(_ labelLayer: CALayer, to targetOpacity: Float) {
         guard labelLayer.opacity != targetOpacity else { return }
 
         let visibleOpacity = labelLayer.presentation()?.opacity ?? labelLayer.opacity
@@ -3809,10 +2945,7 @@ private extension LaunchpadRootView {
         labelLayer.add(animation, forKey: "folderMergeLabelOpacity")
     }
 
-    func updateDragProxyMergeLabel(
-        _ session: LaunchpadDragSession,
-        hidden: Bool
-    ) {
+    fileprivate func updateDragProxyMergeLabel(_ session: LaunchpadDragSession, hidden: Bool) {
         guard session.isSourceLabelHiddenForMerge != hidden else { return }
         session.isSourceLabelHiddenForMerge = hidden
 
@@ -3839,26 +2972,58 @@ private extension LaunchpadRootView {
         labelLayer.add(fade, forKey: DragProxyMetrics.labelAnimationKey)
     }
 
-    func prepareFolderMergeReflowPreviewIfNeeded(
-        _ session: LaunchpadDragSession
-    ) {
-        guard
-            session.folderCreationPreview == nil,
-            let metrics = currentMetrics,
+    fileprivate func freezeMergeLandingTarget(
+        _ session: LaunchpadDragSession, surface oldSurface: LaunchpadPageSurface) {
+        let landingTargetID: LauncherLayoutItemIdentifier?
+        switch session.target {
+        case .application(let identity): landingTargetID = .application(identity)
+        case .folder(let folderID): landingTargetID = .folder(folderID)
+        case .insertion, .pageInsertion, .outside: landingTargetID = nil
+        }
+        if let landingTargetID, let landingEntry = oldSurface.entries.first(where: { $0.item.id == landingTargetID }) {
+            session.mergeLandingTargetIconFrame = visibleIconFrame(for: landingEntry)
+        } else {
+            session.mergeLandingTargetIconFrame = nil
+        }
+
+    }
+
+    fileprivate func preMergePageMapping(_ session: LaunchpadDragSession, metrics: GridMetrics)
+        -> [LauncherLayoutItemIdentifier: Int] {
+        guard session.hasCrossedPages else { return [:] }
+
+        let preMergeDocument = session.projectedDocument ?? session.projectionBaselineDocument
+        let preMergeProjection = pageProjection(metrics: metrics, document: preMergeDocument)
+
+        var result: [LauncherLayoutItemIdentifier: Int] = [:]
+        for (pageIndex, page) in preMergeProjection.pages.enumerated() {
+            for item in page { result[item.id] = pageIndex }
+        }
+        return result
+    }
+
+    fileprivate func visibleTilePositions(
+        in oldSurface: LaunchpadPageSurface
+    ) -> [LauncherLayoutItemIdentifier: CGPoint] {
+        var oldPositions: [LauncherLayoutItemIdentifier: CGPoint] = [:]
+        for entry in oldSurface.entries {
+            oldPositions[entry.item.id] = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
+        }
+
+        return oldPositions
+    }
+
+    fileprivate func prepareFolderMergeReflowPreviewIfNeeded(_ session: LaunchpadDragSession) {
+        guard session.folderCreationPreview == nil, let metrics = currentMetrics,
             !session.hasCrossedPages || session.previewSurface != nil
         else { return }
 
         switch session.target {
-        case .application, .folder:
-            break
-        case .insertion, .pageInsertion, .outside:
-            return
+        case .application, .folder: break
+        case .insertion, .pageInsertion, .outside: return
         }
 
-        let projection = pageProjection(
-            metrics: metrics,
-            document: session.draft.document
-        )
+        let projection = pageProjection(metrics: metrics, document: session.draft.document)
         guard projection.pages.indices.contains(currentPage) else { return }
 
         let items = projection.items
@@ -3869,41 +3034,15 @@ private extension LaunchpadRootView {
         // Freeze the merge destination before the final layout starts moving.
         // The source app must finish shrinking into the folder at the folder's
         // current visible position; only after that handoff may the page compact.
-        let landingTargetID: LauncherLayoutItemIdentifier?
-        switch session.target {
-        case let .application(identity):
-            landingTargetID = .application(identity)
-        case let .folder(folderID):
-            landingTargetID = .folder(folderID)
-        case .insertion, .pageInsertion, .outside:
-            landingTargetID = nil
-        }
-        if let landingTargetID,
-           let landingEntry = oldSurface.entries.first(where: {
-               $0.item.id == landingTargetID
-           }) {
-            session.mergeLandingTargetIconFrame = visibleIconFrame(for: landingEntry)
-        } else {
-            session.mergeLandingTargetIconFrame = nil
-        }
+        freezeMergeLandingTarget(session, surface: oldSurface)
 
         let newSurface = makePageSurface(
-            pageIndex: currentPage,
-            items: items,
-            metrics: metrics,
-            scale: scale,
-            projection: projection
-        )
+            pageIndex: currentPage, items: items, metrics: metrics, scale: scale, projection: projection)
 
-        var oldPositions: [LauncherLayoutItemIdentifier: CGPoint] = [:]
-        for entry in oldSurface.entries {
-            oldPositions[entry.item.id] =
-                entry.tileLayer.presentation()?.position
-                    ?? entry.tileLayer.position
-        }
+        let oldPositions = visibleTilePositions(in: oldSurface)
 
         let applicationTargetPosition: CGPoint? = {
-            guard case let .application(identity) = session.target else { return nil }
+            guard case .application(let identity) = session.target else { return nil }
             return oldPositions[.application(identity)]
         }()
 
@@ -3912,34 +3051,13 @@ private extension LaunchpadRootView {
         // which page owned each item so a tile pulled in from an adjacent page
         // can receive a real visual handoff instead of appearing directly on top
         // of the tile that is still occupying the final slot.
-        let preMergePageByIdentifier: [LauncherLayoutItemIdentifier: Int] = {
-            guard session.hasCrossedPages else { return [:] }
-
-            let preMergeDocument =
-                session.projectedDocument
-                    ?? session.projectionBaselineDocument
-            let preMergeProjection = pageProjection(
-                metrics: metrics,
-                document: preMergeDocument
-            )
-
-            var result: [LauncherLayoutItemIdentifier: Int] = [:]
-            for (pageIndex, page) in preMergeProjection.pages.enumerated() {
-                for item in page {
-                    result[item.id] = pageIndex
-                }
-            }
-            return result
-        }()
+        let preMergePageByIdentifier = preMergePageMapping(session, metrics: metrics)
 
         let transition = LaunchpadVisualStyle.dragReflowTransition(movedForward: false)
         let shouldAnimate = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let mergeLandingDuration = LaunchpadVisualStyle.dragCompletionTransition(
-            kind: .merge
-        ).duration
-        let reflowStartTime = CACurrentMediaTime()
-            + mergeLandingDuration
-            + FolderMergeVisualMetrics.postLandingReflowDelay
+        let mergeLandingDuration = LaunchpadVisualStyle.dragCompletionTransition(kind: .merge).duration
+        let reflowStartTime =
+            CACurrentMediaTime() + mergeLandingDuration + FolderMergeVisualMetrics.postLandingReflowDelay
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -3949,97 +3067,13 @@ private extension LaunchpadRootView {
         newSurface.layer.opacity = 1
         newSurface.layer.isHidden = false
 
-        for entry in newSurface.entries {
-            let targetPosition = entry.tileLayer.position
-            var startPosition = oldPositions[entry.item.id]
+        let reflow = MergeReflowContext(
+            oldPositions: oldPositions, applicationTargetPosition: applicationTargetPosition,
+            pageByIdentifier: preMergePageByIdentifier, metrics: metrics, transition: transition,
+            enabled: shouldAnimate, startTime: reflowStartTime)
+        for entry in newSurface.entries { animateMergeReflowEntry(entry, session: session, reflow: reflow) }
 
-            // App -> App replaces the target application identifier with a new
-            // folder identifier. Start that new folder exactly where the target
-            // app is visibly sitting so the replacement does not flash in from a
-            // different slot while the rest of the page compacts.
-            if startPosition == nil,
-               let applicationTargetPosition,
-               case let .folder(folder) = entry.item,
-               case let .application(targetIdentity) = session.target,
-               folder.applications.contains(where: { $0.id == targetIdentity }) {
-                startPosition = applicationTargetPosition
-            }
-
-            // A genuine page-entering item has no old position on this surface.
-            // Before this fix it therefore appeared immediately at targetPosition while
-            // the previous last tile was held at that exact slot until reflowStartTime.
-            // Stage it in the adjacent-page direction and keep it invisible until the
-            // outgoing tile has visibly vacated the slot.
-            if startPosition == nil,
-               let previousPage = preMergePageByIdentifier[entry.item.id],
-               previousPage != currentPage {
-                let logicalDirection: CGFloat =
-                    previousPage > currentPage ? 1 : -1
-                let visualDirection =
-                    metrics.isRightToLeft
-                        ? -logicalDirection
-                        : logicalDirection
-                let enteringOffset =
-                    abs(transition.enteringItemOffset) * visualDirection
-
-                startPosition = CGPoint(
-                    x: targetPosition.x + enteringOffset,
-                    y: targetPosition.y
-                )
-
-                if shouldAnimate {
-                    let fade = CABasicAnimation(keyPath: "opacity")
-                    fade.fromValue = 0
-                    fade.toValue = 1
-                    fade.duration = transition.enteringItemFadeDuration
-                    // Position starts moving with the grid. Opacity deliberately waits
-                    // for about the first third of the current reflow so two icons never
-                    // read as owners of the same bottom-right slot.
-                    fade.beginTime = reflowStartTime
-                        + min(transition.duration * 0.33, 0.16)
-                    fade.timingFunction = transition.timingFunction
-                    fade.fillMode = .backwards
-                    entry.tileLayer.add(
-                        fade,
-                        forKey: "dragReflowOpacity"
-                    )
-                }
-            }
-
-            guard shouldAnimate,
-                  let startPosition,
-                  startPosition != targetPosition
-            else { continue }
-
-            let move = CABasicAnimation(keyPath: "position")
-            move.fromValue = NSValue(point: startPosition)
-            move.toValue = NSValue(point: targetPosition)
-            move.duration = transition.duration
-            move.timingFunction = transition.timingFunction
-            move.beginTime = reflowStartTime
-            move.fillMode = .backwards
-            entry.tileLayer.add(move, forKey: "dragReflowPosition")
-        }
-
-        // App -> existing Folder leaves the same folder identifier in the final
-        // document. Continue the merge-ready +30% presentation back to 1.0 on
-        // the new surface instead of snapping smaller at mouse-up.
-        if case let .folder(folderID) = session.target,
-           let folderEntry = newSurface.entries.first(where: {
-               $0.item.id == .folder(folderID)
-           }), shouldAnimate {
-            let scaleDown = CABasicAnimation(keyPath: "transform")
-            scaleDown.fromValue = CATransform3DMakeAffineTransform(
-                .init(
-                    scaleX: FolderMergeVisualMetrics.folderTargetScale,
-                    y: FolderMergeVisualMetrics.folderTargetScale
-                )
-            )
-            scaleDown.toValue = CATransform3DIdentity
-            scaleDown.duration = FolderMergeVisualMetrics.transitionDuration
-            scaleDown.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            folderEntry.iconLayer.add(scaleDown, forKey: "folderMergeCommitScale")
-        }
+        restoreMergedFolderScale(session, surface: newSurface, animated: shouldAnimate)
 
         // Swap render ownership atomically. Every surviving tile in the new
         // surface starts at its current presentation position, then translates
@@ -4059,134 +3093,194 @@ private extension LaunchpadRootView {
         pageContentLayer = newSurface.layer
     }
 
-    func mergedFolderEntry(
-        in surface: LaunchpadPageSurface?,
-        for target: LauncherDropTarget
-    ) -> LaunchpadPageEntry? {
+    fileprivate func restoreMergedFolderScale(
+        _ session: LaunchpadDragSession, surface newSurface: LaunchpadPageSurface, animated shouldAnimate: Bool
+    ) {
+        // App -> existing Folder leaves the same folder identifier in the final
+        // document. Continue the merge-ready +30% presentation back to 1.0 on
+        // the new surface instead of snapping smaller at mouse-up.
+        if case .folder(let folderID) = session.target,
+            let folderEntry = newSurface.entries.first(where: { $0.item.id == .folder(folderID) }), shouldAnimate {
+            let scaleDown = CABasicAnimation(keyPath: "transform")
+            scaleDown.fromValue = CATransform3DMakeAffineTransform(
+                .init(scaleX: FolderMergeVisualMetrics.folderTargetScale, y: FolderMergeVisualMetrics.folderTargetScale)
+            )
+            scaleDown.toValue = CATransform3DIdentity
+            scaleDown.duration = FolderMergeVisualMetrics.transitionDuration
+            scaleDown.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            folderEntry.iconLayer.add(scaleDown, forKey: "folderMergeCommitScale")
+        }
+
+    }
+
+    fileprivate struct MergeReflowContext {
+        let oldPositions: [LauncherLayoutItemIdentifier: CGPoint]
+        let applicationTargetPosition: CGPoint?
+        let pageByIdentifier: [LauncherLayoutItemIdentifier: Int]
+        let metrics: GridMetrics
+        let transition: LaunchpadVisualStyle.DragReflowTransition
+        let enabled: Bool
+        let startTime: CFTimeInterval
+    }
+
+    fileprivate func animateMergeReflowEntry(
+        _ entry: LaunchpadPageEntry, session: LaunchpadDragSession, reflow: MergeReflowContext
+    ) {
+        let oldPositions = reflow.oldPositions
+        let applicationTargetPosition = reflow.applicationTargetPosition
+        let preMergePageByIdentifier = reflow.pageByIdentifier
+        let metrics = reflow.metrics
+        let transition = reflow.transition
+        let shouldAnimate = reflow.enabled
+        let reflowStartTime = reflow.startTime
+        let targetPosition = entry.tileLayer.position
+        var startPosition = oldPositions[entry.item.id]
+
+        // App -> App replaces the target application identifier with a new
+        // folder identifier. Start that new folder exactly where the target
+        // app is visibly sitting so the replacement does not flash in from a
+        // different slot while the rest of the page compacts.
+        if startPosition == nil, let applicationTargetPosition, case .folder(let folder) = entry.item,
+            case .application(let targetIdentity) = session.target,
+            folder.applications.contains(where: { $0.id == targetIdentity }) {
+            startPosition = applicationTargetPosition
+        }
+
+        // A genuine page-entering item has no old position on this surface.
+        // Before this fix it therefore appeared immediately at targetPosition while
+        // the previous last tile was held at that exact slot until reflowStartTime.
+        // Stage it in the adjacent-page direction and keep it invisible until the
+        // outgoing tile has visibly vacated the slot.
+        if startPosition == nil, let previousPage = preMergePageByIdentifier[entry.item.id],
+            previousPage != currentPage {
+            let logicalDirection: CGFloat = previousPage > currentPage ? 1 : -1
+            let visualDirection = metrics.isRightToLeft ? -logicalDirection : logicalDirection
+            let enteringOffset = abs(transition.enteringItemOffset) * visualDirection
+
+            startPosition = CGPoint(x: targetPosition.x + enteringOffset, y: targetPosition.y)
+
+            if shouldAnimate {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 0
+                fade.toValue = 1
+                fade.duration = transition.enteringItemFadeDuration
+                // Position starts moving with the grid. Opacity deliberately waits
+                // for about the first third of the current reflow so two icons never
+                // read as owners of the same bottom-right slot.
+                fade.beginTime = reflowStartTime + min(transition.duration * 0.33, 0.16)
+                fade.timingFunction = transition.timingFunction
+                fade.fillMode = .backwards
+                entry.tileLayer.add(fade, forKey: "dragReflowOpacity")
+            }
+        }
+
+        guard shouldAnimate, let startPosition, startPosition != targetPosition else { return }
+
+        let move = CABasicAnimation(keyPath: "position")
+        move.fromValue = NSValue(point: startPosition)
+        move.toValue = NSValue(point: targetPosition)
+        move.duration = transition.duration
+        move.timingFunction = transition.timingFunction
+        move.beginTime = reflowStartTime
+        move.fillMode = .backwards
+        entry.tileLayer.add(move, forKey: "dragReflowPosition")
+    }
+
+    fileprivate func mergedFolderEntry(in surface: LaunchpadPageSurface?, for target: LauncherDropTarget)
+        -> LaunchpadPageEntry? {
         guard let surface else { return nil }
         switch target {
-        case let .folder(folderID):
-            return surface.entries.first { $0.item.id == .folder(folderID) }
-        case let .application(targetIdentity):
+        case .folder(let folderID): return surface.entries.first { $0.item.id == .folder(folderID) }
+        case .application(let targetIdentity):
             return surface.entries.first { entry in
-                guard case let .folder(folder) = entry.item else { return false }
+                guard case .folder(let folder) = entry.item else { return false }
                 return folder.applications.contains { $0.id == targetIdentity }
             }
-        case .insertion, .pageInsertion, .outside:
-            return nil
+        case .insertion, .pageInsertion, .outside: return nil
         }
     }
 
-    func mergeLandingScale(
-        session: LaunchpadDragSession
-    ) -> CGFloat {
-        guard
-            case let .application(sourceIdentity) = session.sourceEntry.item.id
-        else {
-            let sourceIconSize = min(
-                session.sourceEntry.frames.icon.width,
-                session.sourceEntry.frames.icon.height
-            )
-            return AppTilePresentationFactory
-                .folderMiniatureIconScale(forRootIconSize: sourceIconSize)
+    fileprivate func mergeLandingScale(session: LaunchpadDragSession) -> CGFloat {
+        guard case .application(let sourceIdentity) = session.sourceEntry.item.id else {
+            let sourceIconSize = min(session.sourceEntry.frames.icon.width, session.sourceEntry.frames.icon.height)
+            return AppTilePresentationFactory.folderMiniatureIconScale(forRootIconSize: sourceIconSize)
         }
 
         let finalFolder: LauncherFolder?
 
         switch session.target {
-        case let .folder(folderID):
-            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
-                guard case let .folder(folder) = item, folder.id == folderID else {
-                    return nil
-                }
-                return folder
-            }.first
+        case .folder(let folderID):
+            finalFolder =
+                session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
+                    guard case .folder(let folder) = item, folder.id == folderID else { return nil }
+                    return folder
+                }.first
 
-        case let .application(targetIdentity):
-            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
-                guard case let .folder(folder) = item else { return nil }
-                let identities = folder.applications.map(\.identity)
-                guard
-                    identities.contains(sourceIdentity),
-                    identities.contains(targetIdentity)
-                else {
-                    return nil
-                }
-                return folder
-            }.first
+        case .application(let targetIdentity):
+            finalFolder =
+                session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
+                    guard case .folder(let folder) = item else { return nil }
+                    let identities = folder.applications.map(\.identity)
+                    guard identities.contains(sourceIdentity), identities.contains(targetIdentity) else { return nil }
+                    return folder
+                }.first
 
-        case .insertion, .pageInsertion, .outside:
-            finalFolder = nil
+        case .insertion, .pageInsertion, .outside: finalFolder = nil
         }
 
-        guard
-            let finalFolder,
-            finalFolder.applications.count
-                > AppTilePresentationFactory.folderMaximumVisibleChildren
+        guard let finalFolder, finalFolder.applications.count > AppTilePresentationFactory.folderMaximumVisibleChildren
         else {
-            let sourceIconSize = min(
-                session.sourceEntry.frames.icon.width,
-                session.sourceEntry.frames.icon.height
-            )
-            return AppTilePresentationFactory
-                .folderMiniatureIconScale(forRootIconSize: sourceIconSize)
+            let sourceIconSize = min(session.sourceEntry.frames.icon.width, session.sourceEntry.frames.icon.height)
+            return AppTilePresentationFactory.folderMiniatureIconScale(forRootIconSize: sourceIconSize)
         }
 
         return FolderMergeVisualMetrics.fullFolderAbsorbScale
     }
 
-    func mergeLandingDestination(
-        in surface: LaunchpadPageSurface?,
-        session: LaunchpadDragSession
-    ) -> CGPoint? {
-        guard
-            let surface,
-            case let .application(sourceIdentity) = session.sourceEntry.item.id
-        else { return nil }
+    fileprivate func mergeLandingDestination(in surface: LaunchpadPageSurface?, session: LaunchpadDragSession)
+        -> CGPoint? {
+        guard let surface, case .application(let sourceIdentity) = session.sourceEntry.item.id else { return nil }
 
         let visualEntry: LaunchpadPageEntry?
         let finalFolder: LauncherFolder?
 
         switch session.target {
-        case let .folder(folderID):
+        case .folder(let folderID):
             visualEntry = surface.entries.first { $0.item.id == .folder(folderID) }
-            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
-                guard case let .folder(folder) = item, folder.id == folderID else { return nil }
-                return folder
-            }.first
+            finalFolder =
+                session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
+                    guard case .folder(let folder) = item, folder.id == folderID else { return nil }
+                    return folder
+                }.first
 
-        case let .application(targetIdentity):
+        case .application(let targetIdentity):
             // A same-page committed preview already contains the new folder.
             // Cross-page / conservative paths may still be rendering the target
             // application, so accept either visual owner for the same location.
-            visualEntry = mergedFolderEntry(in: surface, for: session.target)
+            visualEntry =
+                mergedFolderEntry(in: surface, for: session.target)
                 ?? surface.entries.first { $0.item.id == .application(targetIdentity) }
-            finalFolder = session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
-                guard case let .folder(folder) = item else { return nil }
-                let ids = folder.applications.map(\.identity)
-                guard ids.contains(sourceIdentity), ids.contains(targetIdentity) else { return nil }
-                return folder
-            }.first
+            finalFolder =
+                session.draft.document.items.compactMap { (item: LauncherLayoutItem) -> LauncherFolder? in
+                    guard case .folder(let folder) = item else { return nil }
+                    let ids = folder.applications.map(\.identity)
+                    guard ids.contains(sourceIdentity), ids.contains(targetIdentity) else { return nil }
+                    return folder
+                }.first
 
-        case .insertion, .pageInsertion, .outside:
-            return nil
+        case .insertion, .pageInsertion, .outside: return nil
         }
 
         guard let visualEntry else { return nil }
 
         let landingScale = mergeLandingScale(session: session)
-        let landingIconFrame = session.mergeLandingTargetIconFrame
-            ?? visibleIconFrame(for: visualEntry)
+        let landingIconFrame = session.mergeLandingTargetIconFrame ?? visibleIconFrame(for: visualEntry)
         let targetCenter: CGPoint
 
-        if
-            let finalFolder,
+        if let finalFolder,
             let sourceIndex = finalFolder.applications.firstIndex(where: { $0.identity == sourceIdentity }),
             let childCenter = AppTilePresentationFactory.folderChildCenter(
-                iconFrame: landingIconFrame,
-                logicalIndex: sourceIndex,
-                layoutDirection: userInterfaceLayoutDirection
-            ) {
+                iconFrame: landingIconFrame, logicalIndex: sourceIndex, layoutDirection: userInterfaceLayoutDirection) {
             targetCenter = childCenter
         } else {
             // Closed folders expose only nine miniature slots. Once all nine
@@ -4201,16 +3295,14 @@ private extension LaunchpadRootView {
         // the miniature-slot / folder center.
         let sourceIconOffset = CGPoint(
             x: session.sourceEntry.frames.icon.midX - session.sourceEntry.frames.cell.midX,
-            y: session.sourceEntry.frames.icon.midY - session.sourceEntry.frames.cell.midY
-        )
+            y: session.sourceEntry.frames.icon.midY - session.sourceEntry.frames.cell.midY)
 
         return CGPoint(
-            x: targetCenter.x - sourceIconOffset.x * landingScale,
-            y: targetCenter.y - sourceIconOffset.y * landingScale
+            x: targetCenter.x - sourceIconOffset.x * landingScale, y: targetCenter.y - sourceIconOffset.y * landingScale
         )
     }
 
-    func completeDragInteraction(at point: CGPoint) {
+    fileprivate func completeDragInteraction(at point: CGPoint) {
         guard let dragSession else {
             dragStateMachine.finish()
             return
@@ -4265,16 +3357,10 @@ private extension LaunchpadRootView {
 
         let committingSession = dragSession
         let draft = committingSession.draft
-        let commitContext = LaunchpadDragCommitContext(
-            session: committingSession
-        )
+        let commitContext = LaunchpadDragCommitContext(session: committingSession)
         dragCommitContext = commitContext
         isCommittingLayout = true
-        finishDragVisuals(
-            dragSession,
-            committed: true,
-            animated: true
-        ) { [weak self, weak commitContext] in
+        finishDragVisuals(dragSession, committed: true, animated: true) { [weak self, weak commitContext] in
             guard let self, let commitContext else { return }
             commitContext.completionState.markVisualsFinished()
             finishDragCommitIfReady(commitContext)
@@ -4284,62 +3370,54 @@ private extension LaunchpadRootView {
 
         Task { @MainActor [weak self] in
             guard let self else { return }
-            do {
-                layoutDocument = try await layoutStore.commit(draft)
-                selectedIndex = -1
-                if let metrics = currentMetrics {
-                    currentPage = min(currentPage, pageProjection(metrics: metrics).pageCount - 1)
-
-                    if let previewSurface = committingSession.previewSurface {
-                        refreshCommittedPageCacheForCrossPageMergeIfNeeded(
-                            committingSession,
-                            keeping: previewSurface,
-                            metrics: metrics
-                        )
-                    }
-                }
-                if adoptCommittedPreviewIfPossible(
-                    committingSession
-                ) {
-                    commitContext.didAdoptCommittedPreview = true
-                } else {
-                    invalidatePageSurfaceCache()
-                }
-
-                commitContext
-                    .completionState
-                    .markPersistenceFinished()
-            } catch {
-                _ = dragStateMachine.beginRollback()
-                if committingSession.folderCreationPreview != nil {
-                    closeFolder(animated: false)
-                }
-                committingSession.draft.rollback()
-                layoutDocument = committingSession.draft.snapshot
-                restoreSnapshotUI(afterFailedCommit: committingSession)
-                invalidatePageSurfaceCache()
-                NSSound.beep()
-                // Restoring the original surface also terminates the visual
-                // landing, so a stale Core Animation completion must not keep
-                // the interaction locked.
-                commitContext.completionState.finishImmediately()
-            }
-            finishDragCommitIfReady(commitContext)
+            await persistDragCommit(commitContext, draft: draft)
         }
     }
 
-    func refreshCommittedPageCacheForCrossPageMergeIfNeeded(
-        _ session: LaunchpadDragSession,
-        keeping previewSurface: LaunchpadPageSurface,
-        metrics: GridMetrics
+    fileprivate func persistDragCommit(_ commitContext: LaunchpadDragCommitContext, draft: LauncherLayoutDraft) async {
+        let committingSession = commitContext.session
+        do {
+            layoutDocument = try await layoutStore.commit(draft)
+            selectedIndex = -1
+            if let metrics = currentMetrics {
+                currentPage = min(currentPage, pageProjection(metrics: metrics).pageCount - 1)
+
+                if let previewSurface = committingSession.previewSurface {
+                    refreshCommittedPageCacheForCrossPageMergeIfNeeded(
+                        committingSession, keeping: previewSurface, metrics: metrics)
+                }
+            }
+            if adoptCommittedPreviewIfPossible(committingSession) {
+                commitContext.didAdoptCommittedPreview = true
+            } else {
+                invalidatePageSurfaceCache()
+            }
+
+            commitContext.completionState.markPersistenceFinished()
+        } catch {
+            _ = dragStateMachine.beginRollback()
+            if committingSession.folderCreationPreview != nil { closeFolder(animated: false) }
+            committingSession.draft.rollback()
+            layoutDocument = committingSession.draft.snapshot
+            restoreSnapshotUI(afterFailedCommit: committingSession)
+            invalidatePageSurfaceCache()
+            NSSound.beep()
+            // Restoring the original surface also terminates the visual
+            // landing, so a stale Core Animation completion must not keep
+            // the interaction locked.
+            commitContext.completionState.finishImmediately()
+        }
+        finishDragCommitIfReady(commitContext)
+    }
+
+    fileprivate func refreshCommittedPageCacheForCrossPageMergeIfNeeded(
+        _ session: LaunchpadDragSession, keeping previewSurface: LaunchpadPageSurface, metrics: GridMetrics
     ) {
         guard session.hasCrossedPages else { return }
 
         switch session.target {
-        case .application, .folder:
-            break
-        case .insertion, .pageInsertion, .outside:
-            return
+        case .application, .folder: break
+        case .insertion, .pageInsertion, .outside: return
         }
 
         let items = resolvedItems
@@ -4353,9 +3431,7 @@ private extension LaunchpadRootView {
         // item). Rebuild those hidden surfaces immediately from the committed
         // document while preserving the target page's presentation tree.
         for (pageIndex, surface) in pageSurfaces {
-            guard pageIndex != currentPage || surface !== previewSurface else {
-                continue
-            }
+            guard pageIndex != currentPage || surface !== previewSurface else { continue }
             detachButtons(from: surface)
             surface.layer.removeAllAnimations()
             surface.layer.opacity = 0
@@ -4366,17 +3442,12 @@ private extension LaunchpadRootView {
         var refreshedSurfaces: [Int: LaunchpadPageSurface] = [:]
         refreshedSurfaces.reserveCapacity(pageCount)
 
-        for pageIndex in 0 ..< pageCount {
+        for pageIndex in 0..<pageCount {
             if pageIndex == currentPage {
                 refreshedSurfaces[pageIndex] = previewSurface
             } else {
                 refreshedSurfaces[pageIndex] = makePageSurface(
-                    pageIndex: pageIndex,
-                    items: items,
-                    metrics: metrics,
-                    scale: scale,
-                    projection: projection
-                )
+                    pageIndex: pageIndex, items: items, metrics: metrics, scale: scale, projection: projection)
             }
         }
 
@@ -4384,29 +3455,17 @@ private extension LaunchpadRootView {
         activeSurface = previewSurface
         pageContentLayer = previewSurface.layer
 
-        updatePageIndicator(
-            pageCount: pageCount,
-            metrics: metrics,
-            scale: scale
-        )
+        updatePageIndicator(pageCount: pageCount, metrics: metrics, scale: scale)
     }
 
-    func adoptCommittedPreviewIfPossible(
-        _ session: LaunchpadDragSession
-    ) -> Bool {
+    fileprivate func adoptCommittedPreviewIfPossible(_ session: LaunchpadDragSession) -> Bool {
         let canAdoptTarget: Bool
         switch session.target {
-        case .insertion, .pageInsertion, .application, .folder:
-            canAdoptTarget = true
-        case .outside:
-            canAdoptTarget = false
+        case .insertion, .pageInsertion, .application, .folder: canAdoptTarget = true
+        case .outside: canAdoptTarget = false
         }
 
-        guard
-            canAdoptTarget,
-            let previewSurface = session.previewSurface,
-            let metrics = currentMetrics
-        else {
+        guard canAdoptTarget, let previewSurface = session.previewSurface, let metrics = currentMetrics else {
             return false
         }
 
@@ -4422,140 +3481,68 @@ private extension LaunchpadRootView {
         let projection = pageProjection(metrics: metrics)
         let pageCount = projection.pageCount
 
-        guard pageSurfaces.count == pageCount else {
-            return false
-        }
+        guard pageSurfaces.count == pageCount else { return false }
 
-        for pageIndex in 0 ..< pageCount {
-            let candidateSurface:
-                LaunchpadPageSurface? =
-                    pageIndex == currentPage
-                        ? previewSurface
-                        : pageSurfaces[
-                            pageIndex
-                        ]
+        for pageIndex in 0..<pageCount {
+            let candidateSurface: LaunchpadPageSurface? =
+                pageIndex == currentPage ? previewSurface : pageSurfaces[pageIndex]
 
-            guard let candidateSurface else {
-                return false
-            }
+            guard let candidateSurface else { return false }
 
             let range = projection.range(forPage: pageIndex)
             let startIndex = range.lowerBound
             let endIndex = range.upperBound
 
-            let expectedIDs:
-                [LauncherLayoutItemIdentifier]
+            let expectedIDs: [LauncherLayoutItemIdentifier]
 
-            if startIndex < endIndex {
-                expectedIDs =
-                    items[
-                        startIndex
-                            ..<
-                            endIndex
-                    ]
-                    .map(\.id)
-            } else {
-                expectedIDs = []
-            }
+            if startIndex < endIndex { expectedIDs = items[startIndex..<endIndex].map(\.id) } else { expectedIDs = [] }
 
             // `entries` intentionally keeps object identity while tiles reflow,
             // so array order itself is not authoritative. `absoluteIndex` is.
-            let actualIDs =
-                candidateSurface
-                    .entries
-                    .sorted {
-                        $0.absoluteIndex
-                            < $1.absoluteIndex
-                    }
-                    .map {
-                        $0.item.id
-                    }
+            let actualIDs = candidateSurface.entries.sorted { $0.absoluteIndex < $1.absoluteIndex }.map { $0.item.id }
 
-            guard
-                actualIDs
-                    == expectedIDs
-            else {
-                return false
-            }
+            guard actualIDs == expectedIDs else { return false }
         }
 
         // The live preview is already the committed page.
         //
         // Rebuilding here would create another CALayer tree containing the same
         // icons while the preview's presentation tree is still retiring.
-        if let cachedSurface =
-            pageSurfaces[
-                currentPage
-            ],
-           cachedSurface
-            !== previewSurface {
-            detachButtons(
-                from: cachedSurface
-            )
+        if let cachedSurface = pageSurfaces[currentPage], cachedSurface !== previewSurface {
+            detachButtons(from: cachedSurface)
 
             CATransaction.begin()
-            CATransaction
-                .setDisableActions(
-                    true
-                )
+            CATransaction.setDisableActions(true)
 
-            cachedSurface
-                .layer
-                .removeAllAnimations()
+            cachedSurface.layer.removeAllAnimations()
 
-            cachedSurface
-                .layer
-                .opacity = 0
+            cachedSurface.layer.opacity = 0
 
-            cachedSurface
-                .layer
-                .isHidden = true
+            cachedSurface.layer.isHidden = true
 
-            cachedSurface
-                .layer
-                .removeFromSuperlayer()
+            cachedSurface.layer.removeFromSuperlayer()
 
             CATransaction.commit()
         }
 
-        pageSurfaces[
-            currentPage
-        ] = previewSurface
+        pageSurfaces[currentPage] = previewSurface
 
-        activeSurface =
-            previewSurface
+        activeSurface = previewSurface
 
-        pageContentLayer =
-            previewSurface.layer
+        pageContentLayer = previewSurface.layer
 
         // A commit is allowed to replace the root surface while a spring-open
         // Folder is still on screen, but it must NOT change who owns the stage.
         // Apply the Folder visibility rule to the newly adopted surface before
         // returning so there is no one-frame root-grid flash.
-        setFolderBackgroundVisible(
-            openFolderID != nil,
-            animated: false
-        )
-        setPageHitTargetsEnabled(
-            openFolderID == nil
-        )
+        setFolderBackgroundVisible(openFolderID != nil, animated: false)
+        setPageHitTargetsEnabled(openFolderID == nil)
 
         return true
     }
 
-    func finishDragCommitIfReady(
-        _ context:
-            LaunchpadDragCommitContext
-    ) {
-        guard
-            dragCommitContext
-                === context,
-            context
-                .completionState
-                .isReadyToFinalize
-        else {
-            return
-        }
+    fileprivate func finishDragCommitIfReady(_ context: LaunchpadDragCommitContext) {
+        guard dragCommitContext === context, context.completionState.isReadyToFinalize else { return }
 
         dragCommitContext = nil
 
@@ -4567,111 +3554,50 @@ private extension LaunchpadRootView {
         // When a drag preview has already been proven identical to the committed
         // document, keep that exact layer tree alive. Rebuilding it would flash
         // displaced apps at their final positions after a folder merge.
-        if context
-            .didAdoptCommittedPreview,
-           let previewSurface =
-            context
-                .session
-                .previewSurface {
+        if context.didAdoptCommittedPreview, let previewSurface = context.session.previewSurface {
             CATransaction.begin()
-            CATransaction
-                .setDisableActions(
-                    true
-                )
+            CATransaction.setDisableActions(true)
 
-            previewSurface
-                .layer
-                .opacity =
-                    openFolderID == nil
-                        ? 1
-                        : 0
+            previewSurface.layer.opacity = openFolderID == nil ? 1 : 0
 
-            previewSurface
-                .layer
-                .isHidden = false
+            previewSurface.layer.isHidden = false
 
             // Collapse every drag-only presentation state back to its model
             // value before pointer interaction becomes available again.
-            for entry in
-                previewSurface.entries {
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowPosition"
-                    )
+            for entry in previewSurface.entries {
+                entry.tileLayer.removeAnimation(forKey: "dragReflowPosition")
 
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowOpacity"
-                    )
+                entry.tileLayer.removeAnimation(forKey: "dragReflowOpacity")
 
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragRollbackPosition"
-                    )
+                entry.tileLayer.removeAnimation(forKey: "dragRollbackPosition")
 
-                entry
-                    .tileLayer
-                    .opacity = 1
+                entry.tileLayer.opacity = 1
 
-                entry
-                    .iconLayer
-                    .removeAnimation(
-                        forKey:
-                            "iconPressedOpacity"
-                    )
+                entry.iconLayer.removeAnimation(forKey: "iconPressedOpacity")
 
-                entry
-                    .iconLayer
-                    .opacity = 1
+                entry.iconLayer.opacity = 1
 
-                entry
-                    .iconLayer
-                    .setAffineTransform(
-                        .identity
-                    )
+                entry.iconLayer.setAffineTransform(.identity)
             }
 
             CATransaction.commit()
 
-            activeSurface =
-                previewSurface
+            activeSurface = previewSurface
 
-            pageContentLayer =
-                previewSurface.layer
+            pageContentLayer = previewSurface.layer
 
-            attachButtons(
-                to: previewSurface,
-                hidden: openFolderID != nil
-            )
+            attachButtons(to: previewSurface, hidden: openFolderID != nil)
 
             // Keep root AppKit ownership disabled while the Folder overlay is
             // open. closeFolder() will restore both root visibility and hit
             // targets through the normal Folder-close handoff.
-            setFolderBackgroundVisible(
-                openFolderID != nil,
-                animated: false
-            )
-            setPageHitTargetsEnabled(
-                openFolderID == nil
-            )
+            setFolderBackgroundVisible(openFolderID != nil, animated: false)
+            setPageHitTargetsEnabled(openFolderID == nil)
 
             updateSelectionAppearance()
 
-            if let metrics =
-                currentMetrics {
-                scheduleIconPrewarming(
-                    metrics: metrics,
-                    scale:
-                        window?
-                            .backingScaleFactor
-                        ?? 1
-                )
+            if let metrics = currentMetrics {
+                scheduleIconPrewarming(metrics: metrics, scale: window?.backingScaleFactor ?? 1)
             }
 
             // Preview layer + NSButtons are now atomically ready for input.
@@ -4695,45 +3621,30 @@ private extension LaunchpadRootView {
         // Full-rebuild fallback follows the same ownership invariant as the
         // adopted-preview path. A still-open Folder keeps the rebuilt root
         // surface and its hit targets hidden.
-        setFolderBackgroundVisible(
-            openFolderID != nil,
-            animated: false
-        )
-        setPageHitTargetsEnabled(
-            openFolderID == nil
-        )
+        setFolderBackgroundVisible(openFolderID != nil, animated: false)
+        setPageHitTargetsEnabled(openFolderID == nil)
         retireFolderExtractionPointerOwnerAfterCommit(context.session)
         dragStateMachine.finish()
     }
 
-    func applyDropTarget(_ target: LauncherDropTarget, to session: LaunchpadDragSession) throws {
+    fileprivate func applyDropTarget(_ target: LauncherDropTarget, to session: LaunchpadDragSession) throws {
         switch target {
-        case let .pageInsertion(page, index):
+        case .pageInsertion(let page, let index):
             try session.draft.moveRootItem(
-                session.sourceEntry.item.id, toPage: page, at: index,
-                pageCapacity: currentMetrics?.itemsPerPage ?? 1
-            )
-        case let .insertion(destination):
-            try session.draft.moveRootItem(
-                session.sourceEntry.item.id,
-                toPositionOf: destination
-            )
-        case let .application(targetIdentity):
-            guard case let .application(sourceIdentity) = session.sourceEntry.item.id else { return }
-            try session.draft.mergeApplications(
-                source: sourceIdentity,
-                target: targetIdentity,
-                customTitle: "Untitled"
-            )
-        case let .folder(folderID):
-            guard case let .application(sourceIdentity) = session.sourceEntry.item.id else { return }
+                session.sourceEntry.item.id, toPage: page, at: index, pageCapacity: currentMetrics?.itemsPerPage ?? 1)
+        case .insertion(let destination):
+            try session.draft.moveRootItem(session.sourceEntry.item.id, toPositionOf: destination)
+        case .application(let targetIdentity):
+            guard case .application(let sourceIdentity) = session.sourceEntry.item.id else { return }
+            try session.draft.mergeApplications(source: sourceIdentity, target: targetIdentity, customTitle: "Untitled")
+        case .folder(let folderID):
+            guard case .application(let sourceIdentity) = session.sourceEntry.item.id else { return }
             try session.draft.addApplication(sourceIdentity, toFolder: folderID)
-        case .outside:
-            return
+        case .outside: return
         }
     }
 
-    func restoreSnapshotUI(afterFailedCommit session: LaunchpadDragSession) {
+    fileprivate func restoreSnapshotUI(afterFailedCommit session: LaunchpadDragSession) {
         currentPage = session.sourcePage
         session.originalSurface.layer.frame = bounds
         session.originalSurface.layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -4741,78 +3652,33 @@ private extension LaunchpadRootView {
         do {
             CATransaction.begin()
 
-            CATransaction
-                .setDisableActions(
-                    true
-                )
+            CATransaction.setDisableActions(true)
 
-            for entry
-                in session
-                    .originalSurface
-                    .entries {
-                guard
-                    let originalFrame =
-                        session
-                            .originalFramesByIdentifier[
-                                entry.item.id
-                            ]
-                else {
-                    continue
-                }
+            for entry in session.originalSurface.entries {
+                guard let originalFrame = session.originalFramesByIdentifier[entry.item.id] else { continue }
 
-                entry
-                    .tileLayer
-                    .removeAllAnimations()
+                entry.tileLayer.removeAllAnimations()
 
-                entry
-                    .iconLayer
-                    .removeAllAnimations()
+                entry.iconLayer.removeAllAnimations()
 
-                entry.frames =
-                    originalFrame
+                entry.frames = originalFrame
 
-                entry.absoluteIndex =
-                    session
-                        .originalIndexByIdentifier[
-                            entry.item.id
-                        ]
-                        ?? entry
-                            .absoluteIndex
+                entry.absoluteIndex = session.originalIndexByIdentifier[entry.item.id] ?? entry.absoluteIndex
 
-                entry.button.frame =
-                    originalFrame.icon
+                entry.button.frame = originalFrame.icon
 
-                entry
-                    .tileLayer
-                    .position =
-                        originalFrame
-                            .cell
-                            .center
+                entry.tileLayer.position = originalFrame.cell.center
 
-                entry
-                    .tileLayer
-                    .opacity = 1
+                entry.tileLayer.opacity = 1
 
-                entry
-                    .iconLayer
-                    .opacity = 1
+                entry.iconLayer.opacity = 1
 
-                entry
-                    .iconLayer
-                    .setAffineTransform(
-                        .identity
-                    )
+                entry.iconLayer.setAffineTransform(.identity)
             }
 
-            session
-                .originalSurface
-                .layer
-                .opacity = 1
+            session.originalSurface.layer.opacity = 1
 
-            session
-                .originalSurface
-                .layer
-                .isHidden = false
+            session.originalSurface.layer.isHidden = false
 
             CATransaction.commit()
         }
@@ -4828,22 +3694,14 @@ private extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         session.originalSurface.layer.opacity = 1
-        if session.sourceOrigin.folderID == nil,
-           session.sourceEntry.tileLayer.superlayer == nil {
-            session.originalSurface.layer.addSublayer(
-                session.sourceEntry.tileLayer
-            )
+        if session.sourceOrigin.folderID == nil, session.sourceEntry.tileLayer.superlayer == nil {
+            session.originalSurface.layer.addSublayer(session.sourceEntry.tileLayer)
         }
         session.sourceEntry.tileLayer.opacity = 1
         session.sourceEntry.iconLayer.opacity = 1
-        if session.sourceOrigin.folderID != nil {
-            session.sourceEntry.button.removeFromSuperview()
-        }
+        if session.sourceOrigin.folderID != nil { session.sourceEntry.button.removeFromSuperview() }
         if session.originalSurface.layer.superlayer == nil {
-            rootLayer.insertSublayer(
-                session.originalSurface.layer,
-                below: fixedOverlayLayer
-            )
+            rootLayer.insertSublayer(session.originalSurface.layer, below: fixedOverlayLayer)
         }
         CATransaction.commit()
 
@@ -4852,7 +3710,7 @@ private extension LaunchpadRootView {
         attachButtons(to: session.originalSurface, hidden: false)
     }
 
-    func cancelDragInteraction(animated: Bool = true) {
+    fileprivate func cancelDragInteraction(animated: Bool = true) {
         pendingPress = nil
 
         if folderItemDragSession != nil {
@@ -4882,9 +3740,7 @@ private extension LaunchpadRootView {
         dragSession.hasReleased = true
         dragSession.edgeGeneration &+= 1
 
-        if dragSession.folderCreationPreview != nil {
-            closeFolder(animated: false)
-        }
+        if dragSession.folderCreationPreview != nil { closeFolder(animated: false) }
 
         _ = dragStateMachine.beginRollback()
         dragSession.draft.rollback()
@@ -4901,11 +3757,7 @@ private extension LaunchpadRootView {
             return
         }
         setPageHitTargetsEnabled(false)
-        finishDragVisuals(
-            dragSession,
-            committed: false,
-            animated: animated
-        ) { [weak self] in
+        finishDragVisuals(dragSession, committed: false, animated: animated) { [weak self] in
             guard let self else { return }
             isFinishingDragVisuals = false
             dragStateMachine.finish()
@@ -4915,8 +3767,9 @@ private extension LaunchpadRootView {
         self.dragSession = nil
     }
 
-    func finishCrossPageRollback(_ session: LaunchpadDragSession, animated: Bool,
-                                 completion: @escaping () -> Void) {
+    fileprivate func finishCrossPageRollback(
+        _ session: LaunchpadDragSession, animated: Bool, completion: @escaping () -> Void
+    ) {
         session.edgeIncomingSurface?.layer.removeAllAnimations()
         session.edgeIncomingSurface?.layer.removeFromSuperlayer()
         session.edgeOutgoingSurface?.layer.removeAllAnimations()
@@ -4935,11 +3788,12 @@ private extension LaunchpadRootView {
             return
         }
         let scale = window?.backingScaleFactor ?? 1
-        let configuration = PageSurfaceConfiguration(bounds: bounds, scale: scale,
-                                                     contentRevision: contentRevision, metrics: metrics)
+        let configuration = PageSurfaceConfiguration(
+            bounds: bounds, scale: scale, contentRevision: contentRevision, metrics: metrics)
         rebuildPageSurfaces(items: resolvedItems, metrics: metrics, scale: scale, configuration: configuration)
         guard let restored = pageSurfaces[currentPage],
-              let source = restored.entries.first(where: { $0.item.id == session.sourceEntry.item.id }) else {
+            let source = restored.entries.first(where: { $0.item.id == session.sourceEntry.item.id })
+        else {
             session.proxyLayer.removeFromSuperlayer()
             completion()
             return
@@ -4949,6 +3803,14 @@ private extension LaunchpadRootView {
         rootLayer.insertSublayer(restored.layer, below: fixedOverlayLayer)
         source.tileLayer.removeFromSuperlayer()
         updatePageIndicator(pageCount: pageProjection(metrics: metrics).pageCount, metrics: metrics, scale: scale)
+        animateCrossPageRollback(
+            session, source: source, restored: restored, animated: animated, completion: completion)
+    }
+
+    fileprivate func animateCrossPageRollback(
+        _ session: LaunchpadDragSession, source: LaunchpadPageEntry, restored: LaunchpadPageSurface, animated: Bool,
+        completion: @escaping () -> Void
+    ) {
         let proxy = session.proxyLayer
         refreshDragProxyForRelease(proxy, sourceEntry: session.sourceEntry)
         let start = proxy.presentation()?.position ?? proxy.position
@@ -4979,14 +3841,8 @@ private extension LaunchpadRootView {
         }
     }
 
-    func makeDragProxy(
-        for entry: LaunchpadPageEntry,
-        initialPoint _: CGPoint
-    ) -> CALayer {
-        let scale = max(
-            1,
-            window?.backingScaleFactor ?? 1
-        )
+    fileprivate func makeDragProxy(for entry: LaunchpadPageEntry, initialPoint _: CGPoint) -> CALayer {
+        let scale = max(1, window?.backingScaleFactor ?? 1)
 
         // Split the moving proxy into an icon-only backing store plus a live
         // label child. The label can then fade without ever replacing the moving
@@ -4997,15 +3853,9 @@ private extension LaunchpadRootView {
         let modelIconOpacity = entry.iconLayer.opacity
         let modelIconTransform = entry.iconLayer.affineTransform()
 
-        let visibleIconOpacity =
-            entry.iconLayer.presentation()?.opacity
-            ?? modelIconOpacity
-        let visibleIconTransform =
-            entry.iconLayer.presentation()?.affineTransform()
-            ?? modelIconTransform
-        let visibleLabelOpacity =
-            entry.labelLayer.presentation()?.opacity
-            ?? previousLabelOpacity
+        let visibleIconOpacity = entry.iconLayer.presentation()?.opacity ?? modelIconOpacity
+        let visibleIconTransform = entry.iconLayer.presentation()?.affineTransform() ?? modelIconTransform
+        let visibleLabelOpacity = entry.labelLayer.presentation()?.opacity ?? previousLabelOpacity
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -5036,6 +3886,13 @@ private extension LaunchpadRootView {
         proxy.shadowRadius = 0
         proxy.shadowOffset = .zero
 
+        let proxyLabelLayer = makeDragProxyLabel(for: entry, scale: scale, opacity: visibleLabelOpacity)
+        proxy.addSublayer(proxyLabelLayer)
+
+        return proxy
+    }
+
+    fileprivate func makeDragProxyLabel(for entry: LaunchpadPageEntry, scale: CGFloat, opacity: Float) -> CATextLayer {
         let proxyLabelLayer = CATextLayer()
         proxyLabelLayer.name = DragProxyMetrics.labelLayerName
         proxyLabelLayer.frame = entry.labelLayer.frame
@@ -5049,29 +3906,20 @@ private extension LaunchpadRootView {
         proxyLabelLayer.shadowOffset = entry.labelLayer.shadowOffset
         proxyLabelLayer.shadowRadius = entry.labelLayer.shadowRadius
         proxyLabelLayer.contentsScale = scale
-        proxyLabelLayer.opacity = visibleLabelOpacity
-        proxy.addSublayer(proxyLabelLayer)
-
-        return proxy
+        proxyLabelLayer.opacity = opacity
+        return proxyLabelLayer
     }
 
-    func dragProxyLabelLayer(_ proxy: CALayer) -> CATextLayer? {
-        proxy.sublayers?.first {
-            $0.name == DragProxyMetrics.labelLayerName
-        } as? CATextLayer
+    fileprivate func dragProxyLabelLayer(_ proxy: CALayer) -> CATextLayer? {
+        proxy.sublayers?.first { $0.name == DragProxyMetrics.labelLayerName } as? CATextLayer
     }
 
     /// Refresh the steady-state icon backing store before landing. The label is
     /// a separate child layer, so its merge fade can never leave a spatial ghost.
-    func refreshDragProxyForRelease(
-        _ proxy: CALayer,
-        sourceEntry entry: LaunchpadPageEntry,
-        hidesLabel: Bool = false
+    fileprivate func refreshDragProxyForRelease(
+        _ proxy: CALayer, sourceEntry entry: LaunchpadPageEntry, hidesLabel: Bool = false
     ) {
-        let scale = max(
-            1,
-            window?.backingScaleFactor ?? 1
-        )
+        let scale = max(1, window?.backingScaleFactor ?? 1)
 
         let previousSelectionOpacity = entry.selectionLayer.opacity
         let previousLabelOpacity = entry.labelLayer.opacity
@@ -5109,87 +3957,42 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func snapshotImage(
-        of layer: CALayer,
-        scale: CGFloat
-    ) -> CGImage? {
+    fileprivate func snapshotImage(of layer: CALayer, scale: CGFloat) -> CGImage? {
         let size = layer.bounds.size
 
+        guard size.width > 0, size.height > 0 else { return nil }
+
+        let pixelWidth = max(1, Int(ceil(size.width * scale)))
+
+        let pixelHeight = max(1, Int(ceil(size.height * scale)))
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
         guard
-            size.width > 0,
-            size.height > 0
-        else {
-            return nil
-        }
-
-        let pixelWidth = max(
-            1,
-            Int(
-                ceil(
-                    size.width * scale
-                )
-            )
-        )
-
-        let pixelHeight = max(
-            1,
-            Int(
-                ceil(
-                    size.height * scale
-                )
-            )
-        )
-
-        let colorSpace =
-            CGColorSpaceCreateDeviceRGB()
-
-        let bitmapInfo =
-            CGImageAlphaInfo
-                .premultipliedLast
-                .rawValue
-
-        guard let context = CGContext(
-            data: nil,
-            width: pixelWidth,
-            height: pixelHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: pixelWidth * 4,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo
-        ) else {
-            return nil
-        }
+            let context = CGContext(
+                data: nil, width: pixelWidth, height: pixelHeight, bitsPerComponent: 8, bytesPerRow: pixelWidth * 4,
+                space: colorSpace, bitmapInfo: bitmapInfo)
+        else { return nil }
 
         // CALayer 使用 point，
         // bitmap 使用 Retina pixel。
-        context.scaleBy(
-            x: scale,
-            y: scale
-        )
+        context.scaleBy(x: scale, y: scale)
 
-        layer.render(
-            in: context
-        )
+        layer.render(in: context)
 
         return context.makeImage()
     }
 
-    func copiedLayer(_ source: CALayer) -> CALayer {
+    fileprivate func copiedLayer(_ source: CALayer) -> CALayer {
         let copy = CALayer(layer: source)
         copy.sublayers = source.sublayers?.map(copiedLayer)
         return copy
     }
 
-    func animateDragLift(
-        _ layer: CALayer,
-        from _: CGPoint,
-        to point: CGPoint,
-        offset: CGVector
-    ) {
-        let destination = CGPoint(
-            x: point.x - offset.dx,
-            y: point.y - offset.dy
-        )
+    fileprivate func animateDragLift(_ layer: CALayer, from _: CGPoint, to point: CGPoint, offset: CGVector) {
+        let destination = CGPoint(x: point.x - offset.dx, y: point.y - offset.dy)
 
         // Do not create a separate "lifted" drag appearance.
         //
@@ -5198,13 +4001,9 @@ private extension LaunchpadRootView {
         // mouseDown -> dragging
         //
         // Only its position changes.
-        layer.removeAnimation(
-            forKey: "dragLiftPosition"
-        )
+        layer.removeAnimation(forKey: "dragLiftPosition")
 
-        layer.removeAnimation(
-            forKey: "dragLiftScale"
-        )
+        layer.removeAnimation(forKey: "dragLiftScale")
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -5222,11 +4021,8 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func animateMergeProxyIntoFolder(
-        _ proxy: CALayer,
-        destination: CGPoint,
-        destinationScale: CGFloat,
-        duration: CFTimeInterval,
+    fileprivate func animateMergeProxyIntoFolder(
+        _ proxy: CALayer, destination: CGPoint, destinationScale: CGFloat, duration: CFTimeInterval,
         timingFunction: CAMediaTimingFunction
     ) {
         let startPosition = proxy.presentation()?.position ?? proxy.position
@@ -5238,10 +4034,7 @@ private extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         proxy.position = destination
-        proxy.setAffineTransform(.init(
-            scaleX: destinationScale,
-            y: destinationScale
-        ))
+        proxy.setAffineTransform(.init(scaleX: destinationScale, y: destinationScale))
         proxy.opacity = 0
         CATransaction.commit()
 
@@ -5260,129 +4053,115 @@ private extension LaunchpadRootView {
         proxy.add(shrink, forKey: "folderMergeLandingScale")
 
         let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [
-            NSNumber(value: startOpacity),
-            NSNumber(value: startOpacity),
-            NSNumber(value: 0),
-        ]
+        opacity.values = [NSNumber(value: startOpacity), NSNumber(value: startOpacity), NSNumber(value: 0)]
         let fadeStartProgress =
             destinationScale <= FolderMergeVisualMetrics.fullFolderAbsorbScale
-                ? FolderMergeVisualMetrics.fullFolderFadeStartProgress
-                : FolderMergeVisualMetrics.mergeFadeStartProgress
+            ? FolderMergeVisualMetrics.fullFolderFadeStartProgress : FolderMergeVisualMetrics.mergeFadeStartProgress
 
-        opacity.keyTimes = [
-            NSNumber(value: 0),
-            NSNumber(value: fadeStartProgress),
-            NSNumber(value: 1),
-        ]
+        opacity.keyTimes = [NSNumber(value: 0), NSNumber(value: fadeStartProgress), NSNumber(value: 1)]
         opacity.duration = duration
-        opacity.timingFunctions = [
-            CAMediaTimingFunction(name: .linear),
-            CAMediaTimingFunction(name: .easeOut),
-        ]
+        opacity.timingFunctions = [CAMediaTimingFunction(name: .linear), CAMediaTimingFunction(name: .easeOut)]
         proxy.add(opacity, forKey: "folderMergeLandingOpacity")
     }
 
-    func finishInPlaceDragVisuals(
-        _ session: LaunchpadDragSession,
-        committed: Bool,
-        animated: Bool,
-        completion: (() -> Void)?
+    fileprivate func restoreInPlaceDragTiles(
+        _ session: LaunchpadDragSession, shouldAnimate: Bool, animation: DragLandingAnimation
     ) {
-        updateDropHighlight(.outside)
+        let surface = session.originalSurface
+        let sourceID = session.sourceEntry.item.id
+        let duration = animation.duration
+        let completionTransition = animation.transition
+        // --------------------------------------------
+        // Cancel / rollback:
+        //
+        // 所有 App 都直接在同一棵 surface
+        // 裡回到原始位置。
+        //
+        // 沒有 previewSurface -> originalSurface
+        // handoff。
+        // --------------------------------------------
 
-        let surface =
-            session.originalSurface
+        CATransaction.begin()
 
-        let proxy =
-            session.proxyLayer
+        CATransaction.setDisableActions(true)
 
-        let sourceID =
-            session.sourceEntry.item.id
+        for entry in surface.entries {
+            guard let originalFrame = session.originalFramesByIdentifier[entry.item.id] else { continue }
 
-        let shouldAnimate =
-            animated
-                && !NSWorkspace
-                    .shared
-                    .accessibilityDisplayShouldReduceMotion
+            let visiblePosition = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
 
-        let completionKind:
-            LaunchpadVisualStyle
-                .DragCompletionKind
+            entry.tileLayer.removeAnimation(forKey: "dragReflowPosition")
 
-        if !committed {
-            completionKind =
-                .rollback
-        } else {
-            switch session.target {
-            case .insertion, .pageInsertion,
-                 .outside:
-                completionKind =
-                    .insertion
+            entry.tileLayer.removeAnimation(forKey: "dragRollbackPosition")
 
-            case .application,
-                 .folder:
-                completionKind =
-                    .merge
+            entry.tileLayer.removeAnimation(forKey: "dragReflowOpacity")
+
+            entry.frames = originalFrame
+
+            entry.absoluteIndex = session.originalIndexByIdentifier[entry.item.id] ?? entry.absoluteIndex
+
+            entry.tileLayer.position = originalFrame.cell.center
+
+            entry.tileLayer.opacity = 1
+
+            if entry.item.id == sourceID {
+                entry.tileLayer.removeFromSuperlayer()
+
+                continue
             }
+
+            entry.button.frame = originalFrame.icon
+
+            guard shouldAnimate, visiblePosition != originalFrame.cell.center else { continue }
+
+            let rollback = CABasicAnimation(keyPath: "position")
+
+            rollback.fromValue = NSValue(point: visiblePosition)
+
+            rollback.toValue = NSValue(point: originalFrame.cell.center)
+
+            rollback.duration = duration
+
+            rollback.timingFunction = completionTransition.timingFunction
+
+            entry.tileLayer.add(rollback, forKey: "dragRollbackPosition")
         }
 
-        let completionTransition =
-            LaunchpadVisualStyle
-                .dragCompletionTransition(
-                    kind:
-                        completionKind
-                )
+        CATransaction.commit()
+    }
 
-        let duration:
-            CFTimeInterval =
-                shouldAnimate
-                    ? completionTransition
-                        .duration
-                    : 0
+    fileprivate struct InPlaceDragLanding {
+        let position: CGPoint
+        let scale: CGFloat
+        let opacity: Float
+        let revealsSource: Bool
+    }
 
-        let destination:
-            CGPoint
+    fileprivate func inPlaceDragLanding(_ session: LaunchpadDragSession, committed: Bool) -> InPlaceDragLanding {
+        let surface = session.originalSurface
+        let proxy = session.proxyLayer
+        let sourceID = session.sourceEntry.item.id
+        let destination: CGPoint
 
-        let destinationScale:
-            CGFloat
+        let destinationScale: CGFloat
 
-        let destinationOpacity:
-            Float
+        let destinationOpacity: Float
 
-        let shouldRevealSource:
-            Bool
+        let shouldRevealSource: Bool
 
         if committed {
             switch session.target {
             case .insertion, .pageInsertion:
                 destination =
-                    surface
-                        .entries
-                        .first {
-                            $0.item.id
-                                == sourceID
-                        }?
-                        .frames
-                        .cell
-                        .center
-                        ?? session
-                            .sourceEntry
-                            .frames
-                            .cell
-                            .center
+                    surface.entries.first { $0.item.id == sourceID }?.frames.cell.center
+                    ?? session.sourceEntry.frames.cell.center
 
                 destinationScale = 1
                 destinationOpacity = 1
                 shouldRevealSource = true
 
             case .application, .folder:
-                destination =
-                    mergeLandingDestination(
-                        in: surface,
-                        session: session
-                    )
-                        ?? proxy.position
+                destination = mergeLandingDestination(in: surface, session: session) ?? proxy.position
 
                 destinationScale = mergeLandingScale(session: session)
                 destinationOpacity = 0
@@ -5390,17 +4169,7 @@ private extension LaunchpadRootView {
 
             case .outside:
                 destination =
-                    session
-                        .originalFramesByIdentifier[
-                            sourceID
-                        ]?
-                        .cell
-                        .center
-                        ?? session
-                            .sourceEntry
-                            .frames
-                            .cell
-                            .center
+                    session.originalFramesByIdentifier[sourceID]?.cell.center ?? session.sourceEntry.frames.cell.center
 
                 destinationScale = 1
                 destinationOpacity = 1
@@ -5408,276 +4177,94 @@ private extension LaunchpadRootView {
             }
         } else {
             destination =
-                session
-                    .originalFramesByIdentifier[
-                        sourceID
-                    ]?
-                    .cell
-                    .center
-                    ?? session
-                        .sourceEntry
-                        .frames
-                        .cell
-                        .center
+                session.originalFramesByIdentifier[sourceID]?.cell.center ?? session.sourceEntry.frames.cell.center
 
             destinationScale = 1
             destinationOpacity = 1
             shouldRevealSource = true
 
-            // --------------------------------------------
-            // Cancel / rollback:
-            //
-            // 所有 App 都直接在同一棵 surface
-            // 裡回到原始位置。
-            //
-            // 沒有 previewSurface -> originalSurface
-            // handoff。
-            // --------------------------------------------
-
-            CATransaction.begin()
-
-            CATransaction
-                .setDisableActions(
-                    true
-                )
-
-            for entry
-                in surface.entries {
-                guard
-                    let originalFrame =
-                        session
-                            .originalFramesByIdentifier[
-                                entry.item.id
-                            ]
-                else {
-                    continue
-                }
-
-                let visiblePosition =
-                    entry
-                        .tileLayer
-                        .presentation()?
-                        .position
-                        ?? entry
-                            .tileLayer
-                            .position
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowPosition"
-                    )
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragRollbackPosition"
-                    )
-
-                entry
-                    .tileLayer
-                    .removeAnimation(
-                        forKey:
-                            "dragReflowOpacity"
-                    )
-
-                entry.frames =
-                    originalFrame
-
-                entry.absoluteIndex =
-                    session
-                        .originalIndexByIdentifier[
-                            entry.item.id
-                        ]
-                        ?? entry
-                            .absoluteIndex
-
-                entry
-                    .tileLayer
-                    .position =
-                        originalFrame
-                            .cell
-                            .center
-
-                entry
-                    .tileLayer
-                    .opacity = 1
-
-                if entry.item.id
-                    == sourceID {
-                    entry
-                        .tileLayer
-                        .removeFromSuperlayer()
-
-                    continue
-                }
-
-                entry.button.frame =
-                    originalFrame.icon
-
-                guard
-                    shouldAnimate,
-                    visiblePosition
-                        != originalFrame
-                            .cell
-                            .center
-                else {
-                    continue
-                }
-
-                let rollback =
-                    CABasicAnimation(
-                        keyPath:
-                            "position"
-                    )
-
-                rollback.fromValue =
-                    NSValue(
-                        point:
-                            visiblePosition
-                    )
-
-                rollback.toValue =
-                    NSValue(
-                        point:
-                            originalFrame
-                                .cell
-                                .center
-                    )
-
-                rollback.duration =
-                    duration
-
-                rollback.timingFunction =
-                    completionTransition
-                        .timingFunction
-
-                entry
-                    .tileLayer
-                    .add(
-                        rollback,
-                        forKey:
-                            "dragRollbackPosition"
-                    )
-            }
-
-            CATransaction.commit()
         }
+
+        return InPlaceDragLanding(
+            position: destination, scale: destinationScale, opacity: destinationOpacity,
+            revealsSource: shouldRevealSource)
+    }
+
+    fileprivate func finishInPlaceDragVisuals(
+        _ session: LaunchpadDragSession, committed: Bool, animated: Bool, completion: (() -> Void)?
+    ) {
+        updateDropHighlight(.outside)
+
+        let surface = session.originalSurface
+
+        let proxy = session.proxyLayer
+
+        let sourceID = session.sourceEntry.item.id
+
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+
+        let animation = dragLandingAnimation(session, committed: committed, shouldAnimate: shouldAnimate)
+
+        let landing = inPlaceDragLanding(session, committed: committed)
+        let shouldRevealSource = landing.revealsSource
+        if !committed { restoreInPlaceDragTiles(session, shouldAnimate: shouldAnimate, animation: animation) }
 
         // Live source tile 不保留 mouseDown 狀態。
         CATransaction.begin()
 
-        CATransaction
-            .setDisableActions(
-                true
-            )
+        CATransaction.setDisableActions(true)
 
-        surface
-            .layer
-            .opacity = 1
+        surface.layer.opacity = 1
 
-        surface
-            .layer
-            .isHidden = false
+        surface.layer.isHidden = false
 
-        session
-            .sourceEntry
-            .iconLayer
-            .removeAnimation(
-                forKey:
-                    "iconPressedOpacity"
-            )
+        session.sourceEntry.iconLayer.removeAnimation(forKey: "iconPressedOpacity")
 
-        session
-            .sourceEntry
-            .iconLayer
-            .opacity = 1
+        session.sourceEntry.iconLayer.opacity = 1
 
-        session
-            .sourceEntry
-            .iconLayer
-            .setAffineTransform(
-                .identity
-            )
+        session.sourceEntry.iconLayer.setAffineTransform(.identity)
 
-        session
-            .sourceEntry
-            .tileLayer
-            .opacity = 1
+        session.sourceEntry.tileLayer.opacity = 1
 
         CATransaction.commit()
 
-        activeSurface =
-            surface
+        activeSurface = surface
 
-        pageContentLayer =
-            surface.layer
+        pageContentLayer = surface.layer
 
-        let finalize = { [weak proxy, weak sourceLayer = session.sourceEntry.tileLayer] in
+        let finalize: @MainActor () -> Void = { [weak proxy, weak sourceLayer = session.sourceEntry.tileLayer] in
 
             CATransaction.begin()
 
-            CATransaction
-                .setDisableActions(
-                    true
-                )
+            CATransaction.setDisableActions(true)
 
-            proxy?
-                .removeAllAnimations()
+            proxy?.removeAllAnimations()
 
-            proxy?
-                .opacity = 0
+            proxy?.opacity = 0
 
-            proxy?
-                .removeFromSuperlayer()
+            proxy?.removeFromSuperlayer()
 
-            if shouldRevealSource,
-               let sourceLayer {
-                sourceLayer
-                    .removeAllAnimations()
+            if shouldRevealSource, let sourceLayer {
+                sourceLayer.removeAllAnimations()
 
-                sourceLayer
-                    .opacity = 1
+                sourceLayer.opacity = 1
 
-                if sourceLayer
-                    .superlayer == nil {
+                if sourceLayer.superlayer == nil {
                     // Proxy 已經先移除，
                     // 然後 live source 接手。
                     //
                     // 同一個 transaction，
                     // 不存在兩個 visual owner。
-                    surface
-                        .layer
-                        .addSublayer(
-                            sourceLayer
-                        )
+                    surface.layer.addSublayer(sourceLayer)
                 }
             }
 
             // source NSButton 在 mouse tracking
             // 結束後才移到最後位置。
-            if let frame =
-                committed
-                    ? surface
-                        .entries
-                        .first(
-                            where: {
-                                $0.item.id
-                                    == sourceID
-                            }
-                        )?
-                        .frames
-                    : session
-                        .originalFramesByIdentifier[
-                            sourceID
-                        ] {
-                session
-                    .sourceEntry
-                    .button
-                    .frame =
-                        frame.icon
+            if let frame = committed
+                ? surface.entries.first(where: { $0.item.id == sourceID })?.frames
+                : session.originalFramesByIdentifier[sourceID] {
+                session.sourceEntry.button.frame = frame.icon
             }
 
             CATransaction.commit()
@@ -5685,28 +4272,30 @@ private extension LaunchpadRootView {
             completion?()
         }
 
+        animateInPlaceLanding(
+            proxy, landing: landing, animation: animation, shouldAnimate: shouldAnimate, finalize: finalize)
+    }
+
+    fileprivate func animateInPlaceLanding(
+        _ proxy: CALayer, landing: InPlaceDragLanding, animation: DragLandingAnimation, shouldAnimate: Bool,
+        finalize: @escaping @MainActor () -> Void
+    ) {
+        let destination = landing.position
+        let destinationScale = landing.scale
+        let destinationOpacity = landing.opacity
+        let completionKind = animation.kind
+        let completionTransition = animation.transition
+        let duration = animation.duration
         guard shouldAnimate else {
             CATransaction.begin()
 
-            CATransaction
-                .setDisableActions(
-                    true
-                )
+            CATransaction.setDisableActions(true)
 
-            proxy.position =
-                destination
+            proxy.position = destination
 
-            proxy.setAffineTransform(
-                .init(
-                    scaleX:
-                        destinationScale,
-                    y:
-                        destinationScale
-                )
-            )
+            proxy.setAffineTransform(.init(scaleX: destinationScale, y: destinationScale))
 
-            proxy.opacity =
-                destinationOpacity
+            proxy.opacity = destinationOpacity
 
             CATransaction.commit()
 
@@ -5717,12 +4306,8 @@ private extension LaunchpadRootView {
 
         if completionKind == .merge {
             animateMergeProxyIntoFolder(
-                proxy,
-                destination: destination,
-                destinationScale: destinationScale,
-                duration: duration,
-                timingFunction: completionTransition.timingFunction
-            )
+                proxy, destination: destination, destinationScale: destinationScale, duration: duration,
+                timingFunction: completionTransition.timingFunction)
 
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(duration))
@@ -5733,50 +4318,27 @@ private extension LaunchpadRootView {
 
         CATransaction.begin()
 
-        CATransaction
-            .setAnimationDuration(
-                duration
-            )
+        CATransaction.setAnimationDuration(duration)
 
-        CATransaction
-            .setAnimationTimingFunction(
-                completionTransition
-                    .timingFunction
-            )
+        CATransaction.setAnimationTimingFunction(completionTransition.timingFunction)
 
-        proxy.position =
-            destination
+        proxy.position = destination
 
-        proxy.setAffineTransform(
-            .init(
-                scaleX:
-                    destinationScale,
-                y:
-                    destinationScale
-            )
-        )
+        proxy.setAffineTransform(.init(scaleX: destinationScale, y: destinationScale))
 
-        proxy.opacity =
-            destinationOpacity
+        proxy.opacity = destinationOpacity
 
         CATransaction.commit()
 
         Task { @MainActor in
-            try? await Task.sleep(
-                for:
-                    .seconds(
-                        duration
-                    )
-            )
+            try? await Task.sleep(for: .seconds(duration))
 
             finalize()
         }
     }
 
-    func finishFolderCreationPreviewVisuals(
-        _ session: LaunchpadDragSession,
-        animated: Bool,
-        completion: (() -> Void)?
+    fileprivate func finishFolderCreationPreviewVisuals(
+        _ session: LaunchpadDragSession, animated: Bool, completion: (() -> Void)?
     ) {
         guard let preview = session.folderCreationPreview else {
             completion?()
@@ -5784,20 +4346,12 @@ private extension LaunchpadRootView {
         }
 
         updateDropHighlight(.outside)
-        refreshDragProxyForRelease(
-            session.proxyLayer,
-            sourceEntry: session.sourceEntry,
-            hidesLabel: true
-        )
+        refreshDragProxyForRelease(session.proxyLayer, sourceEntry: session.sourceEntry, hidesLabel: true)
 
-        let sourcePresentation = folderPresentations.first {
-            $0.button.application.id == preview.sourceIdentity
-        }
-        let destination = preview.sourceLandingCenter
-            ?? sourcePresentation?.tileLayer.frame.center
-            ?? session.proxyLayer.position
-        let shouldAnimate = animated
-            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let sourcePresentation = folderPresentations.first { $0.button.application.id == preview.sourceIdentity }
+        let destination =
+            preview.sourceLandingCenter ?? sourcePresentation?.tileLayer.frame.center ?? session.proxyLayer.position
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let transition = LaunchpadVisualStyle.dragCompletionTransition(kind: .insertion)
         // LAUNCHPANE_SPRING_OPEN_RELEASE_HANDOFF_V1
         // Spring-open Folder release is still an ordinary positional landing.
@@ -5838,9 +4392,7 @@ private extension LaunchpadRootView {
 
         CATransaction.begin()
         CATransaction.setAnimationDuration(duration)
-        CATransaction.setAnimationTimingFunction(
-            transition.timingFunction
-        )
+        CATransaction.setAnimationTimingFunction(transition.timingFunction)
         session.proxyLayer.position = destination
         session.proxyLayer.setAffineTransform(.identity)
         session.proxyLayer.opacity = 1
@@ -5852,61 +4404,73 @@ private extension LaunchpadRootView {
         }
     }
 
-    func finishDragVisuals(
-        _ session: LaunchpadDragSession,
-        committed: Bool,
-        animated: Bool,
-        completion: (() -> Void)? = nil
+    fileprivate func animateRollbackTiles(
+        from previewSurface: LaunchpadPageSurface, to originalSurface: LaunchpadPageSurface,
+        excluding sourceID: LauncherLayoutItemIdentifier, transition: LaunchpadVisualStyle.DragCompletionTransition
     ) {
-        if committed, session.folderCreationPreview != nil {
-            finishFolderCreationPreviewVisuals(
-                session,
-                animated: animated,
-                completion: completion
-            )
-            return
+        var originalPositions: [LauncherLayoutItemIdentifier: CGPoint] = [:]
+        for entry in originalSurface.entries { originalPositions[entry.item.id] = entry.frames.cell.center }
+
+        for entry in previewSurface.entries where entry.item.id != sourceID {
+            guard let targetPosition = originalPositions[entry.item.id] else { continue }
+
+            let visiblePosition = entry.tileLayer.presentation()?.position ?? entry.tileLayer.position
+
+            entry.tileLayer.removeAnimation(forKey: "dragReflowPosition")
+
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            entry.tileLayer.position = targetPosition
+            CATransaction.commit()
+
+            guard visiblePosition != targetPosition else { continue }
+
+            let rollback = CABasicAnimation(keyPath: "position")
+            rollback.fromValue = NSValue(point: visiblePosition)
+            rollback.toValue = NSValue(point: targetPosition)
+            rollback.duration = transition.duration
+            rollback.timingFunction = transition.timingFunction
+            entry.tileLayer.add(rollback, forKey: "dragRollbackPosition")
         }
-        // Same-page reorder uses one persistent page tree.
-        // Never enter the legacy preview/original surface
-        // handoff path for this gesture.
-        if session.usesInPlacePreview {
-            finishInPlaceDragVisuals(
-                session,
-                committed: committed,
-                animated: animated,
-                completion: completion
-            )
-            return
+    }
+
+    fileprivate struct DragLanding {
+        let position: CGPoint
+        let scale: CGFloat
+        let opacity: Float
+        var revealLayer: CALayer?
+        var revealSurface: LaunchpadPageSurface?
+    }
+
+    fileprivate func promoteDragPreviewSurface(_ session: LaunchpadDragSession) {
+        if let previewSurface = session.previewSurface {
+            // The preview becomes the sole visual owner while persistence is pending.
+            // Remove the old native views before hiding/removing their backing layer so
+            // transparent hit targets and accessibility elements cannot survive promotion.
+            detachButtons(from: session.originalSurface)
+
+            activeSurface = previewSurface
+
+            pageContentLayer = previewSurface.layer
+
+            // 原 surface 已經不需要顯示，
+            // 但保留正確 model state，
+            // 以防 layout commit 失敗。
+            session.originalSurface.layer.removeFromSuperlayer()
+
+            session.originalSurface.layer.opacity = 1
+
+            session.sourceEntry.tileLayer.opacity = 1
         }
+    }
 
-        updateDropHighlight(.outside)
-
-        let proxy =
-            session.proxyLayer
-
-        // Mouse-up ends the pressed state immediately.
-        //
-        // The proxy may stay alive while surrounding tiles finish their reflow,
-        // but its bitmap must no longer contain the mouse-down opacity / hover
-        // transform. Otherwise the stale snapshot looks like an afterimage after
-        // the user has already released the icon.
-        refreshDragProxyForRelease(
-            proxy,
-            sourceEntry: session.sourceEntry,
-            hidesLabel: session.isSourceLabelHiddenForMerge
-        )
-
-        let previewSurface =
-            session.previewSurface
-
-        let originalSurface =
-            session.originalSurface
-
-        let sourceID =
-            session.sourceEntry.item.id
-
-        let originalSourceLayer =
-            session.sourceEntry.tileLayer
+    fileprivate func prepareDragLanding(_ session: LaunchpadDragSession, committed: Bool, shouldAnimate: Bool)
+        -> DragLanding {
+        let proxy = session.proxyLayer
+        let previewSurface = session.previewSurface
+        let originalSurface = session.originalSurface
+        let sourceID = session.sourceEntry.item.id
+        let originalSourceLayer = session.sourceEntry.tileLayer
 
         let destination: CGPoint
         let destinationScale: CGFloat
@@ -5915,159 +4479,43 @@ private extension LaunchpadRootView {
         var revealLayer: CALayer?
         var revealSurface: LaunchpadPageSurface?
 
-        let shouldAnimate =
-            animated
-                && !NSWorkspace.shared
-                    .accessibilityDisplayShouldReduceMotion
-
-        let completionKind: LaunchpadVisualStyle.DragCompletionKind
-
-        if !committed {
-            completionKind = .rollback
-        } else {
-            switch session.target {
-            case .insertion, .pageInsertion, .outside:
-                completionKind = .insertion
-            case .application, .folder:
-                completionKind = .merge
-            }
-        }
-
-        let completionTransition =
-            LaunchpadVisualStyle.dragCompletionTransition(
-                kind: completionKind
-            )
-
-        let duration: CFTimeInterval =
-            shouldAnimate
-                ? completionTransition.duration
-                : 0
-
-        let visualCompletionDuration: CFTimeInterval = {
-            guard
-                shouldAnimate,
-                committed,
-                previewSurface != nil
-            else { return duration }
-
-            switch session.target {
-            case .application, .folder:
-                // The source proxy can finish its short merge landing first, but
-                // keep the preview alive until surrounding apps complete the same
-                // reflow used by ordinary App exchanges.
-                return duration
-                    + FolderMergeVisualMetrics.postLandingReflowDelay
-                    + LaunchpadVisualStyle.dragReflowTransition(
-                        movedForward: false
-                    ).duration
-            case .insertion, .pageInsertion, .outside:
-                return duration
-            }
-        }()
-
         if committed {
             switch session.target {
             case .insertion, .pageInsertion:
-                let previewSource =
-                    previewSurface?
-                        .entries
-                        .first {
-                            $0.item.id
-                                == sourceID
-                        }
+                let previewSource = previewSurface?.entries.first { $0.item.id == sourceID }
 
-                destination =
-                    previewSource?
-                        .frames
-                        .cell
-                        .center
-                    ?? session
-                        .sourceEntry
-                        .frames
-                        .cell
-                        .center
+                destination = previewSource?.frames.cell.center ?? session.sourceEntry.frames.cell.center
 
                 destinationScale = 1
                 destinationOpacity = 1
 
-                revealLayer =
-                    previewSource?
-                        .tileLayer
+                revealLayer = previewSource?.tileLayer
 
-                revealSurface =
-                    previewSurface
+                revealSurface = previewSurface
 
             case .application, .folder:
-                destination =
-                    mergeLandingDestination(
-                        in: previewSurface,
-                        session: session
-                    )
-                        ?? proxy.position
+                destination = mergeLandingDestination(in: previewSurface, session: session) ?? proxy.position
 
                 destinationScale = mergeLandingScale(session: session)
                 destinationOpacity = 0
 
             case .outside:
-                destination =
-                    session
-                        .sourceEntry
-                        .frames
-                        .cell
-                        .center
+                destination = session.sourceEntry.frames.cell.center
 
                 destinationScale = 1
                 destinationOpacity = 1
             }
 
-            if let previewSurface {
-                // The preview becomes the sole visual owner while persistence is pending.
-                // Remove the old native views before hiding/removing their backing layer so
-                // transparent hit targets and accessibility elements cannot survive promotion.
-                detachButtons(
-                    from: session.originalSurface
-                )
-
-                activeSurface =
-                    previewSurface
-
-                pageContentLayer =
-                    previewSurface.layer
-
-                // 原 surface 已經不需要顯示，
-                // 但保留正確 model state，
-                // 以防 layout commit 失敗。
-                session
-                    .originalSurface
-                    .layer
-                    .removeFromSuperlayer()
-
-                session
-                    .originalSurface
-                    .layer
-                    .opacity = 1
-
-                session
-                    .sourceEntry
-                    .tileLayer
-                    .opacity = 1
-            }
+            promoteDragPreviewSurface(session)
         } else {
-            destination =
-                session
-                    .sourceEntry
-                    .frames
-                    .cell
-                    .center
+            destination = session.sourceEntry.frames.cell.center
 
             destinationScale = 1
             destinationOpacity = 1
 
-            revealLayer =
-                originalSourceLayer
+            revealLayer = originalSourceLayer
 
-            revealSurface =
-                originalSurface
+            revealSurface = originalSurface
 
             if shouldAnimate, previewSurface != nil {
                 // Keep the reordered preview visible while every displaced tile
@@ -6075,24 +4523,138 @@ private extension LaunchpadRootView {
                 // both layouts during the rollback and created a fading ghost.
                 originalSurface.layer.opacity = 0
             } else {
-                previewSurface?
-                    .layer
-                    .removeFromSuperlayer()
+                previewSurface?.layer.removeFromSuperlayer()
 
                 originalSurface.layer.opacity = 1
             }
 
-            activeSurface =
-                originalSurface
+            activeSurface = originalSurface
 
-            pageContentLayer =
-                originalSurface.layer
+            pageContentLayer = originalSurface.layer
         }
 
-        session
-            .sourceEntry
-            .iconLayer
-            .opacity = 1
+        return DragLanding(
+            position: destination, scale: destinationScale, opacity: destinationOpacity, revealLayer: revealLayer,
+            revealSurface: revealSurface)
+    }
+
+    fileprivate func promoteStationaryDragLanding(
+        _ session: LaunchpadDragSession, committed: Bool, landing: inout DragLanding
+    ) {
+        let proxy = session.proxyLayer
+        if committed, session.target.isInsertion, let liveLayer = landing.revealLayer,
+            let liveSurface = landing.revealSurface {
+            let visibleProxyPosition = proxy.presentation()?.position ?? proxy.position
+
+            let landingDistance = hypot(
+                visibleProxyPosition.x - landing.position.x, visibleProxyPosition.y - landing.position.y)
+
+            // Less than one logical point is visually already landed.
+            // Keeping the proxy around at this point only creates a stale frame.
+            if landingDistance <= 0.75 {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+
+                proxy.removeAllAnimations()
+                proxy.removeFromSuperlayer()
+
+                if liveLayer.superlayer == nil { liveSurface.layer.addSublayer(liveLayer) }
+
+                liveLayer.opacity = 1
+
+                CATransaction.commit()
+
+                // The delayed reflow completion must not perform the source-owner
+                // handoff a second time.
+                landing.revealLayer = nil
+                landing.revealSurface = nil
+            }
+        }
+
+    }
+
+    fileprivate struct DragLandingAnimation {
+        let kind: LaunchpadVisualStyle.DragCompletionKind
+        let transition: LaunchpadVisualStyle.DragCompletionTransition
+        let duration: CFTimeInterval
+        let visualDuration: CFTimeInterval
+    }
+
+    fileprivate func dragLandingAnimation(_ session: LaunchpadDragSession, committed: Bool, shouldAnimate: Bool)
+        -> DragLandingAnimation {
+        let previewSurface = session.previewSurface
+        let completionKind: LaunchpadVisualStyle.DragCompletionKind
+
+        if !committed {
+            completionKind = .rollback
+        } else {
+            switch session.target {
+            case .insertion, .pageInsertion, .outside: completionKind = .insertion
+            case .application, .folder: completionKind = .merge
+            }
+        }
+
+        let completionTransition = LaunchpadVisualStyle.dragCompletionTransition(kind: completionKind)
+
+        let duration: CFTimeInterval = shouldAnimate ? completionTransition.duration : 0
+
+        let visualCompletionDuration: CFTimeInterval = {
+            guard shouldAnimate, committed, previewSurface != nil else { return duration }
+
+            switch session.target {
+            case .application, .folder:
+                // The source proxy can finish its short merge landing first, but
+                // keep the preview alive until surrounding apps complete the same
+                // reflow used by ordinary App exchanges.
+                return duration + FolderMergeVisualMetrics.postLandingReflowDelay
+                    + LaunchpadVisualStyle.dragReflowTransition(movedForward: false).duration
+            case .insertion, .pageInsertion, .outside: return duration
+            }
+        }()
+
+        return DragLandingAnimation(
+            kind: completionKind, transition: completionTransition, duration: duration,
+            visualDuration: visualCompletionDuration)
+    }
+
+    fileprivate func finishDragVisuals(
+        _ session: LaunchpadDragSession, committed: Bool, animated: Bool, completion: (() -> Void)? = nil
+    ) {
+        if committed, session.folderCreationPreview != nil {
+            finishFolderCreationPreviewVisuals(session, animated: animated, completion: completion)
+            return
+        }
+        // Same-page reorder uses one persistent page tree.
+        // Never enter the legacy preview/original surface
+        // handoff path for this gesture.
+        if session.usesInPlacePreview {
+            finishInPlaceDragVisuals(session, committed: committed, animated: animated, completion: completion)
+            return
+        }
+
+        updateDropHighlight(.outside)
+
+        let proxy = session.proxyLayer
+
+        // Mouse-up ends the pressed state immediately.
+        //
+        // The proxy may stay alive while surrounding tiles finish their reflow,
+        // but its bitmap must no longer contain the mouse-down opacity / hover
+        // transform. Otherwise the stale snapshot looks like an afterimage after
+        // the user has already released the icon.
+        refreshDragProxyForRelease(
+            proxy, sourceEntry: session.sourceEntry, hidesLabel: session.isSourceLabelHiddenForMerge)
+
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+
+        let animation = dragLandingAnimation(session, committed: committed, shouldAnimate: shouldAnimate)
+
+        var landing = prepareDragLanding(session, committed: committed, shouldAnimate: shouldAnimate)
+        let destination = landing.position
+        let destinationScale = landing.scale
+        let destinationOpacity = landing.opacity
+
+        session.sourceEntry.iconLayer.opacity = 1
 
         // If mouse-up happens while the dragged tile is already sitting exactly
         // on its insertion slot, there is no source-tile landing motion left to
@@ -6105,69 +4667,23 @@ private extension LaunchpadRootView {
         // Promote the real preview tile immediately in that case. Other displaced
         // tiles are still allowed to finish their existing reflow animation, and
         // the normal completion path below still waits for the declared duration.
-        if committed,
-           session.target.isInsertion,
-           let liveLayer = revealLayer,
-           let liveSurface = revealSurface {
-            let visibleProxyPosition =
-                proxy.presentation()?.position
-                    ?? proxy.position
-
-            let landingDistance = hypot(
-                visibleProxyPosition.x - destination.x,
-                visibleProxyPosition.y - destination.y
-            )
-
-            // Less than one logical point is visually already landed.
-            // Keeping the proxy around at this point only creates a stale frame.
-            if landingDistance <= 0.75 {
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-
-                proxy.removeAllAnimations()
-                proxy.removeFromSuperlayer()
-
-                if liveLayer.superlayer == nil {
-                    liveSurface.layer.addSublayer(
-                        liveLayer
-                    )
-                }
-
-                liveLayer.opacity = 1
-
-                CATransaction.commit()
-
-                // The delayed reflow completion must not perform the source-owner
-                // handoff a second time.
-                revealLayer = nil
-                revealSurface = nil
-            }
-        }
+        promoteStationaryDragLanding(session, committed: committed, landing: &landing)
+        let revealLayer = landing.revealLayer
+        let revealSurface = landing.revealSurface
 
         guard shouldAnimate else {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
 
-            proxy.position =
-                destination
+            proxy.position = destination
 
-            proxy.setAffineTransform(
-                .init(
-                    scaleX:
-                        destinationScale,
-                    y:
-                        destinationScale
-                )
-            )
+            proxy.setAffineTransform(.init(scaleX: destinationScale, y: destinationScale))
 
-            proxy.opacity =
-                destinationOpacity
+            proxy.opacity = destinationOpacity
 
             proxy.removeFromSuperlayer()
 
-            if let revealLayer,
-               revealLayer.superlayer == nil,
-               let revealSurface {
+            if let revealLayer, revealLayer.superlayer == nil, let revealSurface {
                 revealSurface.layer.addSublayer(revealLayer)
             }
             revealLayer?.opacity = 1
@@ -6177,6 +4693,20 @@ private extension LaunchpadRootView {
             return
         }
 
+        animateDragLanding(
+            session, committed: committed, landing: landing, animation: animation, completion: completion)
+    }
+
+    fileprivate func animateDragLanding(
+        _ session: LaunchpadDragSession, committed: Bool, landing: DragLanding, animation: DragLandingAnimation,
+        completion: (() -> Void)?
+    ) {
+        let proxy = session.proxyLayer
+        let previewSurface = session.previewSurface
+        let originalSurface = session.originalSurface
+        let sourceID = session.sourceEntry.item.id
+        let revealLayer = landing.revealLayer
+        let revealSurface = landing.revealSurface
         let finishPresentation = { [weak proxy, weak revealLayer] in
 
             CATransaction.begin()
@@ -6186,9 +4716,7 @@ private extension LaunchpadRootView {
                 previewSurface?.layer.removeFromSuperlayer()
                 originalSurface.layer.opacity = 1
             }
-            if let revealLayer,
-               revealLayer.superlayer == nil,
-               let revealSurface {
+            if let revealLayer, revealLayer.superlayer == nil, let revealSurface {
                 revealSurface.layer.addSublayer(revealLayer)
             }
             revealLayer?.opacity = 1
@@ -6198,72 +4726,27 @@ private extension LaunchpadRootView {
 
         CATransaction.begin()
 
-        CATransaction.setAnimationDuration(
-            duration
-        )
+        CATransaction.setAnimationDuration(animation.duration)
 
-        CATransaction.setAnimationTimingFunction(
-            completionTransition.timingFunction
-        )
+        CATransaction.setAnimationTimingFunction(animation.transition.timingFunction)
 
         if !committed, let previewSurface {
-            var originalPositions: [LauncherLayoutItemIdentifier: CGPoint] = [:]
-            for entry in originalSurface.entries {
-                originalPositions[entry.item.id] = entry.frames.cell.center
-            }
-
-            for entry in previewSurface.entries where entry.item.id != sourceID {
-                guard let targetPosition = originalPositions[entry.item.id] else {
-                    continue
-                }
-
-                let visiblePosition =
-                    entry.tileLayer.presentation()?.position
-                        ?? entry.tileLayer.position
-
-                entry.tileLayer.removeAnimation(forKey: "dragReflowPosition")
-
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                entry.tileLayer.position = targetPosition
-                CATransaction.commit()
-
-                guard visiblePosition != targetPosition else { continue }
-
-                let rollback = CABasicAnimation(keyPath: "position")
-                rollback.fromValue = NSValue(point: visiblePosition)
-                rollback.toValue = NSValue(point: targetPosition)
-                rollback.duration = duration
-                rollback.timingFunction = completionTransition.timingFunction
-                entry.tileLayer.add(rollback, forKey: "dragRollbackPosition")
-            }
+            animateRollbackTiles(
+                from: previewSurface, to: originalSurface, excluding: sourceID, transition: animation.transition)
         }
 
-        if completionKind == .merge {
+        if animation.kind == .merge {
             CATransaction.commit()
 
             animateMergeProxyIntoFolder(
-                proxy,
-                destination: destination,
-                destinationScale: destinationScale,
-                duration: duration,
-                timingFunction: completionTransition.timingFunction
-            )
+                proxy, destination: landing.position, destinationScale: landing.scale, duration: animation.duration,
+                timingFunction: animation.transition.timingFunction)
         } else {
-            proxy.position =
-                destination
+            proxy.position = landing.position
 
-            proxy.setAffineTransform(
-                .init(
-                    scaleX:
-                        destinationScale,
-                    y:
-                        destinationScale
-                )
-            )
+            proxy.setAffineTransform(.init(scaleX: landing.scale, y: landing.scale))
 
-            proxy.opacity =
-                destinationOpacity
+            proxy.opacity = landing.opacity
 
             CATransaction.commit()
         }
@@ -6274,1750 +4757,1510 @@ private extension LaunchpadRootView {
         // completion may fire before the visible rollback finishes. Drive the
         // handoff from the declared transition duration instead.
         Task { @MainActor in
-            try? await Task.sleep(
-                for: .seconds(visualCompletionDuration)
-            )
+            try? await Task.sleep(for: .seconds(animation.visualDuration))
             finishPresentation()
         }
     }
 
 }
 
-private extension LaunchpadRootView {
-        // MARK: - Native-style folder title editing
+extension LaunchpadRootView {
+    // MARK: - Native-style folder title editing
 
-        func startFolderTitleEditing() {
-            guard
-                folderTitleEditor == nil,
-                !isCommittingFolderTitle,
-                let openFolderID,
-                let folder = resolvedFolder(id: openFolderID),
-                folderTitleFrame.width > 0,
-                folderTitleFrame.height > 0
-            else { return }
+    fileprivate func startFolderTitleEditing() {
+        guard folderTitleEditor == nil, !isCommittingFolderTitle, let openFolderID,
+            let folder = resolvedFolder(id: openFolderID), folderTitleFrame.width > 0, folderTitleFrame.height > 0
+        else { return }
 
-            let editor = NSTextField(frame: folderTitleFrame)
-            editor.stringValue = folder.title
-            editor.isEditable = true
-            editor.isSelectable = true
-            editor.isBordered = false
-            editor.isBezeled = false
-            editor.drawsBackground = false
-            editor.backgroundColor = .clear
-            editor.textColor = NSColor.white.withAlphaComponent(0.96)
-            editor.font = NSFont.systemFont(ofSize: 27, weight: .regular)
-            editor.alignment = .center
-            editor.focusRingType = .none
-            editor.maximumNumberOfLines = 1
-            editor.lineBreakMode = .byClipping
-            editor.delegate = self
-            editor.setAccessibilityLabel("Folder name")
+        let editor = NSTextField(frame: folderTitleFrame)
+        editor.stringValue = folder.title
+        editor.isEditable = true
+        editor.isSelectable = true
+        editor.isBordered = false
+        editor.isBezeled = false
+        editor.drawsBackground = false
+        editor.backgroundColor = .clear
+        editor.textColor = NSColor.white.withAlphaComponent(0.96)
+        editor.font = NSFont.systemFont(ofSize: 27, weight: .regular)
+        editor.alignment = .center
+        editor.focusRingType = .none
+        editor.maximumNumberOfLines = 1
+        editor.lineBreakMode = .byClipping
+        editor.delegate = self
+        editor.setAccessibilityLabel("Folder name")
 
-            folderTitleEditor = editor
-            folderTitleLayer?.opacity = 0
-            addSubview(editor)
+        folderTitleEditor = editor
+        folderTitleLayer?.opacity = 0
+        addSubview(editor)
 
-            guard window?.makeFirstResponder(editor) == true else {
-                editor.removeFromSuperview()
-                folderTitleEditor = nil
-                folderTitleLayer?.opacity = 1
-                return
-            }
-            editor.currentEditor()?.selectAll(nil)
-        }
-
-        func finishFolderTitleEditing(commit: Bool) {
-            guard !isEndingFolderTitleEditing, let editor = folderTitleEditor else { return }
-            isEndingFolderTitleEditing = true
-
-            let folderID = openFolderID
-            let rawTitle = editor.stringValue
-            let fallbackTitle = folderID.flatMap { resolvedFolder(id: $0)?.title } ?? "Untitled"
-            let normalizedTitle = normalizedFolderTitle(rawTitle)
-
-            // Clear ownership before resigning first responder because AppKit sends
-            // controlTextDidEndEditing synchronously during the responder handoff.
-            folderTitleEditor = nil
-            editor.delegate = nil
+        guard window?.makeFirstResponder(editor) == true else {
             editor.removeFromSuperview()
+            folderTitleEditor = nil
             folderTitleLayer?.opacity = 1
-            folderTitleLayer?.string = commit ? normalizedTitle : fallbackTitle
-            window?.makeFirstResponder(self)
-            isEndingFolderTitleEditing = false
+            return
+        }
+        editor.currentEditor()?.selectAll(nil)
+    }
 
-            guard commit, let folderID else { return }
-            persistFolderTitle(normalizedTitle, folderID: folderID)
+    fileprivate func finishFolderTitleEditing(commit: Bool) {
+        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor else { return }
+        isEndingFolderTitleEditing = true
+
+        let folderID = openFolderID
+        let rawTitle = editor.stringValue
+        let fallbackTitle = folderID.flatMap { resolvedFolder(id: $0)?.title } ?? "Untitled"
+        let normalizedTitle = normalizedFolderTitle(rawTitle)
+
+        // Clear ownership before resigning first responder because AppKit sends
+        // controlTextDidEndEditing synchronously during the responder handoff.
+        folderTitleEditor = nil
+        editor.delegate = nil
+        editor.removeFromSuperview()
+        folderTitleLayer?.opacity = 1
+        folderTitleLayer?.string = commit ? normalizedTitle : fallbackTitle
+        window?.makeFirstResponder(self)
+        isEndingFolderTitleEditing = false
+
+        guard commit, let folderID else { return }
+        persistFolderTitle(normalizedTitle, folderID: folderID)
+    }
+
+    fileprivate func normalizedFolderTitle(_ rawTitle: String) -> String {
+        let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Untitled" : trimmed
+    }
+
+    fileprivate func persistFolderTitle(_ title: String, folderID: UUID) {
+        guard !isCommittingFolderTitle else { return }
+
+        let draft: LauncherLayoutDraft
+        do {
+            var candidate = try LauncherLayoutDraft(document: layoutDocument)
+            try candidate.renameFolder(folderID, to: title)
+            guard candidate.hasChanges else { return }
+            draft = candidate
+        } catch {
+            NSSound.beep()
+            return
         }
 
-        func normalizedFolderTitle(_ rawTitle: String) -> String {
-            let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? "Untitled" : trimmed
-        }
-
-        func persistFolderTitle(_ title: String, folderID: UUID) {
-            guard !isCommittingFolderTitle else { return }
-
-            let draft: LauncherLayoutDraft
+        isCommittingFolderTitle = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { isCommittingFolderTitle = false }
             do {
-                var candidate = try LauncherLayoutDraft(document: layoutDocument)
-                try candidate.renameFolder(folderID, to: title)
-                guard candidate.hasChanges else { return }
-                draft = candidate
+                layoutDocument = try await layoutStore.commit(draft)
+                invalidatePageSurfaceCache()
+                if openFolderID == folderID { renderFolderOverlay(animated: false) } else { needsLayout = true }
             } catch {
                 NSSound.beep()
-                return
-            }
-
-            isCommittingFolderTitle = true
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                defer { isCommittingFolderTitle = false }
-                do {
-                    layoutDocument = try await layoutStore.commit(draft)
-                    invalidatePageSurfaceCache()
-                    if openFolderID == folderID {
-                        renderFolderOverlay(animated: false)
-                    } else {
-                        needsLayout = true
-                    }
-                } catch {
-                    NSSound.beep()
-                    if openFolderID == folderID {
-                        renderFolderOverlay(animated: false)
-                    }
-                }
+                if openFolderID == folderID { renderFolderOverlay(animated: false) }
             }
         }
+    }
 
-        // MARK: - Folder child drag -> root drag handoff
+    // MARK: - Folder child drag -> root drag handoff
 
-        func folderItemPointerDown(
-            folderID: UUID,
-            application: ApplicationRecord,
-            absoluteIndex: Int,
-            frames: GridItemFrames,
-            presentation: AppTilePresentation,
-            event: NSEvent
-        ) {
-            guard
-                openFolderID == folderID,
-                dragSession == nil,
-                folderItemDragSession == nil,
-                !isCommittingLayout,
-                !isFinishingDragVisuals,
-                dragStateMachine.pointerDown(on: .application(application.id))
-            else { return }
+    fileprivate func folderItemPointerDown(
+        folderID: UUID, absoluteIndex: Int, frames: GridItemFrames,
+        presentation: AppTilePresentation, event: NSEvent
+    ) {
+        let application = presentation.button.application
+        guard openFolderID == folderID, dragSession == nil, folderItemDragSession == nil, !isCommittingLayout,
+            !isFinishingDragVisuals, dragStateMachine.pointerDown(on: .application(application.id))
+        else { return }
 
-            if folderTitleEditor != nil {
-                finishFolderTitleEditing(commit: true)
-            }
+        if folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
 
-            let entry = LaunchpadPageEntry(
-                item: .application(application),
-                absoluteIndex: absoluteIndex,
-                frames: frames,
-                presentation: .application(presentation)
-            )
-            pendingFolderPress = PendingFolderTilePress(
-                folderID: folderID,
-                entry: entry,
-                point: convert(event.locationInWindow, from: nil)
-            )
-            animatePressed(on: entry.iconLayer, isPressed: true)
+        let entry = LaunchpadPageEntry(
+            item: .application(application), absoluteIndex: absoluteIndex, frames: frames,
+            presentation: .application(presentation))
+        pendingFolderPress = PendingFolderTilePress(
+            folderID: folderID, entry: entry, point: convert(event.locationInWindow, from: nil))
+        animatePressed(on: entry.iconLayer, isPressed: true)
+    }
+
+    fileprivate func folderItemPointerDragged(_ update: TilePointerDragUpdate) {
+        let point = convert(update.event.locationInWindow, from: nil)
+
+        if let session = dragSession, session.sourceOrigin.folderID != nil {
+            updateDragInteraction(at: point)
+            return
         }
 
-        func folderItemPointerDragged(_ update: TilePointerDragUpdate) {
-            let point = convert(update.event.locationInWindow, from: nil)
+        guard update.hasExceededActivationDistance else { return }
+        if folderItemDragSession == nil { beginFolderItemDrag(at: point) }
+        updateFolderItemDrag(at: point)
+    }
 
-            if let session = dragSession, session.sourceOrigin.folderID != nil {
-                updateDragInteraction(at: point)
-                return
-            }
+    // LAUNCHPANE_FOLDER_POINTER_RELEASE_OWNERSHIP_V20
+    //
+    // A Folder child can remain the AppKit mouse owner even after its visual
+    // presentation has been replaced by a root preview. Never remove that
+    // NSView synchronously from inside its own mouseUp/cancel callback. AppKit
+    // is still unwinding the event dispatch stack at that point. Hide/disable
+    // it immediately, then retire the view on the next MainActor turn.
+    fileprivate func retireFolderTrackingButtonAfterPointerCallback(_ button: PointerTrackingTileButton) {
+        button.isEnabled = false
+        button.isHidden = true
 
-            guard update.hasExceededActivationDistance else { return }
-            if folderItemDragSession == nil {
-                beginFolderItemDrag(at: point)
-            }
-            updateFolderItemDrag(at: point)
+        Task { @MainActor [weak self, weak button] in
+            // A cancellation path can still originate inside the AppKit
+            // pointer callback. Yield one MainActor turn before detaching.
+            await Task.yield()
+            guard let button else { return }
+            button.endPointerTrackingWithoutCallback()
+            button.removeFromSuperview()
+
+            // LAUNCHPANE_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
+            // Keep the pointer-owner sentinel alive for one additional main
+            // turn after removal. didResignActive / click-through side effects
+            // caused by AppKit teardown can be delivered synchronously or on
+            // the following turn; clearing ownership before that reopened the
+            // exact dismissal race this helper is meant to close.
+            await Task.yield()
+            if self?.preservedFolderTrackingButton === button { self?.preservedFolderTrackingButton = nil }
+            self?.folderExtractionActivationShield = false
+        }
+    }
+
+    fileprivate func retireFolderExtractionPointerOwnerAfterCommit(_ session: LaunchpadDragSession) {
+        guard session.sourceOrigin.folderID != nil else { return }
+
+        // The Folder-owned AppKit view is intentionally retained beyond
+        // mouseUp. Root landing and layout persistence can continue to use
+        // the source session for several frames, and releasing the last
+        // pointer owner before that handoff completes can transiently
+        // deactivate the accessory app. Retire it only when the root commit
+        // has reached its final presentation state.
+        let pointerOwner = preservedFolderTrackingButton ?? (session.sourceEntry.button as? AppTileButton)
+
+        guard let pointerOwner else {
+            folderExtractionActivationShield = false
+            return
         }
 
-        // LAUNCHPANE_FOLDER_POINTER_RELEASE_OWNERSHIP_V20
-        //
-        // A Folder child can remain the AppKit mouse owner even after its visual
-        // presentation has been replaced by a root preview. Never remove that
-        // NSView synchronously from inside its own mouseUp/cancel callback. AppKit
-        // is still unwinding the event dispatch stack at that point. Hide/disable
-        // it immediately, then retire the view on the next MainActor turn.
-        func retireFolderTrackingButtonAfterPointerCallback(_ button: PointerTrackingTileButton) {
-            button.isEnabled = false
-            button.isHidden = true
+        // Use the same retirement path as Folder-local reorder. Keeping the
+        // preserved owner alive through removal plus one extra main turn
+        // closes both extraction and in-Folder release races with one invariant.
+        retireFolderTrackingButtonAfterPointerCallback(pointerOwner)
+    }
 
-            Task { @MainActor [weak self, weak button] in
-                // A cancellation path can still originate inside the AppKit
-                // pointer callback. Yield one MainActor turn before detaching.
-                await Task.yield()
-                guard let button else { return }
-                button.endPointerTrackingWithoutCallback()
-                button.removeFromSuperview()
+    fileprivate func folderItemPointerUp(_ release: TilePointerRelease) {
+        defer { pendingFolderPress = nil }
+        let point = convert(release.event.locationInWindow, from: nil)
 
-                // LAUNCHPANE_FOLDER_DRAG_RELEASE_OWNERSHIP_V22
-                // Keep the pointer-owner sentinel alive for one additional main
-                // turn after removal. didResignActive / click-through side effects
-                // caused by AppKit teardown can be delivered synchronously or on
-                // the following turn; clearing ownership before that reopened the
-                // exact dismissal race this helper is meant to close.
-                await Task.yield()
-                if self?.preservedFolderTrackingButton === button {
-                    self?.preservedFolderTrackingButton = nil
-                }
-                self?.folderExtractionActivationShield = false
+        if let session = dragSession, session.sourceOrigin.folderID != nil {
+            let trackingButton = session.sourceEntry.button
+            if session.target == .outside,
+                let fallback = nearestFolderExtractionInsertionTarget(at: point, session: session) {
+                applyDragPreviewTarget(fallback, session: session)
             }
+            completeDragInteraction(at: point)
+
+            // LAUNCHPANE_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
+            // Do not retire the Folder-owned pointer view here. The root drag
+            // commit is still landing/persisting after mouseUp returns. Keep a
+            // hidden, disabled ownership sentinel until finishDragCommitIfReady()
+            // finalizes the root presentation.
+            trackingButton.isEnabled = false
+            trackingButton.isHidden = true
+            return
         }
 
-        func retireFolderExtractionPointerOwnerAfterCommit(
-            _ session: LaunchpadDragSession
-        ) {
-            guard session.sourceOrigin.folderID != nil else { return }
-
-            // The Folder-owned AppKit view is intentionally retained beyond
-            // mouseUp. Root landing and layout persistence can continue to use
-            // the source session for several frames, and releasing the last
-            // pointer owner before that handoff completes can transiently
-            // deactivate the accessory app. Retire it only when the root commit
-            // has reached its final presentation state.
-            let pointerOwner = preservedFolderTrackingButton ?? (session.sourceEntry.button as? AppTileButton)
-
-            guard let pointerOwner else {
-                folderExtractionActivationShield = false
-                return
-            }
-
-            // Use the same retirement path as Folder-local reorder. Keeping the
-            // preserved owner alive through removal plus one extra main turn
-            // closes both extraction and in-Folder release races with one invariant.
-            retireFolderTrackingButtonAfterPointerCallback(pointerOwner)
-        }
-
-        func folderItemPointerUp(_ release: TilePointerRelease) {
-            defer { pendingFolderPress = nil }
-            let point = convert(release.event.locationInWindow, from: nil)
-
-            if let session = dragSession, session.sourceOrigin.folderID != nil {
-                let trackingButton = session.sourceEntry.button
-                if session.target == .outside,
-                   let fallback = nearestFolderExtractionInsertionTarget(at: point, session: session) {
-                    applyDragPreviewTarget(fallback, session: session)
-                }
-                completeDragInteraction(at: point)
-
-                // LAUNCHPANE_FOLDER_EXTRACTION_ACTIVATION_SHIELD_V21
-                // Do not retire the Folder-owned pointer view here. The root drag
-                // commit is still landing/persisting after mouseUp returns. Keep a
-                // hidden, disabled ownership sentinel until finishDragCommitIfReady()
-                // finalizes the root presentation.
-                trackingButton.isEnabled = false
-                trackingButton.isHidden = true
-                return
-            }
-
-            if let context = folderItemDragSession {
-                let center = CGPoint(
-                    x: point.x - context.pointerOffset.dx,
-                    y: point.y - context.pointerOffset.dy
-                )
-                context.lastPointerPoint = point
-                context.lastProxyCenter = center
-
-                // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
-                // mouseUp can arrive while the edge-triggered page is still
-                // settling. AppKit has already completed pointer tracking, so
-                // retain the release point and commit only after the new page is
-                // stationary. This avoids landing against a moving surface.
-                if context.isEdgePageTurnInFlight || folderPageTransitionAnimator.isAnimating {
-                    context.pendingReleasePoint = point
-                    context.edgePagingDirection = nil
-                    return
-                }
-
-                cancelFolderItemDragEdgePaging(context)
-                if folderPanelFrame.contains(center) {
-                    completeFolderItemReorder(context, at: center)
-                } else {
-                    cancelFolderItemDragBeforeExit(animated: true)
-                }
-                return
-            }
-
-            if let pendingFolderPress {
-                animatePressed(on: pendingFolderPress.entry.iconLayer, isPressed: false)
-            }
-            dragStateMachine.finish()
-        }
-
-        func folderItemPointerCancelled() {
-            if let session = dragSession, session.sourceOrigin.folderID != nil {
-                // cancelDragInteraction() owns Folder-extraction teardown. It now
-                // retires the pointer owner after this cancellation callback exits.
-                cancelDragInteraction()
-                return
-            }
-            if let context = folderItemDragSession {
-                cancelFolderItemDragEdgePaging(context)
-                cancelFolderItemDragBeforeExit(animated: true)
-                return
-            }
-            if let pendingFolderPress {
-                animatePressed(on: pendingFolderPress.entry.iconLayer, isPressed: false)
-            }
-            pendingFolderPress = nil
-            dragStateMachine.finish()
-        }
-
-        func beginFolderItemDrag(at point: CGPoint) {
-            guard
-                let pendingFolderPress,
-                let sourceButton = pendingFolderPress.entry.button as? AppTileButton,
-                let sourceTileParent = pendingFolderPress.entry.tileLayer.superlayer,
-                let sourceFolder = resolvedFolder(id: pendingFolderPress.folderID),
-                dragStateMachine.beginDragging()
-            else { return }
-
-            let sourceTileIndex = sourceTileParent.sublayers?.firstIndex(where: {
-                $0 === pendingFolderPress.entry.tileLayer
-            }) ?? (sourceTileParent.sublayers?.count ?? 0)
-            let pointerOffset = CGVector(
-                dx: pendingFolderPress.point.x - pendingFolderPress.entry.frames.cell.midX,
-                dy: pendingFolderPress.point.y - pendingFolderPress.entry.frames.cell.midY
-            )
-            let proxy = makeDragProxy(for: pendingFolderPress.entry, initialPoint: pendingFolderPress.point)
-            let context = FolderItemDragSession(
-                folderID: pendingFolderPress.folderID,
-                sourceEntry: pendingFolderPress.entry,
-                proxyLayer: proxy,
-                pointerOffset: pointerOffset,
-                trackingButton: sourceButton,
-                sourceAbsoluteIndex: pendingFolderPress.entry.absoluteIndex,
-                baselineApplications: sourceFolder.applications,
-                sourcePage: folderPage,
-                sourceTileParent: sourceTileParent,
-                sourceTileIndex: sourceTileIndex
-            )
-            folderItemDragSession = context
-            context.lastPointerPoint = point
-            context.lastProxyCenter = CGPoint(
-                x: point.x - context.pointerOffset.dx,
-                y: point.y - context.pointerOffset.dy
-            )
-
-            // A Folder page turn may retire the presentation surface that
-            // originally owned mouseDown. Preserve that exact AppKit button for
-            // the entire drag and hide the source identity from any page surface
-            // rebuilt while we travel across pages.
-            preservedFolderTrackingButton = sourceButton
-            if case let .application(application) = pendingFolderPress.entry.item {
-                folderHiddenApplicationID = application.id
-            }
-
-            // Proxy acquisition and source detachment happen in one display
-            // transaction. The folder never renders a duplicate source app and
-            // the detached source remains fully opaque for later release snapshots.
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            dragOverlayLayer.addSublayer(proxy)
-            pendingFolderPress.entry.tileLayer.opacity = 1
-            pendingFolderPress.entry.tileLayer.removeFromSuperlayer()
-            animateDragLift(
-                proxy,
-                from: pendingFolderPress.entry.frames.cell.center,
-                to: point,
-                offset: pointerOffset
-            )
-            CATransaction.commit()
-        }
-
-        func updateFolderItemDrag(at point: CGPoint) {
-            guard let context = folderItemDragSession else { return }
-            let center = CGPoint(
-                x: point.x - context.pointerOffset.dx,
-                y: point.y - context.pointerOffset.dy
-            )
+        if let context = folderItemDragSession {
+            let center = CGPoint(x: point.x - context.pointerOffset.dx, y: point.y - context.pointerOffset.dy)
             context.lastPointerPoint = point
             context.lastProxyCenter = center
 
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            context.proxyLayer.position = center
-            CATransaction.commit()
-
             // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
-            // During the short page transition, the drag proxy remains the
-            // pointer-owned foreground object. Do not reinterpret transient
-            // positions as extraction/reorder until the new page has settled.
+            // mouseUp can arrive while the edge-triggered page is still
+            // settling. AppKit has already completed pointer tracking, so
+            // retain the release point and commit only after the new page is
+            // stationary. This avoids landing against a moving surface.
             if context.isEdgePageTurnInFlight || folderPageTransitionAnimator.isAnimating {
-                return
-            }
-
-            if updateFolderItemDragEdgePaging(at: center, context: context) {
-                return
-            }
-
-            guard let geometry = folderReorderGeometry() else {
-                promoteFolderItemDragToRoot(context, at: point)
-                return
-            }
-
-            // Give edge paging a small horizontal ownership grace outside the
-            // rounded panel. This prevents tiny pointer overshoot from turning a
-            // deliberate page gesture into a Folder -> Root extraction. Vertical
-            // exits remain immediate.
-            if folderDragRetentionFrame(metrics: geometry.metrics).contains(center) {
-                if folderPanelFrame.contains(center) {
-                    updateFolderItemDragDestination(at: center, context: context)
-                }
+                context.pendingReleasePoint = point
+                context.edgePagingDirection = nil
                 return
             }
 
             cancelFolderItemDragEdgePaging(context)
+            if folderPanelFrame.contains(center) {
+                completeFolderItemReorder(context, at: center)
+            } else {
+                cancelFolderItemDragBeforeExit(animated: true)
+            }
+            return
+        }
+
+        if let pendingFolderPress { animatePressed(on: pendingFolderPress.entry.iconLayer, isPressed: false) }
+        dragStateMachine.finish()
+    }
+
+    fileprivate func folderItemPointerCancelled() {
+        if let session = dragSession, session.sourceOrigin.folderID != nil {
+            // cancelDragInteraction() owns Folder-extraction teardown. It now
+            // retires the pointer owner after this cancellation callback exits.
+            cancelDragInteraction()
+            return
+        }
+        if let context = folderItemDragSession {
+            cancelFolderItemDragEdgePaging(context)
+            cancelFolderItemDragBeforeExit(animated: true)
+            return
+        }
+        if let pendingFolderPress { animatePressed(on: pendingFolderPress.entry.iconLayer, isPressed: false) }
+        pendingFolderPress = nil
+        dragStateMachine.finish()
+    }
+
+    fileprivate func beginFolderItemDrag(at point: CGPoint) {
+        guard let pendingFolderPress, let sourceButton = pendingFolderPress.entry.button as? AppTileButton,
+            let sourceTileParent = pendingFolderPress.entry.tileLayer.superlayer,
+            let sourceFolder = resolvedFolder(id: pendingFolderPress.folderID), dragStateMachine.beginDragging()
+        else { return }
+
+        let sourceTileIndex =
+            sourceTileParent.sublayers?.firstIndex(where: { $0 === pendingFolderPress.entry.tileLayer })
+            ?? (sourceTileParent.sublayers?.count ?? 0)
+        let pointerOffset = CGVector(
+            dx: pendingFolderPress.point.x - pendingFolderPress.entry.frames.cell.midX,
+            dy: pendingFolderPress.point.y - pendingFolderPress.entry.frames.cell.midY)
+        let proxy = makeDragProxy(for: pendingFolderPress.entry, initialPoint: pendingFolderPress.point)
+        let context = FolderItemDragSession(
+            folderID: pendingFolderPress.folderID, sourceEntry: pendingFolderPress.entry, proxyLayer: proxy,
+            pointerOffset: pointerOffset, trackingButton: sourceButton,
+            sourceAbsoluteIndex: pendingFolderPress.entry.absoluteIndex,
+            baselineApplications: sourceFolder.applications, sourcePage: folderPage, sourceTileParent: sourceTileParent,
+            sourceTileIndex: sourceTileIndex)
+        folderItemDragSession = context
+        context.lastPointerPoint = point
+        context.lastProxyCenter = CGPoint(x: point.x - context.pointerOffset.dx, y: point.y - context.pointerOffset.dy)
+
+        // A Folder page turn may retire the presentation surface that
+        // originally owned mouseDown. Preserve that exact AppKit button for
+        // the entire drag and hide the source identity from any page surface
+        // rebuilt while we travel across pages.
+        preservedFolderTrackingButton = sourceButton
+        if case .application(let application) = pendingFolderPress.entry.item {
+            folderHiddenApplicationID = application.id
+        }
+
+        // Proxy acquisition and source detachment happen in one display
+        // transaction. The folder never renders a duplicate source app and
+        // the detached source remains fully opaque for later release snapshots.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        dragOverlayLayer.addSublayer(proxy)
+        pendingFolderPress.entry.tileLayer.opacity = 1
+        pendingFolderPress.entry.tileLayer.removeFromSuperlayer()
+        animateDragLift(proxy, from: pendingFolderPress.entry.frames.cell.center, to: point, offset: pointerOffset)
+        CATransaction.commit()
+    }
+
+    fileprivate func updateFolderItemDrag(at point: CGPoint) {
+        guard let context = folderItemDragSession else { return }
+        let center = CGPoint(x: point.x - context.pointerOffset.dx, y: point.y - context.pointerOffset.dy)
+        context.lastPointerPoint = point
+        context.lastProxyCenter = center
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        context.proxyLayer.position = center
+        CATransaction.commit()
+
+        // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
+        // During the short page transition, the drag proxy remains the
+        // pointer-owned foreground object. Do not reinterpret transient
+        // positions as extraction/reorder until the new page has settled.
+        if context.isEdgePageTurnInFlight || folderPageTransitionAnimator.isAnimating { return }
+
+        if updateFolderItemDragEdgePaging(at: center, context: context) { return }
+
+        guard let geometry = folderReorderGeometry() else {
             promoteFolderItemDragToRoot(context, at: point)
+            return
         }
 
-        func folderDragEdgeWidth(metrics: FolderGridMetrics) -> CGFloat {
-            min(
-                FolderDragEdgePagingMetrics.maximumWidth,
-                max(
-                    FolderDragEdgePagingMetrics.minimumWidth,
-                    metrics.panelFrame.width * FolderDragEdgePagingMetrics.widthFraction
-                )
-            )
+        // Give edge paging a small horizontal ownership grace outside the
+        // rounded panel. This prevents tiny pointer overshoot from turning a
+        // deliberate page gesture into a Folder -> Root extraction. Vertical
+        // exits remain immediate.
+        if folderDragRetentionFrame(metrics: geometry.metrics).contains(center) {
+            if folderPanelFrame.contains(center) { updateFolderItemDragDestination(at: center, context: context) }
+            return
         }
 
-        func folderDragHorizontalExitGrace(metrics: FolderGridMetrics) -> CGFloat {
-            min(
-                FolderDragEdgePagingMetrics.maximumExitGrace,
-                max(
-                    FolderDragEdgePagingMetrics.minimumExitGrace,
-                    metrics.panelFrame.width * FolderDragEdgePagingMetrics.exitGraceFraction
-                )
-            )
-        }
+        cancelFolderItemDragEdgePaging(context)
+        promoteFolderItemDragToRoot(context, at: point)
+    }
 
-        func folderDragRetentionFrame(metrics: FolderGridMetrics) -> CGRect {
-            let grace = folderDragHorizontalExitGrace(metrics: metrics)
-            return CGRect(
-                x: metrics.panelFrame.minX - grace,
-                y: metrics.panelFrame.minY,
-                width: metrics.panelFrame.width + grace * 2,
-                height: metrics.panelFrame.height
-            )
-        }
+    fileprivate func folderDragEdgeWidth(metrics: FolderGridMetrics) -> CGFloat {
+        min(
+            FolderDragEdgePagingMetrics.maximumWidth,
+            max(
+                FolderDragEdgePagingMetrics.minimumWidth,
+                metrics.panelFrame.width * FolderDragEdgePagingMetrics.widthFraction))
+    }
 
-        func folderDragEdgeDirection(
-            at center: CGPoint,
-            metrics: FolderGridMetrics
-        ) -> Int? {
-            let panel = metrics.panelFrame
-            let grace = folderDragHorizontalExitGrace(metrics: metrics)
-            guard
-                center.y >= panel.minY,
-                center.y <= panel.maxY,
-                center.x >= panel.minX - grace,
-                center.x <= panel.maxX + grace
-            else { return nil }
+    fileprivate func folderDragHorizontalExitGrace(metrics: FolderGridMetrics) -> CGFloat {
+        min(
+            FolderDragEdgePagingMetrics.maximumExitGrace,
+            max(
+                FolderDragEdgePagingMetrics.minimumExitGrace,
+                metrics.panelFrame.width * FolderDragEdgePagingMetrics.exitGraceFraction))
+    }
 
-            let edgeWidth = folderDragEdgeWidth(metrics: metrics)
-            if center.x <= panel.minX + edgeWidth {
-                return metrics.isRightToLeft ? 1 : -1
+    fileprivate func folderDragRetentionFrame(metrics: FolderGridMetrics) -> CGRect {
+        let grace = folderDragHorizontalExitGrace(metrics: metrics)
+        return CGRect(
+            x: metrics.panelFrame.minX - grace, y: metrics.panelFrame.minY, width: metrics.panelFrame.width + grace * 2,
+            height: metrics.panelFrame.height)
+    }
+
+    fileprivate func folderDragEdgeDirection(at center: CGPoint, metrics: FolderGridMetrics) -> Int? {
+        let panel = metrics.panelFrame
+        let grace = folderDragHorizontalExitGrace(metrics: metrics)
+        guard center.y >= panel.minY, center.y <= panel.maxY, center.x >= panel.minX - grace,
+            center.x <= panel.maxX + grace
+        else { return nil }
+
+        let edgeWidth = folderDragEdgeWidth(metrics: metrics)
+        if center.x <= panel.minX + edgeWidth { return metrics.isRightToLeft ? 1 : -1 }
+        if center.x >= panel.maxX - edgeWidth { return metrics.isRightToLeft ? -1 : 1 }
+        return nil
+    }
+
+    fileprivate func cancelFolderItemDragEdgePaging(_ context: FolderItemDragSession) {
+        context.edgePagingGeneration &+= 1
+        context.edgePagingTask?.cancel()
+        context.edgePagingTask = nil
+        context.edgePagingDirection = nil
+        context.isEdgePageTurnInFlight = false
+    }
+
+    @discardableResult fileprivate func updateFolderItemDragEdgePaging(
+        at center: CGPoint, context: FolderItemDragSession
+    ) -> Bool {
+        guard folderItemDragSession === context, let geometry = folderReorderGeometry(),
+            geometry.folder.id == context.folderID, !context.isEdgePageTurnInFlight,
+            !folderPageTransitionAnimator.isAnimating, interactiveFolderPageSwipe == nil
+        else { return false }
+
+        guard let direction = folderDragEdgeDirection(at: center, metrics: geometry.metrics) else {
+            if context.edgePagingTask != nil || context.edgePagingDirection != nil {
+                cancelFolderItemDragEdgePaging(context)
             }
-            if center.x >= panel.maxX - edgeWidth {
-                return metrics.isRightToLeft ? -1 : 1
+            return false
+        }
+
+        let targetPage = folderPage + direction
+        guard (0..<geometry.metrics.pageCount).contains(targetPage) else {
+            if context.edgePagingTask != nil || context.edgePagingDirection != nil {
+                cancelFolderItemDragEdgePaging(context)
             }
+            return false
+        }
+
+        guard context.edgePagingDirection != direction || context.edgePagingTask == nil else { return true }
+
+        cancelFolderItemDragEdgePaging(context)
+        context.edgePagingDirection = direction
+        let generation = context.edgePagingGeneration
+        context.edgePagingTask = Task { @MainActor [weak self, weak context] in
+            try? await Task.sleep(for: FolderDragEdgePagingMetrics.dwell)
+            guard !Task.isCancelled, let self, let context, self.folderItemDragSession === context,
+                context.edgePagingGeneration == generation, context.edgePagingDirection == direction,
+                !context.isEdgePageTurnInFlight, !self.folderPageTransitionAnimator.isAnimating,
+                let geometry = self.folderReorderGeometry(),
+                self.folderDragEdgeDirection(at: context.lastProxyCenter, metrics: geometry.metrics) == direction
+            else { return }
+
+            self.performFolderItemDragEdgePageTurn(direction: direction, context: context)
+        }
+        return true
+    }
+
+    fileprivate func performFolderItemDragEdgePageTurn(direction: Int, context: FolderItemDragSession) {
+        guard folderItemDragSession === context, let geometry = folderReorderGeometry(),
+            geometry.folder.id == context.folderID, let viewportLayer = folderPageViewportLayer,
+            !folderPageTransitionAnimator.isAnimating, interactiveFolderPageSwipe == nil,
+            let outgoing = folderPageSurfaces[folderPage]
+        else { return }
+
+        let targetPage = folderPage + direction
+        guard (0..<geometry.metrics.pageCount).contains(targetPage),
+            let destinationAbsoluteIndex = folderDragDestinationIndexForEdgeTurn(
+                direction: direction, targetPage: targetPage, context: context, metrics: geometry.metrics),
+            let projected = projectedFolder(context, destinationAbsoluteIndex: destinationAbsoluteIndex)
+        else {
+            cancelFolderItemDragEdgePaging(context)
+            return
+        }
+
+        let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
+        let built = makeFolderPageLayer(
+            folder: projected, metrics: geometry.metrics, pageIndex: targetPage, scale: scale)
+        let incoming = FolderPageSurface(
+            pageIndex: targetPage, layer: built.layer, presentations: built.presentations,
+            applications: built.applications)
+        hideFolderDragSource(in: incoming, context: context)
+
+        context.edgePagingTask = nil
+        context.edgePagingDirection = nil
+        context.isEdgePageTurnInFlight = true
+        context.hasCrossedPages = true
+        context.edgePagingGeneration &+= 1
+        let generation = context.edgePagingGeneration
+        let previousDestination = context.destinationAbsoluteIndex
+        context.destinationAbsoluteIndex = destinationAbsoluteIndex
+
+        let pageStart = targetPage * geometry.metrics.itemsPerPage
+        _ = dragStateMachine.update(
+            target: .pageInsertion(page: targetPage, index: max(0, destinationAbsoluteIndex - pageStart)))
+
+        folderIconTask?.cancel()
+        folderIconTask = nil
+        for presentation in outgoing.presentations { presentation.button.isHidden = true }
+
+        let transition = prepareFolderDragEdgeTransition(
+            outgoing: outgoing, incoming: incoming, metrics: geometry.metrics, direction: direction,
+            viewportLayer: viewportLayer)
+        let finish: @MainActor () -> Void = { [weak self, weak context] in
+            guard let self, let context, self.folderItemDragSession === context,
+                context.edgePagingGeneration == generation
+            else { return }
+            self.finishFolderDragEdgeTransition(
+                context, transition: transition, previousDestination: previousDestination)
+        }
+        animateFolderDragEdgeTransition(transition, finish: finish)
+    }
+
+    fileprivate struct FolderDragEdgeTransition {
+        let outgoing: FolderPageSurface
+        let incoming: FolderPageSurface
+        let metrics: FolderGridMetrics
+        let resting: CGPoint
+        let width: CGFloat
+        let visualDirection: CGFloat
+    }
+
+    fileprivate func prepareFolderDragEdgeTransition(
+        outgoing: FolderPageSurface, incoming: FolderPageSurface, metrics: FolderGridMetrics, direction: Int,
+        viewportLayer: CALayer
+    ) -> FolderDragEdgeTransition {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let stalePageIndices = folderPageSurfaces.compactMap { pageIndex, surface in
+            surface === outgoing ? nil : pageIndex
+        }
+        for pageIndex in stalePageIndices {
+            guard let surface = folderPageSurfaces.removeValue(forKey: pageIndex) else { continue }
+            detachFolderButtons(from: surface)
+            surface.layer.removeAllAnimations()
+            surface.layer.removeFromSuperlayer()
+        }
+        let resting = metrics.panelFrame.center
+        let width = max(1, metrics.panelFrame.width)
+        let visualDirection = CGFloat(metrics.isRightToLeft ? -direction : direction)
+        outgoing.layer.removeAllAnimations()
+        outgoing.layer.position = resting
+        outgoing.layer.opacity = 1
+        outgoing.layer.isHidden = false
+        incoming.layer.removeAllAnimations()
+        incoming.layer.position = CGPoint(x: resting.x + visualDirection * width, y: resting.y)
+        incoming.layer.opacity = 1
+        incoming.layer.isHidden = false
+        if incoming.layer.superlayer == nil { viewportLayer.addSublayer(incoming.layer) }
+        CATransaction.commit()
+
+        return FolderDragEdgeTransition(
+            outgoing: outgoing, incoming: incoming, metrics: metrics, resting: resting, width: width,
+            visualDirection: visualDirection)
+    }
+
+    fileprivate func finishFolderDragEdgeTransition(
+        _ context: FolderItemDragSession, transition: FolderDragEdgeTransition, previousDestination: Int
+    ) {
+        let outgoing = transition.outgoing
+        let incoming = transition.incoming
+        let resting = transition.resting
+        let metrics = transition.metrics
+        let targetPage = incoming.pageIndex
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outgoing.layer.removeAllAnimations()
+        outgoing.layer.removeFromSuperlayer()
+        incoming.layer.removeAllAnimations()
+        incoming.layer.position = resting
+        incoming.layer.isHidden = false
+        CATransaction.commit()
+
+        self.detachFolderButtons(from: outgoing)
+        self.folderPageSurfaces.removeAll(keepingCapacity: true)
+        self.folderPageSurfaces[targetPage] = incoming
+        self.folderPage = targetPage
+        self.folderPresentations = incoming.presentations
+        self.contextualizeFolderDragSurfaceButtons(incoming, context: context)
+        self.updateFolderPageIndicator(pageCount: metrics.pageCount)
+
+        context.edgePagingTask = nil
+        context.edgePagingDirection = nil
+        context.isEdgePageTurnInFlight = false
+
+        self.previewFolderItemReorder(
+            context, destinationAbsoluteIndex: context.destinationAbsoluteIndex,
+            previousDestinationAbsoluteIndex: previousDestination, animated: false)
+
+        if let releasePoint = context.pendingReleasePoint {
+            context.pendingReleasePoint = nil
+            let releaseCenter = CGPoint(
+                x: releasePoint.x - context.pointerOffset.dx, y: releasePoint.y - context.pointerOffset.dy)
+            if self.folderDragRetentionFrame(metrics: metrics).contains(releaseCenter) {
+                self.completeFolderItemReorder(
+                    context, at: self.clampedFolderDragPointToGrid(releaseCenter, metrics: metrics))
+            } else {
+                self.cancelFolderItemDragBeforeExit(animated: true)
+            }
+            return
+        }
+
+        self.updateFolderItemDrag(at: context.lastPointerPoint)
+    }
+
+    fileprivate func animateFolderDragEdgeTransition(
+        _ transition: FolderDragEdgeTransition, finish: @escaping @MainActor () -> Void
+    ) {
+        let outgoing = transition.outgoing
+        let incoming = transition.incoming
+        let resting = transition.resting
+        let width = transition.width
+        let visualDirection = transition.visualDirection
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            finish()
+            return
+        }
+
+        let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
+        func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
+            let result = CABasicAnimation(keyPath: "position")
+            result.fromValue = NSValue(point: start)
+            result.toValue = NSValue(point: end)
+            result.duration = DragEdgeMetrics.pageDuration
+            result.timingFunction = timing
+            return result
+        }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        CATransaction.setCompletionBlock { Task { @MainActor in finish() } }
+        let outgoingEnd = CGPoint(x: resting.x - visualDirection * width, y: resting.y)
+        outgoing.layer.position = outgoingEnd
+        incoming.layer.position = resting
+        outgoing.layer.add(animation(resting, outgoingEnd), forKey: "folderDragEdgePageOut")
+        incoming.layer.add(
+            animation(CGPoint(x: resting.x + visualDirection * width, y: resting.y), resting),
+            forKey: "folderDragEdgePageIn")
+        CATransaction.commit()
+    }
+
+    fileprivate func hideFolderDragSource(in incoming: FolderPageSurface, context: FolderItemDragSession) {
+        if case .application(let sourceApplication) = context.sourceEntry.item,
+            let sourcePresentation = incoming.presentations.first(where: {
+                $0.button.application.id == sourceApplication.id
+            }) {
+            sourcePresentation.tileLayer.opacity = 0
+            sourcePresentation.button.isHidden = true
+        }
+
+    }
+
+    fileprivate func contextualizeFolderDragSurfaceButtons(
+        _ surface: FolderPageSurface, context: FolderItemDragSession) {
+        for presentation in surface.presentations {
+            presentation.button.isHidden = true
+            if presentation.button !== context.trackingButton { presentation.button.removeFromSuperview() }
+        }
+    }
+
+    fileprivate func clampedFolderDragPointToGrid(_ point: CGPoint, metrics: FolderGridMetrics) -> CGPoint {
+        CGPoint(
+            x: min(max(point.x, metrics.gridFrame.minX), metrics.gridFrame.maxX),
+            y: min(max(point.y, metrics.gridFrame.minY), metrics.gridFrame.maxY))
+    }
+
+    fileprivate func updateFolderItemDragDestination(at center: CGPoint, context: FolderItemDragSession) {
+        guard let destination = folderReorderTargetIndex(at: center, context: context),
+            destination != context.destinationAbsoluteIndex
+        else { return }
+
+        let previousDestination = context.destinationAbsoluteIndex
+        context.destinationAbsoluteIndex = destination
+        if let geometry = folderReorderGeometry() {
+            _ = dragStateMachine.update(
+                target: .pageInsertion(page: folderPage, index: max(0, destination - geometry.pageStartIndex)))
+        }
+        previewFolderItemReorder(
+            context, destinationAbsoluteIndex: destination, previousDestinationAbsoluteIndex: previousDestination)
+    }
+
+    fileprivate struct FolderReorderGeometry {
+        let folder: ResolvedLaunchpadFolder
+        let metrics: FolderGridMetrics
+        let pageStartIndex: Int
+        let visibleCount: Int
+    }
+
+    fileprivate func folderReorderGeometry() -> FolderReorderGeometry? {
+        guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else { return nil }
+
+        let allMetrics = solver.solveFolder(
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
+        let pageStartIndex = folderPage * allMetrics.itemsPerPage
+        guard pageStartIndex < folder.applications.count else { return nil }
+        let pageEndIndex = min(pageStartIndex + allMetrics.itemsPerPage, folder.applications.count)
+        let visibleCount = pageEndIndex - pageStartIndex
+
+        // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
+        // The open Folder panel uses one stable full-folder lattice on every
+        // page. Reorder hit-testing must use that exact same lattice too;
+        // solving a second, smaller Folder for a partial page makes its cells
+        // disagree with the visuals after page one.
+        return FolderReorderGeometry(
+            folder: folder, metrics: allMetrics, pageStartIndex: pageStartIndex, visibleCount: visibleCount)
+    }
+
+    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
+    fileprivate func projectedFolderApplications(_ context: FolderItemDragSession, destinationAbsoluteIndex: Int)
+        -> [ApplicationRecord]? {
+        guard case .application(let sourceApplication) = context.sourceEntry.item else { return nil }
+        var applications = context.baselineApplications
+        guard let sourceIndex = applications.firstIndex(where: { $0.id == sourceApplication.id }) else { return nil }
+        let source = applications.remove(at: sourceIndex)
+        guard destinationAbsoluteIndex >= 0, destinationAbsoluteIndex <= applications.endIndex else { return nil }
+        applications.insert(source, at: destinationAbsoluteIndex)
+        return applications
+    }
+
+    fileprivate func projectedFolder(_ context: FolderItemDragSession, destinationAbsoluteIndex: Int)
+        -> ResolvedLaunchpadFolder? {
+        guard let folder = resolvedFolder(id: context.folderID),
+            let applications = projectedFolderApplications(context, destinationAbsoluteIndex: destinationAbsoluteIndex)
+        else { return nil }
+        return ResolvedLaunchpadFolder(id: folder.id, title: folder.title, applications: applications)
+    }
+
+    fileprivate func folderPageVisibleCount(applicationsCount: Int, page: Int, capacity: Int) -> Int {
+        guard capacity > 0, page >= 0 else { return 0 }
+        let start = page * capacity
+        guard start < applicationsCount else { return 0 }
+        return min(capacity, applicationsCount - start)
+    }
+
+    fileprivate func folderDragDestinationIndexForEdgeTurn(
+        direction: Int, targetPage: Int, context: FolderItemDragSession, metrics: FolderGridMetrics
+    ) -> Int? {
+        guard case .application(let sourceApplication) = context.sourceEntry.item else { return nil }
+        var remaining = context.baselineApplications
+        guard let sourceIndex = remaining.firstIndex(where: { $0.id == sourceApplication.id }) else { return nil }
+        remaining.remove(at: sourceIndex)
+        let pageStart = targetPage * metrics.itemsPerPage
+        guard pageStart <= remaining.count else { return nil }
+        let targetCount = folderPageVisibleCount(
+            applicationsCount: remaining.count, page: targetPage, capacity: metrics.itemsPerPage)
+        let localIndex = direction > 0 ? min(targetCount, max(0, metrics.itemsPerPage - 1)) : 0
+        return min(remaining.count, pageStart + localIndex)
+    }
+
+    fileprivate func stabilizedFolderReorderLocalSlot(
+        rawSlot: Int, center: CGPoint, context: FolderItemDragSession, geometry: FolderReorderGeometry
+    ) -> Int {
+        let currentLocalIndex = context.destinationAbsoluteIndex - geometry.pageStartIndex
+        guard (0..<geometry.visibleCount).contains(currentLocalIndex), rawSlot != currentLocalIndex,
+            let rawCell = geometry.metrics.cellFrame(forItemAt: rawSlot)
+        else { return rawSlot }
+
+        return GridReorderInsertion.resolve(
+            rawSlot: rawSlot, currentSlot: currentLocalIndex, draggedCenterX: center.x, targetCell: rawCell,
+            isRightToLeft: geometry.metrics.isRightToLeft)
+    }
+
+    fileprivate func folderReorderTargetIndex(at center: CGPoint, context: FolderItemDragSession) -> Int? {
+        guard let geometry = folderReorderGeometry(), geometry.folder.id == context.folderID,
+            geometry.metrics.gridFrame.contains(center),
+            let rawSlot = (0..<geometry.visibleCount).first(where: {
+                geometry.metrics.cellFrame(forItemAt: $0)?.contains(center) == true
+            })
+        else { return context.destinationAbsoluteIndex }
+
+        let slot = stabilizedFolderReorderLocalSlot(
+            rawSlot: rawSlot, center: center, context: context, geometry: geometry)
+        return geometry.pageStartIndex + min(slot, geometry.visibleCount - 1)
+    }
+
+    fileprivate func previewFolderItemReorder(
+        _ context: FolderItemDragSession, destinationAbsoluteIndex: Int, previousDestinationAbsoluteIndex: Int? = nil,
+        animated: Bool = true
+    ) {
+        guard let geometry = folderReorderGeometry(),
+            let projectedApplications = projectedFolderApplications(
+                context, destinationAbsoluteIndex: destinationAbsoluteIndex),
+            case .application(let sourceApplication) = context.sourceEntry.item
+        else { return }
+
+        let pageStart = geometry.pageStartIndex
+        let pageEnd = min(pageStart + geometry.metrics.itemsPerPage, projectedApplications.count)
+        guard pageStart <= pageEnd else { return }
+        let pageApplications = Array(projectedApplications[pageStart..<pageEnd])
+        let targetLocalIndexByIdentity = Dictionary(
+            uniqueKeysWithValues: pageApplications.enumerated().map { ($0.element.id, $0.offset) })
+
+        let previousAbsoluteIndex = previousDestinationAbsoluteIndex ?? context.destinationAbsoluteIndex
+        let transition = LaunchpadVisualStyle.dragReflowTransition(
+            movedForward: destinationAbsoluteIndex > previousAbsoluteIndex)
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let reflowBatchMediaTime = CACurrentMediaTime()
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        for presentation in folderPresentations {
+            let identity = presentation.button.application.id
+            if identity == sourceApplication.id {
+                presentation.tileLayer.opacity = 0
+                presentation.button.isHidden = true
+                continue
+            }
+            guard let targetLocalIndex = targetLocalIndexByIdentity[identity],
+                let targetFrames = folderPageItemFrames(
+                    localIndex: targetLocalIndex, visibleCount: pageApplications.count, metrics: geometry.metrics)
+            else { continue }
+
+            let visiblePosition = presentation.tileLayer.presentation()?.position ?? presentation.tileLayer.position
+            presentation.tileLayer.removeAnimation(forKey: "dragReflowPosition")
+            presentation.tileLayer.position = targetFrames.cell.center
+            presentation.tileLayer.opacity = 1
+            presentation.button.frame = targetFrames.icon
+
+            guard shouldAnimate, visiblePosition != targetFrames.cell.center else { continue }
+            let move = CABasicAnimation(keyPath: "position")
+            move.fromValue = NSValue(point: visiblePosition)
+            move.toValue = NSValue(point: targetFrames.cell.center)
+            move.duration = transition.duration
+            move.timingFunction = transition.timingFunction
+            move.beginTime = presentation.tileLayer.convertTime(reflowBatchMediaTime, from: nil)
+            presentation.tileLayer.add(move, forKey: "dragReflowPosition")
+        }
+
+        CATransaction.commit()
+    }
+
+    fileprivate func restoreFolderItemReorderPreview(_ context: FolderItemDragSession, animated: Bool) {
+        let previousDestination = context.destinationAbsoluteIndex
+        context.destinationAbsoluteIndex = context.sourceAbsoluteIndex
+        previewFolderItemReorder(
+            context, destinationAbsoluteIndex: context.sourceAbsoluteIndex,
+            previousDestinationAbsoluteIndex: previousDestination, animated: animated)
+    }
+
+    /// Adopt the already-visible reorder instead of replacing the folder's
+    /// panel, icon bitmaps, and raster caches at the end of the landing.
+    /// Called inside the same disabled-actions transaction that retires the proxy.
+    fileprivate func adoptCommittedFolderReorder(_ context: FolderItemDragSession) -> Bool {
+        guard openFolderID == context.folderID, let geometry = folderReorderGeometry(),
+            let surface = folderPageSurfaces[folderPage], surface.layer.superlayer != nil,
+            let expected = projectedFolderApplications(
+                context, destinationAbsoluteIndex: context.destinationAbsoluteIndex),
+            geometry.folder.applications.map(\.id) == expected.map(\.id)
+        else { return false }
+
+        let applications = Array(
+            geometry.folder.applications[geometry.pageStartIndex..<geometry.pageStartIndex + geometry.visibleCount])
+        let folderID = context.folderID
+        let byIdentity = Dictionary(uniqueKeysWithValues: folderPresentations.map { ($0.button.application.id, $0) })
+        let presentations = applications.compactMap { byIdentity[$0.id] }
+        let frames = applications.indices.compactMap {
+            folderPageItemFrames(localIndex: $0, visibleCount: applications.count, metrics: geometry.metrics)
+        }
+        guard presentations.count == applications.count, frames.count == applications.count else { return false }
+
+        retireOffscreenFolderReorderPages()
+        folderHiddenApplicationID = nil
+        for (index, presentation) in presentations.enumerated() {
+            let application = applications[index]
+            let itemFrames = frames[index]
+            let absoluteIndex = geometry.pageStartIndex + index
+            if presentation.tileLayer.superlayer !== surface.layer { surface.layer.addSublayer(presentation.tileLayer) }
+            presentation.tileLayer.position = itemFrames.cell.center
+            presentation.tileLayer.opacity = 1
+            if application.id == context.trackingButton.application.id {
+                presentation.iconLayer.removeAnimation(forKey: "iconPressedOpacity")
+                presentation.iconLayer.opacity = 1
+                presentation.iconLayer.setAffineTransform(.identity)
+            }
+            presentation.button.frame = itemFrames.icon
+            rebindFolderPointerDown(
+                presentation, folderID: folderID, application: application, absoluteIndex: absoluteIndex,
+                frames: itemFrames)
+            if presentation.button.superview == nil { addSubview(presentation.button) }
+            presentation.button.isEnabled = true
+            presentation.button.isHidden = false
+        }
+        folderPresentations = presentations
+        folderPageContentLayer = surface.layer
+        folderPageSurfaces = [
+            folderPage: FolderPageSurface(
+                pageIndex: folderPage, layer: surface.layer, presentations: presentations, applications: applications)
+        ]
+        updateFolderSelectionAppearance(itemsPerPage: geometry.metrics.itemsPerPage)
+        stageAdjacentFolderPageSurfaces(
+            folder: geometry.folder, metrics: geometry.metrics,
+            scale: window?.backingScaleFactor ?? displayContext.backingScaleFactor)
+
+        finishFolderTrackingAfterReorder(context, presentations: presentations)
+        return true
+    }
+
+    fileprivate func retireOffscreenFolderReorderPages() {
+        // Offscreen pages still describe the old order; retire only those.
+        for (page, cached) in folderPageSurfaces where page != folderPage {
+            detachFolderButtons(from: cached)
+            cached.layer.removeAllAnimations()
+            cached.layer.removeFromSuperlayer()
+        }
+    }
+
+    fileprivate func rebindFolderPointerDown(
+        _ presentation: AppTilePresentation, folderID: UUID, application: ApplicationRecord, absoluteIndex: Int,
+        frames: GridItemFrames
+    ) {
+        // Closures created when the folder opened capture the old slot.
+        // Rebind the committed geometry before allowing the next drag.
+        presentation.button.onPointerDown = { [weak self, weak presentation] event in
+            guard let self, let presentation else { return }
+            self.folderItemPointerDown(
+                folderID: folderID, absoluteIndex: absoluteIndex, frames: frames,
+                presentation: presentation, event: event)
+        }
+    }
+
+    fileprivate func finishFolderTrackingAfterReorder(
+        _ context: FolderItemDragSession, presentations: [AppTilePresentation]
+    ) {
+        if presentations.contains(where: { $0.button === context.trackingButton }) {
+            // Same-page reorder keeps the original button as a live target.
+            context.trackingButton.endPointerTrackingWithoutCallback()
+            preservedFolderTrackingButton = nil
+            folderExtractionActivationShield = false
+        } else {
+            context.sourceEntry.tileLayer.removeFromSuperlayer()
+            retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+        }
+    }
+
+    fileprivate func updateFolderDropPreview(_ context: FolderItemDragSession, at center: CGPoint) {
+        if let destination = folderReorderTargetIndex(at: center, context: context) {
+            let previousDestination = context.destinationAbsoluteIndex
+            context.destinationAbsoluteIndex = destination
+            previewFolderItemReorder(
+                context, destinationAbsoluteIndex: destination, previousDestinationAbsoluteIndex: previousDestination)
+        }
+
+    }
+
+    fileprivate func completeFolderItemReorder(_ context: FolderItemDragSession, at center: CGPoint) {
+        guard folderItemDragSession === context else { return }
+        updateFolderDropPreview(context, at: center)
+
+        guard context.destinationAbsoluteIndex != context.sourceAbsoluteIndex, let geometry = folderReorderGeometry(),
+            geometry.folder.id == context.folderID, case .application(let sourceApplication) = context.sourceEntry.item
+        else {
+            cancelFolderItemDragBeforeExit(animated: true)
+            return
+        }
+
+        let draft: LauncherLayoutDraft
+        do {
+            var candidate = try LauncherLayoutDraft(document: layoutDocument)
+            try candidate.moveApplication(
+                sourceApplication.id, inFolder: context.folderID, toIndex: context.destinationAbsoluteIndex)
+            guard candidate.hasChanges else {
+                cancelFolderItemDragBeforeExit(animated: true)
+                return
+            }
+            draft = candidate
+        } catch {
+            NSSound.beep()
+            cancelFolderItemDragBeforeExit(animated: true)
+            return
+        }
+
+        let destinationLocalIndexForState = max(0, context.destinationAbsoluteIndex - geometry.pageStartIndex)
+        _ = dragStateMachine.update(target: .pageInsertion(page: folderPage, index: destinationLocalIndexForState))
+        guard dragStateMachine.beginCommit() else {
+            cancelFolderItemDragBeforeExit(animated: true)
+            return
+        }
+
+        cancelFolderItemDragEdgePaging(context)
+        folderItemDragSession = nil
+        pendingFolderPress = nil
+        isCommittingLayout = true
+        context.trackingButton.isEnabled = false
+        context.trackingButton.isHidden = true
+
+        let destinationLocalIndex = context.destinationAbsoluteIndex - geometry.pageStartIndex
+        let destinationCenter =
+            folderPageItemFrames(
+                localIndex: destinationLocalIndex, visibleCount: geometry.visibleCount, metrics: geometry.metrics)?.cell
+            .center ?? context.proxyLayer.position
+
+        let (landingStartMediaTime, landingDuration) = animateFolderReorderLanding(context, to: destinationCenter)
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await persistFolderReorder(
+                context, draft: draft, landingStartMediaTime: landingStartMediaTime, landingDuration: landingDuration)
+        }
+    }
+
+    fileprivate func animateFolderReorderLanding(_ context: FolderItemDragSession, to destinationCenter: CGPoint) -> (
+        CFTimeInterval, CFTimeInterval
+    ) {
+        // Match the root-grid committed insertion landing exactly.
+        // The old Folder-local 0.12 s ease-out made the dragged child snap
+        // noticeably faster than the surrounding root-style reflow.
+        let landingTransition = LaunchpadVisualStyle.dragCompletionTransition(kind: .insertion)
+        let landingDuration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : landingTransition.duration
+        let landingStartMediaTime = CACurrentMediaTime()
+
+        CATransaction.begin()
+        if landingDuration > 0 {
+            CATransaction.setAnimationDuration(landingDuration)
+            CATransaction.setAnimationTimingFunction(landingTransition.timingFunction)
+        } else {
+            CATransaction.setDisableActions(true)
+        }
+        context.proxyLayer.position = destinationCenter
+        context.proxyLayer.setAffineTransform(.identity)
+        context.proxyLayer.opacity = 1
+        CATransaction.commit()
+
+        return (landingStartMediaTime, landingDuration)
+    }
+
+    fileprivate func persistFolderReorder(
+        _ context: FolderItemDragSession, draft: LauncherLayoutDraft, landingStartMediaTime: CFTimeInterval,
+        landingDuration: CFTimeInterval
+    ) async {
+        do {
+            let committedDocument = try await layoutStore.commit(draft)
+
+            // A fast layout-store write must not remove the proxy before
+            // the root-style landing animation has visibly completed.
+            let elapsed = CACurrentMediaTime() - landingStartMediaTime
+            let remaining = max(0, landingDuration - elapsed)
+            if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
+
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layoutDocument = committedDocument
+            invalidatePageSurfaceCache()
+            if !adoptCommittedFolderReorder(context) {
+                context.sourceEntry.tileLayer.removeFromSuperlayer()
+                folderHiddenApplicationID = nil
+                if openFolderID == context.folderID {
+                    renderFolderOverlay(animated: false)
+                } else {
+                    needsLayout = true
+                    layoutSubtreeIfNeeded()
+                }
+                retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+            }
+            // The destination owns the full-resolution artwork before
+            // its proxy disappears, without implicit layer cross-fades.
+            context.proxyLayer.removeAllAnimations()
+            context.proxyLayer.removeFromSuperlayer()
+            CATransaction.commit()
+        } catch {
+            NSSound.beep()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            folderHiddenApplicationID = nil
+            if openFolderID == context.folderID {
+                renderFolderOverlay(animated: false)
+            } else {
+                needsLayout = true
+                layoutSubtreeIfNeeded()
+            }
+            context.proxyLayer.removeAllAnimations()
+            context.proxyLayer.removeFromSuperlayer()
+            CATransaction.commit()
+            retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+            _ = dragStateMachine.beginRollback()
+        }
+        isCommittingLayout = false
+        dragStateMachine.finish()
+    }
+
+    fileprivate func promoteFolderItemDragToRoot(_ context: FolderItemDragSession, at point: CGPoint) {
+        guard folderItemDragSession === context, let metrics = currentMetrics, let originalSurface = activeSurface,
+            case .application(let application) = context.sourceEntry.item
+        else { return }
+
+        cancelFolderItemDragEdgePaging(context)
+        context.pendingReleasePoint = nil
+
+        let draft: LauncherLayoutDraft
+        do {
+            var candidate = try LauncherLayoutDraft(
+                document: layoutDocument.normalizedForPageCapacity(metrics.itemsPerPage))
+            try candidate.extractApplication(
+                application.id, fromFolder: context.folderID, pageCapacity: metrics.itemsPerPage)
+            draft = candidate
+        } catch {
+            cancelFolderItemDragBeforeExit(animated: true)
+            return
+        }
+
+        let session = LaunchpadDragSession(
+            sourceEntry: context.sourceEntry, draft: draft, proxyLayer: context.proxyLayer,
+            pointerOffset: context.pointerOffset, originalSurface: originalSurface, sourcePage: currentPage,
+            sourceOrigin: .folder(context.folderID), projectionBaselineDocument: draft.document)
+        session.lastPointerPoint = point
+        dragSession = session
+        folderItemDragSession = nil
+        pendingFolderPress = nil
+        folderExtractionActivationShield = true
+
+        // Build the root projection while the folder overlay still owns the
+        // screen. The preview is based on draft.document, where the dragged
+        // child has already been removed from its folder. It starts hidden and
+        // becomes the root surface that closeFolder() fades in, so the stale
+        // pre-extraction folder miniature is never exposed.
+        prepareFolderExtractionRootPreview(session, metrics: metrics)
+
+        closeFolder(animated: true, preservingTrackedButton: context.trackingButton)
+        updateDragInteraction(at: point)
+    }
+
+    fileprivate func prepareFolderExtractionRootPreview(_ session: LaunchpadDragSession, metrics: GridMetrics) {
+        let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
+        let sourceID = session.sourceEntry.item.id
+
+        var sourceLocation: DragPageLocation?
+        for (pageIndex, page) in baseline.pages.enumerated() {
+            if let itemIndex = page.firstIndex(where: { item in
+                switch (item, sourceID) {
+                case (.application(let reference), .application(let identity)): return reference.identity == identity
+                case (.folder(let folder), .folder(let folderID)): return folder.id == folderID
+                default: return false
+                }
+            }) {
+                sourceLocation = DragPageLocation(page: pageIndex, index: itemIndex)
+                break
+            }
+        }
+
+        guard let sourceLocation else { return }
+
+        updateDragPreviewLayout(session, location: sourceLocation, animated: false, metrics: metrics)
+        setDragTarget(.pageInsertion(page: sourceLocation.page, index: sourceLocation.index), session: session)
+
+        guard let previewSurface = session.previewSurface else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        previewSurface.layer.opacity = 0
+        previewSurface.layer.isHidden = false
+        CATransaction.commit()
+
+        // closeFolder()/setFolderBackgroundVisible(false) must fade THIS
+        // post-extraction surface in, not the stale original root surface.
+        activeSurface = previewSurface
+        pageContentLayer = previewSurface.layer
+    }
+
+    fileprivate func nearestFolderExtractionInsertionTarget(at point: CGPoint, session: LaunchpadDragSession)
+        -> LauncherDropTarget? {
+        guard session.sourceOrigin.folderID != nil, let metrics = currentMetrics, bounds.contains(point) else {
             return nil
         }
 
-        func cancelFolderItemDragEdgePaging(_ context: FolderItemDragSession) {
-            context.edgePagingGeneration &+= 1
-            context.edgePagingTask?.cancel()
-            context.edgePagingTask = nil
-            context.edgePagingDirection = nil
-            context.isEdgePageTurnInFlight = false
-        }
-
-        @discardableResult
-        func updateFolderItemDragEdgePaging(
-            at center: CGPoint,
-            context: FolderItemDragSession
-        ) -> Bool {
-            guard
-                folderItemDragSession === context,
-                let geometry = folderReorderGeometry(),
-                geometry.folder.id == context.folderID,
-                !context.isEdgePageTurnInFlight,
-                !folderPageTransitionAnimator.isAnimating,
-                interactiveFolderPageSwipe == nil
-            else { return false }
-
-            guard let direction = folderDragEdgeDirection(
-                at: center,
-                metrics: geometry.metrics
-            ) else {
-                if context.edgePagingTask != nil || context.edgePagingDirection != nil {
-                    cancelFolderItemDragEdgePaging(context)
-                }
-                return false
-            }
-
-            let targetPage = folderPage + direction
-            guard (0 ..< geometry.metrics.pageCount).contains(targetPage) else {
-                if context.edgePagingTask != nil || context.edgePagingDirection != nil {
-                    cancelFolderItemDragEdgePaging(context)
-                }
-                return false
-            }
-
-            guard context.edgePagingDirection != direction || context.edgePagingTask == nil else {
-                return true
-            }
-
-            cancelFolderItemDragEdgePaging(context)
-            context.edgePagingDirection = direction
-            let generation = context.edgePagingGeneration
-            context.edgePagingTask = Task { @MainActor [weak self, weak context] in
-                try? await Task.sleep(for: FolderDragEdgePagingMetrics.dwell)
-                guard
-                    !Task.isCancelled,
-                    let self,
-                    let context,
-                    self.folderItemDragSession === context,
-                    context.edgePagingGeneration == generation,
-                    context.edgePagingDirection == direction,
-                    !context.isEdgePageTurnInFlight,
-                    !self.folderPageTransitionAnimator.isAnimating,
-                    let geometry = self.folderReorderGeometry(),
-                    self.folderDragEdgeDirection(
-                        at: context.lastProxyCenter,
-                        metrics: geometry.metrics
-                    ) == direction
-                else { return }
-
-                self.performFolderItemDragEdgePageTurn(
-                    direction: direction,
-                    context: context
-                )
-            }
-            return true
-        }
-
-        func performFolderItemDragEdgePageTurn(
-            direction: Int,
-            context: FolderItemDragSession
-        ) {
-            guard
-                folderItemDragSession === context,
-                let geometry = folderReorderGeometry(),
-                geometry.folder.id == context.folderID,
-                let viewportLayer = folderPageViewportLayer,
-                !folderPageTransitionAnimator.isAnimating,
-                interactiveFolderPageSwipe == nil,
-                let outgoing = folderPageSurfaces[folderPage]
-            else { return }
-
-            let targetPage = folderPage + direction
-            guard (0 ..< geometry.metrics.pageCount).contains(targetPage),
-                  let destinationAbsoluteIndex = folderDragDestinationIndexForEdgeTurn(
-                    direction: direction,
-                    targetPage: targetPage,
-                    context: context,
-                    metrics: geometry.metrics
-                  ),
-                  let projected = projectedFolder(
-                    context,
-                    destinationAbsoluteIndex: destinationAbsoluteIndex
-                  )
-            else {
-                cancelFolderItemDragEdgePaging(context)
-                return
-            }
-
-            let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
-            let built = makeFolderPageLayer(
-                folder: projected,
-                metrics: geometry.metrics,
-                pageIndex: targetPage,
-                scale: scale
-            )
-            let incoming = FolderPageSurface(
-                pageIndex: targetPage,
-                layer: built.layer,
-                presentations: built.presentations,
-                applications: built.applications
-            )
-            if case let .application(sourceApplication) = context.sourceEntry.item,
-               let sourcePresentation = incoming.presentations.first(where: {
-                   $0.button.application.id == sourceApplication.id
-               }) {
-                sourcePresentation.tileLayer.opacity = 0
-                sourcePresentation.button.isHidden = true
-            }
-
-            context.edgePagingTask = nil
-            context.edgePagingDirection = nil
-            context.isEdgePageTurnInFlight = true
-            context.hasCrossedPages = true
-            context.edgePagingGeneration &+= 1
-            let generation = context.edgePagingGeneration
-            let previousDestination = context.destinationAbsoluteIndex
-            context.destinationAbsoluteIndex = destinationAbsoluteIndex
-
-            let pageStart = targetPage * geometry.metrics.itemsPerPage
-            _ = dragStateMachine.update(target: .pageInsertion(
-                page: targetPage,
-                index: max(0, destinationAbsoluteIndex - pageStart)
-            ))
-
-            folderIconTask?.cancel()
-            folderIconTask = nil
-            for presentation in outgoing.presentations {
-                presentation.button.isHidden = true
-            }
-
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            let stalePageIndices = folderPageSurfaces.compactMap { pageIndex, surface in
-                surface === outgoing ? nil : pageIndex
-            }
-            for pageIndex in stalePageIndices {
-                guard let surface = folderPageSurfaces.removeValue(forKey: pageIndex) else { continue }
-                detachFolderButtons(from: surface)
-                surface.layer.removeAllAnimations()
-                surface.layer.removeFromSuperlayer()
-            }
-            let resting = geometry.metrics.panelFrame.center
-            let width = max(1, geometry.metrics.panelFrame.width)
-            let visualDirection = CGFloat(geometry.metrics.isRightToLeft ? -direction : direction)
-            outgoing.layer.removeAllAnimations()
-            outgoing.layer.position = resting
-            outgoing.layer.opacity = 1
-            outgoing.layer.isHidden = false
-            incoming.layer.removeAllAnimations()
-            incoming.layer.position = CGPoint(
-                x: resting.x + visualDirection * width,
-                y: resting.y
-            )
-            incoming.layer.opacity = 1
-            incoming.layer.isHidden = false
-            if incoming.layer.superlayer == nil {
-                viewportLayer.addSublayer(incoming.layer)
-            }
-            CATransaction.commit()
-
-            let finish = { [weak self, weak context] in
-                guard
-                    let self,
-                    let context,
-                    self.folderItemDragSession === context,
-                    context.edgePagingGeneration == generation
-                else { return }
-
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                outgoing.layer.removeAllAnimations()
-                outgoing.layer.removeFromSuperlayer()
-                incoming.layer.removeAllAnimations()
-                incoming.layer.position = resting
-                incoming.layer.isHidden = false
-                CATransaction.commit()
-
-                self.detachFolderButtons(from: outgoing)
-                self.folderPageSurfaces.removeAll(keepingCapacity: true)
-                self.folderPageSurfaces[targetPage] = incoming
-                self.folderPage = targetPage
-                self.folderPresentations = incoming.presentations
-                self.contextualizeFolderDragSurfaceButtons(incoming, context: context)
-                self.updateFolderPageIndicator(pageCount: geometry.metrics.pageCount)
-
-                context.edgePagingTask = nil
-                context.edgePagingDirection = nil
-                context.isEdgePageTurnInFlight = false
-
-                self.previewFolderItemReorder(
-                    context,
-                    destinationAbsoluteIndex: context.destinationAbsoluteIndex,
-                    previousDestinationAbsoluteIndex: previousDestination,
-                    animated: false
-                )
-
-                if let releasePoint = context.pendingReleasePoint {
-                    context.pendingReleasePoint = nil
-                    let releaseCenter = CGPoint(
-                        x: releasePoint.x - context.pointerOffset.dx,
-                        y: releasePoint.y - context.pointerOffset.dy
-                    )
-                    if self.folderDragRetentionFrame(metrics: geometry.metrics).contains(releaseCenter) {
-                        self.completeFolderItemReorder(
-                            context,
-                            at: self.clampedFolderDragPointToGrid(
-                                releaseCenter,
-                                metrics: geometry.metrics
-                            )
-                        )
-                    } else {
-                        self.cancelFolderItemDragBeforeExit(animated: true)
-                    }
-                    return
-                }
-
-                self.updateFolderItemDrag(at: context.lastPointerPoint)
-            }
-
-            guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
-                finish()
-                return
-            }
-
-            let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
-            func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
-                let result = CABasicAnimation(keyPath: "position")
-                result.fromValue = NSValue(point: start)
-                result.toValue = NSValue(point: end)
-                result.duration = DragEdgeMetrics.pageDuration
-                result.timingFunction = timing
-                return result
-            }
-
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            CATransaction.setCompletionBlock { Task { @MainActor in finish() } }
-            let outgoingEnd = CGPoint(x: resting.x - visualDirection * width, y: resting.y)
-            outgoing.layer.position = outgoingEnd
-            incoming.layer.position = resting
-            outgoing.layer.add(animation(resting, outgoingEnd), forKey: "folderDragEdgePageOut")
-            incoming.layer.add(
-                animation(
-                    CGPoint(x: resting.x + visualDirection * width, y: resting.y),
-                    resting
-                ),
-                forKey: "folderDragEdgePageIn"
-            )
-            CATransaction.commit()
-        }
-
-        func contextualizeFolderDragSurfaceButtons(
-            _ surface: FolderPageSurface,
-            context: FolderItemDragSession
-        ) {
-            for presentation in surface.presentations {
-                presentation.button.isHidden = true
-                if presentation.button !== context.trackingButton {
-                    presentation.button.removeFromSuperview()
-                }
+        let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
+        let pageItems = baseline.pages.indices.contains(currentPage) ? baseline.pages[currentPage] : []
+        let pageIDs = pageItems.map { item -> LauncherLayoutItemIdentifier in
+            switch item {
+            case .application(let reference): .application(reference.identity)
+            case .folder(let folder): .folder(folder.id)
             }
         }
-
-        func clampedFolderDragPointToGrid(
-            _ point: CGPoint,
-            metrics: FolderGridMetrics
-        ) -> CGPoint {
-            CGPoint(
-                x: min(max(point.x, metrics.gridFrame.minX), metrics.gridFrame.maxX),
-                y: min(max(point.y, metrics.gridFrame.minY), metrics.gridFrame.maxY)
-            )
-        }
-
-        func updateFolderItemDragDestination(
-            at center: CGPoint,
-            context: FolderItemDragSession
-        ) {
-            guard
-                let destination = folderReorderTargetIndex(at: center, context: context),
-                destination != context.destinationAbsoluteIndex
-            else { return }
-
-            let previousDestination = context.destinationAbsoluteIndex
-            context.destinationAbsoluteIndex = destination
-            if let geometry = folderReorderGeometry() {
-                _ = dragStateMachine.update(target: .pageInsertion(
-                    page: folderPage,
-                    index: max(0, destination - geometry.pageStartIndex)
-                ))
-            }
-            previewFolderItemReorder(
-                context,
-                destinationAbsoluteIndex: destination,
-                previousDestinationAbsoluteIndex: previousDestination
-            )
-        }
-
-        struct FolderReorderGeometry {
-            let folder: ResolvedLaunchpadFolder
-            let metrics: FolderGridMetrics
-            let pageStartIndex: Int
-            let visibleCount: Int
-        }
-
-        func folderReorderGeometry() -> FolderReorderGeometry? {
-            guard
-                let openFolderID,
-                let folder = resolvedFolder(id: openFolderID)
-            else { return nil }
-
-            let allMetrics = solver.solveFolder(
-                display: displayContext,
-                requested: layoutPreferences,
-                itemCount: folder.applications.count
-            )
-            let pageStartIndex = folderPage * allMetrics.itemsPerPage
-            guard pageStartIndex < folder.applications.count else { return nil }
-            let pageEndIndex = min(
-                pageStartIndex + allMetrics.itemsPerPage,
-                folder.applications.count
-            )
-            let visibleCount = pageEndIndex - pageStartIndex
-
-            // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
-            // The open Folder panel uses one stable full-folder lattice on every
-            // page. Reorder hit-testing must use that exact same lattice too;
-            // solving a second, smaller Folder for a partial page makes its cells
-            // disagree with the visuals after page one.
-            return FolderReorderGeometry(
-                folder: folder, metrics: allMetrics,
-                pageStartIndex: pageStartIndex, visibleCount: visibleCount
-            )
-        }
-
-        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
-        func projectedFolderApplications(
-            _ context: FolderItemDragSession,
-            destinationAbsoluteIndex: Int
-        ) -> [ApplicationRecord]? {
-            guard case let .application(sourceApplication) = context.sourceEntry.item else { return nil }
-            var applications = context.baselineApplications
-            guard let sourceIndex = applications.firstIndex(where: { $0.id == sourceApplication.id }) else {
-                return nil
-            }
-            let source = applications.remove(at: sourceIndex)
-            guard destinationAbsoluteIndex >= 0, destinationAbsoluteIndex <= applications.endIndex else {
-                return nil
-            }
-            applications.insert(source, at: destinationAbsoluteIndex)
-            return applications
-        }
-
-        func projectedFolder(
-            _ context: FolderItemDragSession,
-            destinationAbsoluteIndex: Int
-        ) -> ResolvedLaunchpadFolder? {
-            guard
-                let folder = resolvedFolder(id: context.folderID),
-                let applications = projectedFolderApplications(
-                    context,
-                    destinationAbsoluteIndex: destinationAbsoluteIndex
-                )
-            else { return nil }
-            return ResolvedLaunchpadFolder(
-                id: folder.id,
-                title: folder.title,
-                applications: applications
-            )
-        }
-
-        func folderPageVisibleCount(
-            applicationsCount: Int,
-            page: Int,
-            capacity: Int
-        ) -> Int {
-            guard capacity > 0, page >= 0 else { return 0 }
-            let start = page * capacity
-            guard start < applicationsCount else { return 0 }
-            return min(capacity, applicationsCount - start)
-        }
-
-        func folderDragDestinationIndexForEdgeTurn(
-            direction: Int,
-            targetPage: Int,
-            context: FolderItemDragSession,
-            metrics: FolderGridMetrics
-        ) -> Int? {
-            guard case let .application(sourceApplication) = context.sourceEntry.item else { return nil }
-            var remaining = context.baselineApplications
-            guard let sourceIndex = remaining.firstIndex(where: { $0.id == sourceApplication.id }) else {
-                return nil
-            }
-            remaining.remove(at: sourceIndex)
-            let pageStart = targetPage * metrics.itemsPerPage
-            guard pageStart <= remaining.count else { return nil }
-            let targetCount = folderPageVisibleCount(
-                applicationsCount: remaining.count,
-                page: targetPage,
-                capacity: metrics.itemsPerPage
-            )
-            let localIndex = direction > 0
-                ? min(targetCount, max(0, metrics.itemsPerPage - 1))
-                : 0
-            return min(remaining.count, pageStart + localIndex)
-        }
-
-        func stabilizedFolderReorderLocalSlot(
-            rawSlot: Int,
-            center: CGPoint,
-            context: FolderItemDragSession,
-            geometry: FolderReorderGeometry
-        ) -> Int {
-            let currentLocalIndex = context.destinationAbsoluteIndex - geometry.pageStartIndex
-            guard
-                (0 ..< geometry.visibleCount).contains(currentLocalIndex),
-                rawSlot != currentLocalIndex,
-                let rawCell = geometry.metrics.cellFrame(forItemAt: rawSlot)
-            else { return rawSlot }
-
-            return GridReorderInsertion.resolve(
-                rawSlot: rawSlot, currentSlot: currentLocalIndex,
-                draggedCenterX: center.x, targetCell: rawCell,
-                isRightToLeft: geometry.metrics.isRightToLeft
-            )
-        }
-
-        func folderReorderTargetIndex(
-            at center: CGPoint,
-            context: FolderItemDragSession
-        ) -> Int? {
-            guard
-                let geometry = folderReorderGeometry(),
-                geometry.folder.id == context.folderID,
-                geometry.metrics.gridFrame.contains(center),
-                let rawSlot = (0 ..< geometry.visibleCount).first(where: {
-                    geometry.metrics.cellFrame(forItemAt: $0)?.contains(center) == true
-                })
-            else {
-                return context.destinationAbsoluteIndex
-            }
-
-            let slot = stabilizedFolderReorderLocalSlot(
-                rawSlot: rawSlot,
-                center: center,
-                context: context,
-                geometry: geometry
-            )
-            return geometry.pageStartIndex + min(slot, geometry.visibleCount - 1)
-        }
-
-        func previewFolderItemReorder(
-            _ context: FolderItemDragSession,
-            destinationAbsoluteIndex: Int,
-            previousDestinationAbsoluteIndex: Int? = nil,
-            animated: Bool = true
-        ) {
-            guard
-                let geometry = folderReorderGeometry(),
-                let projectedApplications = projectedFolderApplications(
-                    context,
-                    destinationAbsoluteIndex: destinationAbsoluteIndex
-                ),
-                case let .application(sourceApplication) = context.sourceEntry.item
-            else { return }
-
-            let pageStart = geometry.pageStartIndex
-            let pageEnd = min(
-                pageStart + geometry.metrics.itemsPerPage,
-                projectedApplications.count
-            )
-            guard pageStart <= pageEnd else { return }
-            let pageApplications = Array(projectedApplications[pageStart ..< pageEnd])
-            let targetLocalIndexByIdentity = Dictionary(
-                uniqueKeysWithValues: pageApplications.enumerated().map { ($0.element.id, $0.offset) }
-            )
-
-            let previousAbsoluteIndex = previousDestinationAbsoluteIndex
-                ?? context.destinationAbsoluteIndex
-            let transition = LaunchpadVisualStyle.dragReflowTransition(
-                movedForward: destinationAbsoluteIndex > previousAbsoluteIndex
-            )
-            let shouldAnimate = animated
-                && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            let reflowBatchMediaTime = CACurrentMediaTime()
-
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-
-            for presentation in folderPresentations {
-                let identity = presentation.button.application.id
-                if identity == sourceApplication.id {
-                    presentation.tileLayer.opacity = 0
-                    presentation.button.isHidden = true
-                    continue
-                }
-                guard
-                    let targetLocalIndex = targetLocalIndexByIdentity[identity],
-                    let targetFrames = folderPageItemFrames(
-                        localIndex: targetLocalIndex,
-                        visibleCount: pageApplications.count,
-                        metrics: geometry.metrics
-                    )
-                else { continue }
-
-                let visiblePosition = presentation.tileLayer.presentation()?.position
-                    ?? presentation.tileLayer.position
-                presentation.tileLayer.removeAnimation(forKey: "dragReflowPosition")
-                presentation.tileLayer.position = targetFrames.cell.center
-                presentation.tileLayer.opacity = 1
-                presentation.button.frame = targetFrames.icon
-
-                guard shouldAnimate, visiblePosition != targetFrames.cell.center else { continue }
-                let move = CABasicAnimation(keyPath: "position")
-                move.fromValue = NSValue(point: visiblePosition)
-                move.toValue = NSValue(point: targetFrames.cell.center)
-                move.duration = transition.duration
-                move.timingFunction = transition.timingFunction
-                move.beginTime = presentation.tileLayer.convertTime(
-                    reflowBatchMediaTime,
-                    from: nil
-                )
-                presentation.tileLayer.add(move, forKey: "dragReflowPosition")
-            }
-
-            CATransaction.commit()
-        }
-
-        func restoreFolderItemReorderPreview(
-            _ context: FolderItemDragSession,
-            animated: Bool
-        ) {
-            let previousDestination = context.destinationAbsoluteIndex
-            context.destinationAbsoluteIndex = context.sourceAbsoluteIndex
-            previewFolderItemReorder(
-                context,
-                destinationAbsoluteIndex: context.sourceAbsoluteIndex,
-                previousDestinationAbsoluteIndex: previousDestination,
-                animated: animated
-            )
-        }
-
-        /// Adopt the already-visible reorder instead of replacing the folder's
-        /// panel, icon bitmaps, and raster caches at the end of the landing.
-        /// Called inside the same disabled-actions transaction that retires the proxy.
-        func adoptCommittedFolderReorder(_ context: FolderItemDragSession) -> Bool {
-            guard
-                openFolderID == context.folderID,
-                let geometry = folderReorderGeometry(),
-                let surface = folderPageSurfaces[folderPage],
-                surface.layer.superlayer != nil,
-                let expected = projectedFolderApplications(
-                    context, destinationAbsoluteIndex: context.destinationAbsoluteIndex
-                ),
-                geometry.folder.applications.map(\.id) == expected.map(\.id)
-            else { return false }
-
-            let applications = Array(geometry.folder.applications[
-                geometry.pageStartIndex ..< geometry.pageStartIndex + geometry.visibleCount
-            ])
-            let folderID = context.folderID
-            let byIdentity = Dictionary(uniqueKeysWithValues: folderPresentations.map {
-                ($0.button.application.id, $0)
-            })
-            let presentations = applications.compactMap { byIdentity[$0.id] }
-            let frames = applications.indices.compactMap {
-                folderPageItemFrames(localIndex: $0, visibleCount: applications.count, metrics: geometry.metrics)
-            }
-            guard presentations.count == applications.count, frames.count == applications.count else {
-                return false
-            }
-
-            // Offscreen pages still describe the old order; retire only those.
-            for (page, cached) in folderPageSurfaces where page != folderPage {
-                detachFolderButtons(from: cached)
-                cached.layer.removeAllAnimations()
-                cached.layer.removeFromSuperlayer()
-            }
-            folderHiddenApplicationID = nil
-            for (index, presentation) in presentations.enumerated() {
-                let application = applications[index]
-                let itemFrames = frames[index]
-                let absoluteIndex = geometry.pageStartIndex + index
-                if presentation.tileLayer.superlayer !== surface.layer {
-                    surface.layer.addSublayer(presentation.tileLayer)
-                }
-                presentation.tileLayer.position = itemFrames.cell.center
-                presentation.tileLayer.opacity = 1
-                if application.id == context.trackingButton.application.id {
-                    presentation.iconLayer.removeAnimation(forKey: "iconPressedOpacity")
-                    presentation.iconLayer.opacity = 1
-                    presentation.iconLayer.setAffineTransform(.identity)
-                }
-                presentation.button.frame = itemFrames.icon
-                // Closures created when the folder opened capture the old slot.
-                // Rebind the committed geometry before allowing the next drag.
-                presentation.button.onPointerDown = { [weak self, weak presentation] event in
-                    guard let self, let presentation else { return }
-                    self.folderItemPointerDown(
-                        folderID: folderID, application: application,
-                        absoluteIndex: absoluteIndex,
-                        frames: itemFrames, presentation: presentation, event: event
-                    )
-                }
-                if presentation.button.superview == nil { addSubview(presentation.button) }
-                presentation.button.isEnabled = true
-                presentation.button.isHidden = false
-            }
-            folderPresentations = presentations
-            folderPageContentLayer = surface.layer
-            folderPageSurfaces = [folderPage: FolderPageSurface(
-                pageIndex: folderPage, layer: surface.layer,
-                presentations: presentations, applications: applications
-            )]
-            updateFolderSelectionAppearance(itemsPerPage: geometry.metrics.itemsPerPage)
-            stageAdjacentFolderPageSurfaces(
-                folder: geometry.folder, metrics: geometry.metrics,
-                scale: window?.backingScaleFactor ?? displayContext.backingScaleFactor
-            )
-
-            if presentations.contains(where: { $0.button === context.trackingButton }) {
-                // Same-page reorder keeps the original button as a live target.
-                context.trackingButton.endPointerTrackingWithoutCallback()
-                preservedFolderTrackingButton = nil
-                folderExtractionActivationShield = false
-            } else {
-                context.sourceEntry.tileLayer.removeFromSuperlayer()
-                retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-            }
-            return true
-        }
-
-        func completeFolderItemReorder(
-            _ context: FolderItemDragSession,
-            at center: CGPoint
-        ) {
-            guard folderItemDragSession === context else { return }
-            if let destination = folderReorderTargetIndex(at: center, context: context) {
-                let previousDestination = context.destinationAbsoluteIndex
-                context.destinationAbsoluteIndex = destination
-                previewFolderItemReorder(
-                    context,
-                    destinationAbsoluteIndex: destination,
-                    previousDestinationAbsoluteIndex: previousDestination
-                )
-            }
-
-            guard
-                context.destinationAbsoluteIndex != context.sourceAbsoluteIndex,
-                let geometry = folderReorderGeometry(),
-                geometry.folder.id == context.folderID,
-                case let .application(sourceApplication) = context.sourceEntry.item
-            else {
-                cancelFolderItemDragBeforeExit(animated: true)
-                return
-            }
-
-            let draft: LauncherLayoutDraft
-            do {
-                var candidate = try LauncherLayoutDraft(document: layoutDocument)
-                try candidate.moveApplication(
-                    sourceApplication.id,
-                    inFolder: context.folderID,
-                    toIndex: context.destinationAbsoluteIndex
-                )
-                guard candidate.hasChanges else {
-                    cancelFolderItemDragBeforeExit(animated: true)
-                    return
-                }
-                draft = candidate
-            } catch {
-                NSSound.beep()
-                cancelFolderItemDragBeforeExit(animated: true)
-                return
-            }
-
-            let destinationLocalIndexForState = max(
-                0,
-                context.destinationAbsoluteIndex - geometry.pageStartIndex
-            )
-            _ = dragStateMachine.update(target: .pageInsertion(
-                page: folderPage,
-                index: destinationLocalIndexForState
-            ))
-            guard dragStateMachine.beginCommit() else {
-                cancelFolderItemDragBeforeExit(animated: true)
-                return
-            }
-
-            cancelFolderItemDragEdgePaging(context)
-            folderItemDragSession = nil
-            pendingFolderPress = nil
-            isCommittingLayout = true
-            context.trackingButton.isEnabled = false
-            context.trackingButton.isHidden = true
-
-            let destinationLocalIndex = context.destinationAbsoluteIndex - geometry.pageStartIndex
-            let destinationCenter = folderPageItemFrames(
-                localIndex: destinationLocalIndex,
-                visibleCount: geometry.visibleCount,
-                metrics: geometry.metrics
-            )?.cell.center ?? context.proxyLayer.position
-
-            // Match the root-grid committed insertion landing exactly.
-            // The old Folder-local 0.12 s ease-out made the dragged child snap
-            // noticeably faster than the surrounding root-style reflow.
-            let landingTransition = LaunchpadVisualStyle.dragCompletionTransition(
-                kind: .insertion
-            )
-            let landingDuration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                ? 0
-                : landingTransition.duration
-            let landingStartMediaTime = CACurrentMediaTime()
-
-            CATransaction.begin()
-            if landingDuration > 0 {
-                CATransaction.setAnimationDuration(landingDuration)
-                CATransaction.setAnimationTimingFunction(landingTransition.timingFunction)
-            } else {
-                CATransaction.setDisableActions(true)
-            }
-            context.proxyLayer.position = destinationCenter
-            context.proxyLayer.setAffineTransform(.identity)
-            context.proxyLayer.opacity = 1
-            CATransaction.commit()
-
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    let committedDocument = try await layoutStore.commit(draft)
-
-                    // A fast layout-store write must not remove the proxy before
-                    // the root-style landing animation has visibly completed.
-                    let elapsed = CACurrentMediaTime() - landingStartMediaTime
-                    let remaining = max(0, landingDuration - elapsed)
-                    if remaining > 0 {
-                        try? await Task.sleep(for: .seconds(remaining))
-                    }
-
-                    CATransaction.begin()
-                    CATransaction.setDisableActions(true)
-                    layoutDocument = committedDocument
-                    invalidatePageSurfaceCache()
-                    if !adoptCommittedFolderReorder(context) {
-                        context.sourceEntry.tileLayer.removeFromSuperlayer()
-                        folderHiddenApplicationID = nil
-                        if openFolderID == context.folderID {
-                            renderFolderOverlay(animated: false)
-                        } else {
-                            needsLayout = true
-                            layoutSubtreeIfNeeded()
-                        }
-                        retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-                    }
-                    // The destination owns the full-resolution artwork before
-                    // its proxy disappears, without implicit layer cross-fades.
-                    context.proxyLayer.removeAllAnimations()
-                    context.proxyLayer.removeFromSuperlayer()
-                    CATransaction.commit()
-                } catch {
-                    NSSound.beep()
-                    CATransaction.begin()
-                    CATransaction.setDisableActions(true)
-                    folderHiddenApplicationID = nil
-                    if openFolderID == context.folderID {
-                        renderFolderOverlay(animated: false)
-                    } else {
-                        needsLayout = true
-                        layoutSubtreeIfNeeded()
-                    }
-                    context.proxyLayer.removeAllAnimations()
-                    context.proxyLayer.removeFromSuperlayer()
-                    CATransaction.commit()
-                    retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-                    _ = dragStateMachine.beginRollback()
-                }
-                isCommittingLayout = false
-                dragStateMachine.finish()
-            }
-        }
-
-        func promoteFolderItemDragToRoot(_ context: FolderItemDragSession, at point: CGPoint) {
-            guard
-                folderItemDragSession === context,
-                let metrics = currentMetrics,
-                let originalSurface = activeSurface,
-                case let .application(application) = context.sourceEntry.item
-            else { return }
-
-            cancelFolderItemDragEdgePaging(context)
-            context.pendingReleasePoint = nil
-
-            let draft: LauncherLayoutDraft
-            do {
-                var candidate = try LauncherLayoutDraft(
-                    document: layoutDocument.normalizedForPageCapacity(metrics.itemsPerPage)
-                )
-                try candidate.extractApplication(
-                    application.id,
-                    fromFolder: context.folderID,
-                    pageCapacity: metrics.itemsPerPage
-                )
-                draft = candidate
-            } catch {
-                cancelFolderItemDragBeforeExit(animated: true)
-                return
-            }
-
-            let session = LaunchpadDragSession(
-                sourceEntry: context.sourceEntry,
-                draft: draft,
-                proxyLayer: context.proxyLayer,
-                pointerOffset: context.pointerOffset,
-                originalSurface: originalSurface,
-                sourcePage: currentPage,
-                sourceOrigin: .folder(context.folderID),
-                projectionBaselineDocument: draft.document
-            )
-            session.lastPointerPoint = point
-            dragSession = session
-            folderItemDragSession = nil
-            pendingFolderPress = nil
-            folderExtractionActivationShield = true
-
-            // Build the root projection while the folder overlay still owns the
-            // screen. The preview is based on draft.document, where the dragged
-            // child has already been removed from its folder. It starts hidden and
-            // becomes the root surface that closeFolder() fades in, so the stale
-            // pre-extraction folder miniature is never exposed.
-            prepareFolderExtractionRootPreview(session, metrics: metrics)
-
-            closeFolder(animated: true, preservingTrackedButton: context.trackingButton)
-            updateDragInteraction(at: point)
-        }
-
-        func prepareFolderExtractionRootPreview(
-            _ session: LaunchpadDragSession,
-            metrics: GridMetrics
-        ) {
-            let baseline = session.projectionBaselineDocument
-                .normalizedForPageCapacity(metrics.itemsPerPage)
-            let sourceID = session.sourceEntry.item.id
-
-            var sourceLocation: DragPageLocation?
-            for (pageIndex, page) in baseline.pages.enumerated() {
-                if let itemIndex = page.firstIndex(where: { item in
-                    switch (item, sourceID) {
-                    case let (.application(reference), .application(identity)):
-                        return reference.identity == identity
-                    case let (.folder(folder), .folder(folderID)):
-                        return folder.id == folderID
-                    default:
-                        return false
-                    }
-                }) {
-                    sourceLocation = DragPageLocation(page: pageIndex, index: itemIndex)
-                    break
-                }
-            }
-
-            guard let sourceLocation else { return }
-
-            updateDragPreviewLayout(
-                session,
-                location: sourceLocation,
-                animated: false,
-                metrics: metrics
-            )
-            setDragTarget(
-                .pageInsertion(page: sourceLocation.page, index: sourceLocation.index),
-                session: session
-            )
-
-            guard let previewSurface = session.previewSurface else { return }
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            previewSurface.layer.opacity = 0
-            previewSurface.layer.isHidden = false
-            CATransaction.commit()
-
-            // closeFolder()/setFolderBackgroundVisible(false) must fade THIS
-            // post-extraction surface in, not the stale original root surface.
-            activeSurface = previewSurface
-            pageContentLayer = previewSurface.layer
-        }
-
-        func nearestFolderExtractionInsertionTarget(
-            at point: CGPoint,
-            session: LaunchpadDragSession
-        ) -> LauncherDropTarget? {
-            guard
-                session.sourceOrigin.folderID != nil,
-                let metrics = currentMetrics,
-                bounds.contains(point)
-            else { return nil }
-
-            let baseline = session.projectionBaselineDocument.normalizedForPageCapacity(metrics.itemsPerPage)
-            let pageItems = baseline.pages.indices.contains(currentPage) ? baseline.pages[currentPage] : []
-            let pageIDs = pageItems.map { item -> LauncherLayoutItemIdentifier in
-                switch item {
-                case let .application(reference): .application(reference.identity)
-                case let .folder(folder): .folder(folder.id)
-                }
-            }
-            let sourceID = session.sourceEntry.item.id
-            let countWithoutSource = pageIDs.filter { $0 != sourceID }.count
-            let usableSlotCount = max(1, min(metrics.itemsPerPage, countWithoutSource + 1))
-            let nearestSlot = (0..<usableSlotCount).compactMap { slot -> (Int, CGFloat)? in
-                guard let frame = metrics.cellFrame(forItemAt: slot) else { return nil }
-                let distance = hypot(point.x - frame.midX, point.y - frame.midY)
-                return (slot, distance)
-            }.min { $0.1 < $1.1 }?.0
-            guard let nearestSlot else { return nil }
-
-            let projection = pageProjection(metrics: metrics, document: baseline)
-            let visibleIDs = projection.pages.indices.contains(currentPage)
-                ? projection.pages[currentPage].map(\.id)
-                : []
-            guard let index = ResolvedLaunchpadInsertionIndex.resolve(
-                visibleSlot: min(nearestSlot, countWithoutSource),
-                pageIdentifiers: pageIDs,
-                visibleIdentifiers: visibleIDs,
-                sourceIdentifier: sourceID
-            ) else { return nil }
-            return .pageInsertion(page: currentPage, index: index)
-        }
-
-        func cancelFolderItemDragBeforeExit(animated: Bool) {
-            pendingFolderPress = nil
-            guard let context = folderItemDragSession else {
-                dragStateMachine.finish()
-                return
-            }
-            cancelFolderItemDragEdgePaging(context)
-            if context.hasCrossedPages, folderPage != context.sourcePage {
-                finishFolderCrossPageRollback(context, animated: animated)
-                return
-            }
-            folderItemDragSession = nil
-            folderHiddenApplicationID = nil
-            // Keep preservedFolderTrackingButton until the rollback has restored
-            // a live hit target. Clearing it here re-opened the same transient
-            // resign-active gap as a committed drop.
-            restoreFolderItemReorderPreview(context, animated: animated)
-            _ = dragStateMachine.beginRollback()
-
-            let sourceParent = context.sourceTileParent
-            let sourceIndex = context.sourceTileIndex
-            let proxy = context.proxyLayer
-            let sourceLayer = context.sourceEntry.tileLayer
-            let iconLayer = context.sourceEntry.iconLayer
-            let finish = { [weak self, weak proxy, weak sourceLayer, weak iconLayer] in
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-
-                // Return the real folder child before retiring the proxy. Both
-                // mutations commit together, so visual ownership never drops to zero.
-                if let sourceLayer, sourceLayer.superlayer == nil {
-                    let currentCount = sourceParent.sublayers?.count ?? 0
-                    let restoredIndex = UInt32(min(max(sourceIndex, 0), currentCount))
-                    sourceParent.insertSublayer(sourceLayer, at: restoredIndex)
-                }
-                sourceLayer?.opacity = 1
-                iconLayer?.removeAnimation(forKey: "iconPressedOpacity")
-                iconLayer?.opacity = 1
-                iconLayer?.setAffineTransform(.identity)
-
-                // A drag can travel far enough for its original page surface to
-                // be evicted and rebuilt. Reveal whichever source presentation
-                // is current, and retire the old transparent AppKit pointer owner
-                // if that rebuilt surface owns a different button.
-                self?.folderHiddenApplicationID = nil
-                if case let .application(application) = context.sourceEntry.item,
-                   let livePresentation = self?.folderPresentations.first(where: {
-                       $0.button.application.id == application.id
-                   }) {
-                    livePresentation.tileLayer.opacity = 1
-                    livePresentation.button.isHidden = false
-                    livePresentation.button.isEnabled = true
-                    if livePresentation.button === context.trackingButton {
-                        // Same surface/button regained ownership; no AppKit view
-                        // teardown is needed at all.
-                        context.trackingButton.endPointerTrackingWithoutCallback()
-                        self?.preservedFolderTrackingButton = nil
-                    } else {
-                        self?.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-                    }
-                } else {
-                    self?.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-                }
-
-                proxy?.removeAllAnimations()
-                proxy?.removeFromSuperlayer()
-                CATransaction.commit()
-                self?.dragStateMachine.finish()
-            }
-
-            let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            guard shouldAnimate else {
-                finish()
-                return
-            }
-            let transition = LaunchpadVisualStyle.dragCompletionTransition(kind: .rollback)
-            CATransaction.begin()
-            CATransaction.setAnimationDuration(transition.duration)
-            CATransaction.setAnimationTimingFunction(transition.timingFunction)
-            context.proxyLayer.position = context.sourceEntry.frames.cell.center
-            context.proxyLayer.setAffineTransform(.identity)
-            context.proxyLayer.opacity = 1
-            CATransaction.commit()
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(transition.duration))
-                finish()
-            }
-        }
-
-        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
-        func finishFolderCrossPageRollback(
-            _ context: FolderItemDragSession,
-            animated: Bool
-        ) {
-            guard
-                folderItemDragSession === context,
-                let folder = resolvedFolder(id: context.folderID),
-                let viewportLayer = folderPageViewportLayer
-            else {
-                folderItemDragSession = nil
-                dragStateMachine.finish()
-                return
-            }
-
-            _ = dragStateMachine.beginRollback()
-            context.edgePagingGeneration &+= 1
-            context.edgePagingTask?.cancel()
-            context.edgePagingTask = nil
-            context.isEdgePageTurnInFlight = true
-
-            let metrics = solver.solveFolder(
-                display: displayContext,
-                requested: layoutPreferences,
-                itemCount: context.baselineApplications.count
-            )
-            let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
-            let baselineFolder = ResolvedLaunchpadFolder(
-                id: folder.id,
-                title: folder.title,
-                applications: context.baselineApplications
-            )
-            let built = makeFolderPageLayer(
-                folder: baselineFolder,
-                metrics: metrics,
-                pageIndex: context.sourcePage,
-                scale: scale
-            )
-            let restored = FolderPageSurface(
-                pageIndex: context.sourcePage,
-                layer: built.layer,
-                presentations: built.presentations,
-                applications: built.applications
-            )
-            if case let .application(sourceApplication) = context.sourceEntry.item,
-               let sourcePresentation = restored.presentations.first(where: {
-                   $0.button.application.id == sourceApplication.id
-               }) {
-                sourcePresentation.tileLayer.opacity = 0
-                sourcePresentation.button.isHidden = true
-            }
-
-            let outgoing = folderPageSurfaces[folderPage]
-            let resting = metrics.panelFrame.center
-            let width = max(1, metrics.panelFrame.width)
-            let direction = context.sourcePage < folderPage ? -1 : 1
-            let visualDirection = CGFloat(metrics.isRightToLeft ? -direction : direction)
-
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            outgoing?.layer.removeAllAnimations()
-            outgoing?.layer.position = resting
-            outgoing?.layer.isHidden = false
-            restored.layer.removeAllAnimations()
-            restored.layer.position = CGPoint(
-                x: resting.x + visualDirection * width,
-                y: resting.y
-            )
-            restored.layer.isHidden = false
-            if restored.layer.superlayer == nil {
-                viewportLayer.addSublayer(restored.layer)
-            }
-            CATransaction.commit()
-
-            let finishPageReturn = { [weak self, weak context] in
-                guard let self, let context, self.folderItemDragSession === context else { return }
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                outgoing?.layer.removeAllAnimations()
-                outgoing?.layer.removeFromSuperlayer()
-                restored.layer.removeAllAnimations()
-                restored.layer.position = resting
-                CATransaction.commit()
-
-                self.folderPage = context.sourcePage
-                if let outgoing {
-                    self.detachFolderButtons(from: outgoing)
-                }
-                self.folderPageSurfaces.removeAll(keepingCapacity: true)
-                self.folderPageSurfaces[context.sourcePage] = restored
-                self.folderPresentations = restored.presentations
-                self.updateFolderPageIndicator(pageCount: metrics.pageCount)
-
-                let sourceLocalIndex = context.sourceAbsoluteIndex - context.sourcePage * metrics.itemsPerPage
-                let destination = self.folderPageItemFrames(
-                    localIndex: sourceLocalIndex,
-                    visibleCount: restored.applications.count,
-                    metrics: metrics
-                )?.cell.center ?? context.sourceEntry.frames.cell.center
-                let style = LaunchpadVisualStyle.dragCompletionTransition(kind: .rollback)
-                let duration = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                    ? style.duration
-                    : 0
-
-                CATransaction.begin()
-                if duration > 0 {
-                    CATransaction.setAnimationDuration(duration)
-                    CATransaction.setAnimationTimingFunction(style.timingFunction)
-                } else {
-                    CATransaction.setDisableActions(true)
-                }
-                context.proxyLayer.position = destination
-                context.proxyLayer.setAffineTransform(.identity)
-                context.proxyLayer.opacity = 1
-                CATransaction.commit()
-
-                Task { @MainActor [weak self, weak context] in
-                    guard let self, let context else { return }
-                    if duration > 0 {
-                        try? await Task.sleep(for: .seconds(duration))
-                    }
-                    CATransaction.begin()
-                    CATransaction.setDisableActions(true)
-                    context.proxyLayer.removeAllAnimations()
-                    context.proxyLayer.removeFromSuperlayer()
-                    self.folderHiddenApplicationID = nil
-                    if case let .application(sourceApplication) = context.sourceEntry.item,
-                       let livePresentation = restored.presentations.first(where: {
-                           $0.button.application.id == sourceApplication.id
-                       }) {
-                        livePresentation.tileLayer.opacity = 1
-                        self.attachFolderButtons(to: restored, hidden: false)
-                    }
-                    if restored.presentations.contains(where: { $0.button === context.trackingButton }) {
-                        context.trackingButton.endPointerTrackingWithoutCallback()
-                        context.trackingButton.isHidden = false
-                        context.trackingButton.isEnabled = true
-                        self.preservedFolderTrackingButton = nil
-                    } else {
-                        self.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
-                    }
-                    CATransaction.commit()
-                    self.folderItemDragSession = nil
-                    self.pendingFolderPress = nil
-                    self.dragStateMachine.finish()
-                    self.stageAdjacentFolderPageSurfaces(
-                        folder: baselineFolder,
-                        metrics: metrics,
-                        scale: scale
-                    )
-                }
-            }
-
-            guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
-                finishPageReturn()
-                return
-            }
-            let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
-            func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
-                let result = CABasicAnimation(keyPath: "position")
-                result.fromValue = NSValue(point: start)
-                result.toValue = NSValue(point: end)
-                result.duration = DragEdgeMetrics.pageDuration
-                result.timingFunction = timing
-                return result
-            }
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            CATransaction.setCompletionBlock { Task { @MainActor in finishPageReturn() } }
-            let outgoingEnd = CGPoint(x: resting.x - visualDirection * width, y: resting.y)
-            outgoing?.layer.position = outgoingEnd
-            restored.layer.position = resting
-            if let outgoing {
-                outgoing.layer.add(animation(resting, outgoingEnd), forKey: "folderCrossPageRollbackOut")
-            }
-            restored.layer.add(
-                animation(
-                    CGPoint(x: resting.x + visualDirection * width, y: resting.y),
-                    resting
-                ),
-                forKey: "folderCrossPageRollbackIn"
-            )
-            CATransaction.commit()
-        }
-
-        func cancelFolderExtractionDrag(_ session: LaunchpadDragSession, animated: Bool) {
-            guard let folderID = session.sourceOrigin.folderID else { return }
-            session.edgePagingTask?.cancel()
-            clearDragIntent(session)
-            session.pendingCompletionPoint = nil
-            session.edgeGeneration &+= 1
-            session.draft.rollback()
-
-            folderAnimationGeneration &+= 1
-            cleanupFolderOverlay()
-            session.proxyLayer.removeAllAnimations()
-            session.proxyLayer.removeFromSuperlayer()
-
-            // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
-            //
-            // Escape/programmatic rollback can run while the preserved button
-            // still owns mouseDown. removeFromSuperview() would otherwise call
-            // viewWillMove(toWindow: nil) -> cancelPointerTracking() ->
-            // onPointerCancelled and recursively enter cancellation again.
-            retireFolderTrackingButtonAfterPointerCallback(session.sourceEntry.button)
-
-            let originalSurface = session.originalSurface
-            for surface in pageSurfaces.values where surface !== originalSurface {
-                detachButtons(from: surface)
-                surface.layer.removeAllAnimations()
-                surface.layer.removeFromSuperlayer()
-            }
-            if let edgeIncoming = session.edgeIncomingSurface, edgeIncoming !== originalSurface {
-                detachButtons(from: edgeIncoming)
-                edgeIncoming.layer.removeFromSuperlayer()
-            }
-            if let previewSurface = session.previewSurface, previewSurface !== originalSurface {
-                detachButtons(from: previewSurface)
-                previewSurface.layer.removeFromSuperlayer()
-            }
-
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            originalSurface.layer.removeAllAnimations()
-            originalSurface.layer.frame = bounds
-            originalSurface.layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
-            originalSurface.layer.opacity = 1
-            originalSurface.layer.isHidden = false
-            if originalSurface.layer.superlayer == nil {
-                rootLayer.insertSublayer(originalSurface.layer, below: fixedOverlayLayer)
-            }
-            CATransaction.commit()
-
-            currentPage = session.sourcePage
-            activeSurface = originalSurface
-            pageContentLayer = originalSurface.layer
-            pageSurfaces = [session.sourcePage: originalSurface]
-            attachButtons(to: originalSurface, hidden: false)
-            setPageHitTargetsEnabled(true)
+        let sourceID = session.sourceEntry.item.id
+        let countWithoutSource = pageIDs.filter { $0 != sourceID }.count
+        let usableSlotCount = max(1, min(metrics.itemsPerPage, countWithoutSource + 1))
+        let nearestSlot = (0..<usableSlotCount).compactMap { slot -> (Int, CGFloat)? in
+            guard let frame = metrics.cellFrame(forItemAt: slot) else { return nil }
+            let distance = hypot(point.x - frame.midX, point.y - frame.midY)
+            return (slot, distance)
+        }.min { $0.1 < $1.1 }?.0
+        guard let nearestSlot else { return nil }
+
+        let projection = pageProjection(metrics: metrics, document: baseline)
+        let visibleIDs = projection.pages.indices.contains(currentPage) ? projection.pages[currentPage].map(\.id) : []
+        guard
+            let index = ResolvedLaunchpadInsertionIndex.resolve(
+                visibleSlot: min(nearestSlot, countWithoutSource), pageIdentifiers: pageIDs,
+                visibleIdentifiers: visibleIDs, sourceIdentifier: sourceID)
+        else { return nil }
+        return .pageInsertion(page: currentPage, index: index)
+    }
+
+    fileprivate func cancelFolderItemDragBeforeExit(animated: Bool) {
+        pendingFolderPress = nil
+        guard let context = folderItemDragSession else {
             dragStateMachine.finish()
+            return
+        }
+        cancelFolderItemDragEdgePaging(context)
+        if context.hasCrossedPages, folderPage != context.sourcePage {
+            finishFolderCrossPageRollback(context, animated: animated)
+            return
+        }
+        folderItemDragSession = nil
+        folderHiddenApplicationID = nil
+        // Keep preservedFolderTrackingButton until the rollback has restored
+        // a live hit target. Clearing it here re-opened the same transient
+        // resign-active gap as a committed drop.
+        restoreFolderItemReorderPreview(context, animated: animated)
+        _ = dragStateMachine.beginRollback()
 
-            if let metrics = currentMetrics {
-                updatePageIndicator(
-                    pageCount: pageProjection(metrics: metrics).pageCount,
-                    metrics: metrics,
-                    scale: window?.backingScaleFactor ?? 1
-                )
+        let finish = folderRollbackCompletion(context)
+
+        let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        guard shouldAnimate else {
+            finish()
+            return
+        }
+        let transition = LaunchpadVisualStyle.dragCompletionTransition(kind: .rollback)
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(transition.duration)
+        CATransaction.setAnimationTimingFunction(transition.timingFunction)
+        context.proxyLayer.position = context.sourceEntry.frames.cell.center
+        context.proxyLayer.setAffineTransform(.identity)
+        context.proxyLayer.opacity = 1
+        CATransaction.commit()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(transition.duration))
+            finish()
+        }
+    }
+
+    fileprivate func folderRollbackCompletion(_ context: FolderItemDragSession) -> @MainActor () -> Void {
+        let sourceParent = context.sourceTileParent
+        let sourceIndex = context.sourceTileIndex
+        let proxy = context.proxyLayer
+        let sourceLayer = context.sourceEntry.tileLayer
+        let iconLayer = context.sourceEntry.iconLayer
+        return { [weak self, weak proxy, weak sourceLayer, weak iconLayer] in
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+
+            // Return the real folder child before retiring the proxy. Both
+            // mutations commit together, so visual ownership never drops to zero.
+            if let sourceLayer, sourceLayer.superlayer == nil {
+                let currentCount = sourceParent.sublayers?.count ?? 0
+                let restoredIndex = UInt32(min(max(sourceIndex, 0), currentCount))
+                sourceParent.insertSublayer(sourceLayer, at: restoredIndex)
             }
-            openFolder(folderID, sourceFrame: folderSourceFrame(for: folderID))
+            sourceLayer?.opacity = 1
+            iconLayer?.removeAnimation(forKey: "iconPressedOpacity")
+            iconLayer?.opacity = 1
+            iconLayer?.setAffineTransform(.identity)
+
+            self?.restoreFolderPointerOwnerAfterRollback(context)
+
+            proxy?.removeAllAnimations()
+            proxy?.removeFromSuperlayer()
+            CATransaction.commit()
+            self?.dragStateMachine.finish()
         }
 
-        func openFolder(_ folderID: UUID, sourceFrame: CGRect? = nil) {
-            guard resolvedFolder(id: folderID) != nil else { return }
+    }
+
+    fileprivate func restoreFolderPointerOwnerAfterRollback(_ context: FolderItemDragSession) {
+        // A drag can travel far enough for its original page surface to
+        // be evicted and rebuilt. Reveal whichever source presentation
+        // is current, and retire the old transparent AppKit pointer owner
+        // if that rebuilt surface owns a different button.
+        self.folderHiddenApplicationID = nil
+        if case .application(let application) = context.sourceEntry.item,
+            let livePresentation = self.folderPresentations.first(where: {
+                $0.button.application.id == application.id
+            }) {
+            livePresentation.tileLayer.opacity = 1
+            livePresentation.button.isHidden = false
+            livePresentation.button.isEnabled = true
+            if livePresentation.button === context.trackingButton {
+                // Same surface/button regained ownership; no AppKit view
+                // teardown is needed at all.
+                context.trackingButton.endPointerTrackingWithoutCallback()
+                self.preservedFolderTrackingButton = nil
+            } else {
+                self.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+            }
+        } else {
+            self.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+        }
+
+    }
+
+    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
+    fileprivate func finishFolderCrossPageRollback(_ context: FolderItemDragSession, animated: Bool) {
+        guard folderItemDragSession === context, let folder = resolvedFolder(id: context.folderID),
+            let viewportLayer = folderPageViewportLayer
+        else {
+            folderItemDragSession = nil
+            dragStateMachine.finish()
+            return
+        }
+
+        _ = dragStateMachine.beginRollback()
+        context.edgePagingGeneration &+= 1
+        context.edgePagingTask?.cancel()
+        context.edgePagingTask = nil
+        context.isEdgePageTurnInFlight = true
+
+        let metrics = solver.solveFolder(
+            display: displayContext, requested: layoutPreferences, itemCount: context.baselineApplications.count)
+        let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
+        let baselineFolder = ResolvedLaunchpadFolder(
+            id: folder.id, title: folder.title, applications: context.baselineApplications)
+        let built = makeFolderPageLayer(
+            folder: baselineFolder, metrics: metrics, pageIndex: context.sourcePage, scale: scale)
+        let restored = FolderPageSurface(
+            pageIndex: context.sourcePage, layer: built.layer, presentations: built.presentations,
+            applications: built.applications)
+        hideFolderDragSource(in: restored, context: context)
+
+        let outgoing = folderPageSurfaces[folderPage]
+        let resting = metrics.panelFrame.center
+        let width = max(1, metrics.panelFrame.width)
+        let direction = context.sourcePage < folderPage ? -1 : 1
+        let visualDirection = CGFloat(metrics.isRightToLeft ? -direction : direction)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outgoing?.layer.removeAllAnimations()
+        outgoing?.layer.position = resting
+        outgoing?.layer.isHidden = false
+        restored.layer.removeAllAnimations()
+        restored.layer.position = CGPoint(x: resting.x + visualDirection * width, y: resting.y)
+        restored.layer.isHidden = false
+        if restored.layer.superlayer == nil { viewportLayer.addSublayer(restored.layer) }
+        CATransaction.commit()
+
+        let transition = FolderRollbackTransition(
+            outgoing: outgoing, restored: restored, metrics: metrics, baselineFolder: baselineFolder, scale: scale,
+            resting: resting, width: width, visualDirection: visualDirection)
+        let finishPageReturn: @MainActor () -> Void = { [weak self, weak context] in
+            guard let self, let context, self.folderItemDragSession === context else { return }
+            self.finishFolderPageReturn(context, transition: transition, animated: animated)
+        }
+        animateFolderPageReturn(transition, animated: animated, finishPageReturn: finishPageReturn)
+    }
+
+    fileprivate struct FolderRollbackTransition {
+        let outgoing: FolderPageSurface?
+        let restored: FolderPageSurface
+        let metrics: FolderGridMetrics
+        let baselineFolder: ResolvedLaunchpadFolder
+        let scale: CGFloat
+        let resting: CGPoint
+        let width: CGFloat
+        let visualDirection: CGFloat
+    }
+
+    fileprivate func finishFolderPageReturn(
+        _ context: FolderItemDragSession, transition: FolderRollbackTransition, animated: Bool
+    ) {
+        let outgoing = transition.outgoing
+        let restored = transition.restored
+        let resting = transition.resting
+        let metrics = transition.metrics
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outgoing?.layer.removeAllAnimations()
+        outgoing?.layer.removeFromSuperlayer()
+        restored.layer.removeAllAnimations()
+        restored.layer.position = resting
+        CATransaction.commit()
+
+        self.folderPage = context.sourcePage
+        if let outgoing { self.detachFolderButtons(from: outgoing) }
+        self.folderPageSurfaces.removeAll(keepingCapacity: true)
+        self.folderPageSurfaces[context.sourcePage] = restored
+        self.folderPresentations = restored.presentations
+        self.updateFolderPageIndicator(pageCount: metrics.pageCount)
+
+        let sourceLocalIndex = context.sourceAbsoluteIndex - context.sourcePage * metrics.itemsPerPage
+        let destination =
+            self.folderPageItemFrames(
+                localIndex: sourceLocalIndex, visibleCount: restored.applications.count, metrics: metrics)?.cell.center
+            ?? context.sourceEntry.frames.cell.center
+        let style = LaunchpadVisualStyle.dragCompletionTransition(kind: .rollback)
+        let duration = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? style.duration : 0
+
+        CATransaction.begin()
+        if duration > 0 {
+            CATransaction.setAnimationDuration(duration)
+            CATransaction.setAnimationTimingFunction(style.timingFunction)
+        } else {
+            CATransaction.setDisableActions(true)
+        }
+        context.proxyLayer.position = destination
+        context.proxyLayer.setAffineTransform(.identity)
+        context.proxyLayer.opacity = 1
+        CATransaction.commit()
+
+        Task { @MainActor [weak self, weak context] in
+            guard let self, let context else { return }
+            if duration > 0 { try? await Task.sleep(for: .seconds(duration)) }
+            self.finishFolderRollbackLanding(context, transition: transition)
+        }
+    }
+
+    fileprivate func finishFolderRollbackLanding(
+        _ context: FolderItemDragSession, transition: FolderRollbackTransition) {
+        let restored = transition.restored
+        let metrics = transition.metrics
+        let baselineFolder = transition.baselineFolder
+        let scale = transition.scale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        context.proxyLayer.removeAllAnimations()
+        context.proxyLayer.removeFromSuperlayer()
+        self.folderHiddenApplicationID = nil
+        if case .application(let sourceApplication) = context.sourceEntry.item,
+            let livePresentation = restored.presentations.first(where: {
+                $0.button.application.id == sourceApplication.id
+            }) {
+            livePresentation.tileLayer.opacity = 1
+            self.attachFolderButtons(to: restored, hidden: false)
+        }
+        if restored.presentations.contains(where: { $0.button === context.trackingButton }) {
+            context.trackingButton.endPointerTrackingWithoutCallback()
+            context.trackingButton.isHidden = false
+            context.trackingButton.isEnabled = true
+            self.preservedFolderTrackingButton = nil
+        } else {
+            self.retireFolderTrackingButtonAfterPointerCallback(context.trackingButton)
+        }
+        CATransaction.commit()
+        self.folderItemDragSession = nil
+        self.pendingFolderPress = nil
+        self.dragStateMachine.finish()
+        self.stageAdjacentFolderPageSurfaces(folder: baselineFolder, metrics: metrics, scale: scale)
+    }
+
+    fileprivate func animateFolderPageReturn(
+        _ transition: FolderRollbackTransition, animated: Bool, finishPageReturn: @escaping @MainActor () -> Void
+    ) {
+        let outgoing = transition.outgoing
+        let restored = transition.restored
+        let resting = transition.resting
+        let width = transition.width
+        let visualDirection = transition.visualDirection
+        guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            finishPageReturn()
+            return
+        }
+        let timing = CAMediaTimingFunction(controlPoints: 0.24, 0.12, 0.28, 1)
+        func animation(_ start: CGPoint, _ end: CGPoint) -> CABasicAnimation {
+            let result = CABasicAnimation(keyPath: "position")
+            result.fromValue = NSValue(point: start)
+            result.toValue = NSValue(point: end)
+            result.duration = DragEdgeMetrics.pageDuration
+            result.timingFunction = timing
+            return result
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        CATransaction.setCompletionBlock { Task { @MainActor in finishPageReturn() } }
+        let outgoingEnd = CGPoint(x: resting.x - visualDirection * width, y: resting.y)
+        outgoing?.layer.position = outgoingEnd
+        restored.layer.position = resting
+        if let outgoing { outgoing.layer.add(animation(resting, outgoingEnd), forKey: "folderCrossPageRollbackOut") }
+        restored.layer.add(
+            animation(CGPoint(x: resting.x + visualDirection * width, y: resting.y), resting),
+            forKey: "folderCrossPageRollbackIn")
+        CATransaction.commit()
+    }
+
+    fileprivate func cancelFolderExtractionDrag(_ session: LaunchpadDragSession, animated: Bool) {
+        guard let folderID = session.sourceOrigin.folderID else { return }
+        session.edgePagingTask?.cancel()
+        clearDragIntent(session)
+        session.pendingCompletionPoint = nil
+        session.edgeGeneration &+= 1
+        session.draft.rollback()
+
+        folderAnimationGeneration &+= 1
+        cleanupFolderOverlay()
+        session.proxyLayer.removeAllAnimations()
+        session.proxyLayer.removeFromSuperlayer()
+
+        // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
+        //
+        // Escape/programmatic rollback can run while the preserved button
+        // still owns mouseDown. removeFromSuperview() would otherwise call
+        // viewWillMove(toWindow: nil) -> cancelPointerTracking() ->
+        // onPointerCancelled and recursively enter cancellation again.
+        retireFolderTrackingButtonAfterPointerCallback(session.sourceEntry.button)
+
+        let originalSurface = session.originalSurface
+        for surface in pageSurfaces.values where surface !== originalSurface {
+            detachButtons(from: surface)
+            surface.layer.removeAllAnimations()
+            surface.layer.removeFromSuperlayer()
+        }
+        if let edgeIncoming = session.edgeIncomingSurface, edgeIncoming !== originalSurface {
+            detachButtons(from: edgeIncoming)
+            edgeIncoming.layer.removeFromSuperlayer()
+        }
+        if let previewSurface = session.previewSurface, previewSurface !== originalSurface {
+            detachButtons(from: previewSurface)
+            previewSurface.layer.removeFromSuperlayer()
+        }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        originalSurface.layer.removeAllAnimations()
+        originalSurface.layer.frame = bounds
+        originalSurface.layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        originalSurface.layer.opacity = 1
+        originalSurface.layer.isHidden = false
+        if originalSurface.layer.superlayer == nil {
+            rootLayer.insertSublayer(originalSurface.layer, below: fixedOverlayLayer)
+        }
+        CATransaction.commit()
+
+        currentPage = session.sourcePage
+        activeSurface = originalSurface
+        pageContentLayer = originalSurface.layer
+        pageSurfaces = [session.sourcePage: originalSurface]
+        attachButtons(to: originalSurface, hidden: false)
+        setPageHitTargetsEnabled(true)
+        dragStateMachine.finish()
+
+        if let metrics = currentMetrics {
+            updatePageIndicator(
+                pageCount: pageProjection(metrics: metrics).pageCount, metrics: metrics,
+                scale: window?.backingScaleFactor ?? 1)
+        }
+        openFolder(folderID, sourceFrame: folderSourceFrame(for: folderID))
+    }
+
+    fileprivate func openFolder(_ folderID: UUID, sourceFrame: CGRect? = nil) {
+        guard resolvedFolder(id: folderID) != nil else { return }
 
         // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // Folder interaction owns the foreground. Stop opportunistic root/session
@@ -8039,30 +6282,27 @@ private extension LaunchpadRootView {
         renderFolderOverlay(animated: true)
     }
 
-    func folderSourceFrame(for folderID: UUID) -> CGRect? {
+    fileprivate func folderSourceFrame(for folderID: UUID) -> CGRect? {
         activeSurface?.entries.first { $0.item.folderID == folderID }?.frames.icon
     }
 
-    func resolvedFolder(id: UUID) -> ResolvedLaunchpadFolder? {
+    fileprivate func resolvedFolder(id: UUID) -> ResolvedLaunchpadFolder? {
         let document: LauncherLayoutDocument
-        if let session = dragSession,
-           session.folderCreationPreview?.folderID == id {
+        if let session = dragSession, session.folderCreationPreview?.folderID == id {
             document = session.draft.document
         } else {
             document = layoutDocument
         }
 
-        return ResolvedLaunchpadItemFactory.makeItems(
-            document: document,
-            applications: applications,
-            query: ""
-        ).first { $0.id == .folder(id) }.flatMap {
-            guard case let .folder(folder) = $0 else { return nil }
+        return ResolvedLaunchpadItemFactory.makeItems(document: document, applications: applications, query: "").first {
+            $0.id == .folder(id)
+        }.flatMap {
+            guard case .folder(let folder) = $0 else { return nil }
             return folder
         }
     }
 
-    func setFolderBackgroundVisible(_ visible: Bool, animated: Bool) {
+    fileprivate func setFolderBackgroundVisible(_ visible: Bool, animated: Bool) {
         // Open folders own the stage. Hide the root app grid completely;
         // wallpaper remains visible and AppKit hit targets are managed separately.
         let targetOpacity: Float = visible ? 0 : 1
@@ -8077,13 +6317,54 @@ private extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    func renderFolderOverlay(animated: Bool) {
+    fileprivate struct FolderOverlayRenderContext {
+        let folder: ResolvedLaunchpadFolder
+        let metrics: FolderGridMetrics
+        let scale: CGFloat
+        let page: Int
+        let generation: Int
+
+        var startIndex: Int { page * metrics.itemsPerPage }
+        let visibleApplications: [ApplicationRecord]
+
+        init(folder: ResolvedLaunchpadFolder, metrics: FolderGridMetrics, scale: CGFloat, page: Int, generation: Int) {
+            self.folder = folder
+            self.metrics = metrics
+            self.scale = scale
+            self.page = page
+            self.generation = generation
+            let start = page * metrics.itemsPerPage
+            let end = min(start + metrics.itemsPerPage, folder.applications.count)
+            visibleApplications = Array(folder.applications[start..<end])
+        }
+    }
+
+    fileprivate func renderFolderOverlay(animated: Bool) {
         guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else {
             closeFolder(animated: false)
             return
         }
         folderAnimationGeneration &+= 1
-        let animationGeneration = folderAnimationGeneration
+        resetFolderOverlayRendering()
+        let scale = window?.backingScaleFactor ?? 1
+        // Resolve one geometry for the whole folder so partial pages retain the same grid.
+        let metrics = solver.solveFolder(
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
+        folderPage = min(folderPage, max(0, metrics.pageCount - 1))
+        folderPanelFrame = metrics.panelFrame
+        let context = FolderOverlayRenderContext(
+            folder: folder, metrics: metrics, scale: scale, page: folderPage, generation: folderAnimationGeneration)
+        let visualScale = max(1, metrics.iconSize / max(1, solver.tokens.preferredIconSize))
+        let (contentLayer, dimLayer) = makeFolderOverlayContainer(
+            metrics: metrics, scale: scale, folderVisualScale: visualScale, animated: animated)
+        addFolderPanel(to: contentLayer, metrics: metrics, folderVisualScale: visualScale)
+        addFolderTitle(to: contentLayer, context: context, folderVisualScale: visualScale)
+        populateFolderOverlay(contentLayer: contentLayer, context: context, animated: animated)
+        addFolderPageIndicator(to: contentLayer, context: context, folderVisualScale: visualScale)
+        animateFolderOverlay(context: context, contentLayer: contentLayer, dimLayer: dimLayer, animated: animated)
+    }
+
+    fileprivate func resetFolderOverlayRendering() {
         folderIconTask?.cancel()
         cancelInteractiveFolderPageSwipeImmediately()
         folderPageSwipeInputGate = PageSwipeInputGate()
@@ -8097,8 +6378,7 @@ private extension LaunchpadRootView {
         if let currentFolderPageLayer = folderPageContentLayer {
             folderPageTransitionAnimator.reset(
                 contentLayer: currentFolderPageLayer,
-                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds
-            )
+                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds)
         }
         folderPageViewportLayer = nil
         folderPageContentLayer = nil
@@ -8113,36 +6393,11 @@ private extension LaunchpadRootView {
         folderOverlayLayer.opacity = 1
         folderOverlayLayer.isHidden = false
 
-        let scale = window?.backingScaleFactor ?? 1
-        let allMetrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
-        let pageCount = allMetrics.pageCount
-        folderPage = min(folderPage, max(0, pageCount - 1))
-        let startIndex = folderPage * allMetrics.itemsPerPage
-        let endIndex = min(startIndex + allMetrics.itemsPerPage, folder.applications.count)
-        let visibleApplications = Array(folder.applications[startIndex ..< endIndex])
+    }
 
-        // LAUNCHPANE_STABLE_FOLDER_PAGE_SIZE_V13
-        // Keep one geometry for every page in this open folder. If page one is
-        // full and page two is partial, page two reuses the full-page panel/cell
-        // lattice instead of shrinking the panel around its smaller item count.
-        // Single-page folders still size naturally because allMetrics was solved
-        // from their actual total count.
-        let metrics = allMetrics
-        folderPanelFrame = metrics.panelFrame
-
-        // LAUNCHPANE_ADAPTIVE_FOLDER_PANEL_SCALE_V12
-        // Match the folder chrome to the same resolved large-display scale that
-        // produced the child icon size. The MacBook baseline remains 1.0; a
-        // native 4K canvas reaches roughly 136 / 108 = 1.26.
-        let folderVisualScale = max(
-            1,
-            metrics.iconSize / max(1, solver.tokens.preferredIconSize)
-        )
-
+    fileprivate func makeFolderOverlayContainer(
+        metrics: FolderGridMetrics, scale: CGFloat, folderVisualScale: CGFloat, animated: Bool
+    ) -> (CALayer, CALayer) {
         let sourceFrame = folderAnimationSourceFrame
         let sourcePoint = sourceFrame?.center ?? metrics.panelFrame.center
 
@@ -8152,21 +6407,16 @@ private extension LaunchpadRootView {
         // Keeping the layer's bounds origin in screen coordinates means all
         // existing child frames/reorder positions remain valid unchanged.
         let visualPadding = max(48, 52 * folderVisualScale)
-        let proposedVisualBounds = metrics.panelFrame
-            .union(metrics.titleFrame)
-            .insetBy(dx: -visualPadding, dy: -visualPadding)
+        let proposedVisualBounds = metrics.panelFrame.union(metrics.titleFrame).insetBy(
+            dx: -visualPadding, dy: -visualPadding)
         let clippedVisualBounds = proposedVisualBounds.intersection(bounds)
-        let folderVisualBounds = clippedVisualBounds.isNull || clippedVisualBounds.isEmpty
-            ? proposedVisualBounds
-            : clippedVisualBounds
+        let folderVisualBounds =
+            clippedVisualBounds.isNull || clippedVisualBounds.isEmpty ? proposedVisualBounds : clippedVisualBounds
         let normalizedAnchor = CGPoint(
             x: folderVisualBounds.width > 0
-                ? (sourcePoint.x - folderVisualBounds.minX) / folderVisualBounds.width
-                : 0.5,
+                ? (sourcePoint.x - folderVisualBounds.minX) / folderVisualBounds.width : 0.5,
             y: folderVisualBounds.height > 0
-                ? (sourcePoint.y - folderVisualBounds.minY) / folderVisualBounds.height
-                : 0.5
-        )
+                ? (sourcePoint.y - folderVisualBounds.minY) / folderVisualBounds.height : 0.5)
 
         let dimLayer = CALayer()
         dimLayer.frame = bounds
@@ -8196,6 +6446,10 @@ private extension LaunchpadRootView {
         folderOverlayLayer.addSublayer(contentLayer)
         folderContentAnimationLayer = contentLayer
 
+        return (contentLayer, dimLayer)
+    }
+
+    fileprivate func addFolderPanel(to contentLayer: CALayer, metrics: FolderGridMetrics, folderVisualScale: CGFloat) {
         let panelLayer = CALayer()
         panelLayer.frame = metrics.panelFrame
         panelLayer.cornerRadius = min(32 * folderVisualScale, metrics.panelFrame.height * 0.14)
@@ -8212,14 +6466,19 @@ private extension LaunchpadRootView {
         // A fixed shadow path avoids deriving a large translucent alpha mask on
         // every transformed frame, which is particularly expensive on 4K.
         panelLayer.shadowPath = CGPath(
-            roundedRect: panelLayer.bounds,
-            cornerWidth: panelLayer.cornerRadius,
-            cornerHeight: panelLayer.cornerRadius,
-            transform: nil
-        )
+            roundedRect: panelLayer.bounds, cornerWidth: panelLayer.cornerRadius, cornerHeight: panelLayer.cornerRadius,
+            transform: nil)
 
         contentLayer.addSublayer(panelLayer)
 
+    }
+
+    fileprivate func addFolderTitle(
+        to contentLayer: CALayer, context: FolderOverlayRenderContext, folderVisualScale: CGFloat
+    ) {
+        let folder = context.folder
+        let metrics = context.metrics
+        let scale = context.scale
         // LAUNCHPANE_FOLDER_TITLE_27PT_V1
         // Keep 27pt on the MacBook baseline and enlarge it with the folder panel
         // on wider logical displays.
@@ -8236,20 +6495,19 @@ private extension LaunchpadRootView {
         contentLayer.addSublayer(titleLayer)
         folderTitleLayer = titleLayer
         folderTitleFrame = metrics.titleFrame
-        let measuredTitleWidth = ceil(
-            (folder.title as NSString).size(withAttributes: [.font: titleFont]).width
-        )
+        let measuredTitleWidth = ceil((folder.title as NSString).size(withAttributes: [.font: titleFont]).width)
         let titleHitWidth = min(
-            metrics.titleFrame.width,
-            max(88 * folderVisualScale, measuredTitleWidth + 28 * folderVisualScale)
-        )
+            metrics.titleFrame.width, max(88 * folderVisualScale, measuredTitleWidth + 28 * folderVisualScale))
         folderTitleHitFrame = CGRect(
-            x: metrics.titleFrame.midX - titleHitWidth / 2,
-            y: metrics.titleFrame.minY,
-            width: titleHitWidth,
-            height: metrics.titleFrame.height
-        )
+            x: metrics.titleFrame.midX - titleHitWidth / 2, y: metrics.titleFrame.minY, width: titleHitWidth,
+            height: metrics.titleFrame.height)
 
+    }
+
+    fileprivate func populateFolderOverlay(contentLayer: CALayer, context: FolderOverlayRenderContext, animated: Bool) {
+        let metrics = context.metrics
+        let scale = context.scale
+        let visibleApplications = context.visibleApplications
         // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
         // Keep the panel/title fixed while the page contents slide behind a
         // clipped viewport, matching the root Launchpad page composition.
@@ -8271,76 +6529,11 @@ private extension LaunchpadRootView {
         folderPageContentLayer = pageLayer
 
         for (localIndex, application) in visibleApplications.enumerated() {
-            guard let frames = folderPageItemFrames(
-                localIndex: localIndex,
-                visibleCount: visibleApplications.count,
-                metrics: metrics
-            ) else { continue }
-            let presentation = AppTilePresentationFactory.make(AppTileRenderInput(
-                application: application,
-                cellFrame: frames.cell,
-                iconFrame: frames.icon,
-                labelFrame: frames.label,
-                scale: scale,
-                selected: startIndex + localIndex == folderSelectedIndex,
-                // LAUNCHPANE_FOLDER_LOW_RES_FALLBACK_V6
-                // If the exact HQ bitmap has not landed yet, show the best
-                // resident miniature immediately instead of a blank icon.
-                icon: iconCache.bestAvailableCGImage(
-                    for: application,
-                    pointSize: metrics.iconSize,
-                    scale: scale
-                )
-            ))
-            // LAUNCHPANE_FOLDER_CHILD_NO_RASTER_CACHE_V6
-            // Folder children are already inside one animated content container
-            // and do not participate in root-page swipes. Avoid allocating a
-            // second Retina raster surface per child during the open animation.
-            presentation.tileLayer.shouldRasterize = false
-            presentation.tileLayer.rasterizationScale = 1
+            guard
+                let presentation = makeFolderOverlayTile(
+                    application: application, localIndex: localIndex, context: context, animated: animated)
+            else { continue }
             pageLayer.addSublayer(presentation.tileLayer)
-            presentation.button.frame = frames.icon
-            presentation.button.target = self
-            presentation.button.action = #selector(applicationButtonPressed(_:))
-
-            let isDraggedSource = folderHiddenApplicationID == application.id
-            if isDraggedSource {
-                // The model already contains the provisional child, but the
-                // floating drag proxy remains its sole visual owner until drop.
-                presentation.tileLayer.opacity = 0
-                presentation.button.isHidden = true
-                dragSession?.folderCreationPreview?.sourceLandingCenter = frames.cell.center
-            } else {
-                presentation.button.isHidden = animated
-            }
-
-            presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer, weak self] isHovering in
-                self?.animateHover(on: iconLayer, isHovering: isHovering)
-            }
-            presentation.button.onPointerDown = { [weak self, weak presentation] event in
-                guard let self, let presentation else { return }
-                self.folderItemPointerDown(
-                    // LAUNCHPANE_FOLDER_COMPILE_REPAIR_V1
-                    // This callback belongs to the concrete folder snapshot that
-                    // renderFolderOverlay() already resolved. Do not pass the
-                    // mutable optional openFolderID (UUID?) to a UUID parameter.
-                    folderID: folder.id,
-                    application: application,
-                    absoluteIndex: startIndex + localIndex,
-                    frames: frames,
-                    presentation: presentation,
-                    event: event
-                )
-            }
-            presentation.button.onPointerDragged = { [weak self] update in
-                self?.folderItemPointerDragged(update)
-            }
-            presentation.button.onPointerUp = { [weak self] release in
-                self?.folderItemPointerUp(release)
-            }
-            presentation.button.onPointerCancelled = { [weak self] in
-                self?.folderItemPointerCancelled()
-            }
             addSubview(presentation.button)
             folderPresentations.append(presentation)
         }
@@ -8351,24 +6544,84 @@ private extension LaunchpadRootView {
         // and stage its neighbor after the opening animation.
         folderPageSurfaces = [
             folderPage: FolderPageSurface(
-                pageIndex: folderPage,
-                layer: pageLayer,
-                presentations: folderPresentations,
-                applications: visibleApplications
-            )
+                pageIndex: folderPage, layer: pageLayer, presentations: folderPresentations,
+                applications: visibleApplications)
         ]
 
+    }
+
+    fileprivate func makeFolderOverlayTile(
+        application: ApplicationRecord, localIndex: Int, context: FolderOverlayRenderContext, animated: Bool
+    ) -> AppTilePresentation? {
+        let folder = context.folder
+        let metrics = context.metrics
+        let scale = context.scale
+        let startIndex = context.startIndex
+        let visibleApplications = context.visibleApplications
+        guard
+            let frames = folderPageItemFrames(
+                localIndex: localIndex, visibleCount: visibleApplications.count, metrics: metrics)
+        else { return nil }
+        let presentation = AppTilePresentationFactory.make(
+            AppTileRenderInput(
+                application: application, cellFrame: frames.cell, iconFrame: frames.icon, labelFrame: frames.label,
+                scale: scale, selected: startIndex + localIndex == folderSelectedIndex,
+                // LAUNCHPANE_FOLDER_LOW_RES_FALLBACK_V6
+                // If the exact HQ bitmap has not landed yet, show the best
+                // resident miniature immediately instead of a blank icon.
+                icon: iconCache.bestAvailableCGImage(for: application, pointSize: metrics.iconSize, scale: scale)))
+        // LAUNCHPANE_FOLDER_CHILD_NO_RASTER_CACHE_V6
+        // Folder children are already inside one animated content container
+        // and do not participate in root-page swipes. Avoid allocating a
+        // second Retina raster surface per child during the open animation.
+        presentation.tileLayer.shouldRasterize = false
+        presentation.tileLayer.rasterizationScale = 1
+        presentation.button.frame = frames.icon
+        presentation.button.target = self
+        presentation.button.action = #selector(applicationButtonPressed(_:))
+
+        let isDraggedSource = folderHiddenApplicationID == application.id
+        if isDraggedSource {
+            // The model already contains the provisional child, but the
+            // floating drag proxy remains its sole visual owner until drop.
+            presentation.tileLayer.opacity = 0
+            presentation.button.isHidden = true
+            dragSession?.folderCreationPreview?.sourceLandingCenter = frames.cell.center
+        } else {
+            presentation.button.isHidden = animated
+        }
+
+        presentation.button.onHoverChanged = { [weak iconLayer = presentation.iconLayer, weak self] isHovering in
+            self?.animateHover(on: iconLayer, isHovering: isHovering)
+        }
+        presentation.button.onPointerDown = { [weak self, weak presentation] event in
+            guard let self, let presentation else { return }
+            self.folderItemPointerDown(
+                // LAUNCHPANE_FOLDER_COMPILE_REPAIR_V1
+                // This callback belongs to the concrete folder snapshot that
+                // renderFolderOverlay() already resolved. Do not pass the
+                // mutable optional openFolderID (UUID?) to a UUID parameter.
+                folderID: folder.id, absoluteIndex: startIndex + localIndex, frames: frames,
+                presentation: presentation, event: event)
+        }
+        presentation.button.onPointerDragged = { [weak self] update in self?.folderItemPointerDragged(update) }
+        presentation.button.onPointerUp = { [weak self] release in self?.folderItemPointerUp(release) }
+        presentation.button.onPointerCancelled = { [weak self] in self?.folderItemPointerCancelled() }
+        return presentation
+    }
+
+    fileprivate func addFolderPageIndicator(
+        to contentLayer: CALayer, context: FolderOverlayRenderContext, folderVisualScale: CGFloat
+    ) {
+        let metrics = context.metrics
+        let pageCount = metrics.pageCount
+        let scale = context.scale
         if pageCount > 1 {
             let dots = CATextLayer()
             dots.frame = CGRect(
-                x: metrics.panelFrame.minX,
-                y: metrics.panelFrame.minY + 7 * folderVisualScale,
-                width: metrics.panelFrame.width,
-                height: 18 * folderVisualScale
-            )
-            dots.string = (0 ..< pageCount)
-                .map { $0 == folderPage ? "●" : "○" }
-                .joined(separator: "  ")
+                x: metrics.panelFrame.minX, y: metrics.panelFrame.minY + 7 * folderVisualScale,
+                width: metrics.panelFrame.width, height: 18 * folderVisualScale)
+            dots.string = (0..<pageCount).map { $0 == folderPage ? "●" : "○" }.joined(separator: "  ")
             dots.alignmentMode = .center
             dots.fontSize = 10 * folderVisualScale
             dots.foregroundColor = NSColor.white.withAlphaComponent(0.64).cgColor
@@ -8379,12 +6632,19 @@ private extension LaunchpadRootView {
             folderPageIndicatorLayer = nil
         }
 
-        guard
-            animated,
+    }
+
+    fileprivate func animateFolderOverlay(
+        context: FolderOverlayRenderContext, contentLayer: CALayer, dimLayer: CALayer, animated: Bool
+    ) {
+        let folder = context.folder
+        let metrics = context.metrics
+        let scale = context.scale
+        let visibleApplications = context.visibleApplications
+        let sourceFrame = folderAnimationSourceFrame
+        guard animated,
             let transition = LaunchpadVisualStyle.folderTransition(
-                sourceFrame: sourceFrame,
-                panelFrame: metrics.panelFrame
-            )
+                sourceFrame: sourceFrame, panelFrame: metrics.panelFrame)
         else {
             contentLayer.shouldRasterize = false
             contentLayer.rasterizationScale = 1
@@ -8402,11 +6662,7 @@ private extension LaunchpadRootView {
             // A page change has no opening zoom to protect, so remaining HQ
             // icons may start filling immediately.
             warmFolderIcons(visibleApplications, pointSize: metrics.iconSize, scale: scale)
-            stageAdjacentFolderPageSurfaces(
-                folder: folder,
-                metrics: metrics,
-                scale: scale
-            )
+            stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
             return
         }
 
@@ -8433,68 +6689,57 @@ private extension LaunchpadRootView {
 
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
-            Task { @MainActor [weak self] in
-                guard
-                    let self,
-                    animationGeneration == folderAnimationGeneration,
-                    self.openFolderID != nil
-                else { return }
-                // Retire the opening presentation before descendant pages ever
-                // start moving. This guarantees paging never shares a frame with
-                // the just-finished full-folder zoom presentation.
-                contentLayer.removeAllAnimations()
-                contentLayer.shouldRasterize = false
-                contentLayer.rasterizationScale = 1
-
-                // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
-                // V13 deliberately used one parent raster for the zoom. Once
-                // that animation ends, hand caching back to individual tiles
-                // exactly like root pages so horizontal motion stays GPU-cheap.
-                self.enableFolderTileRasterCaches(folderPresentations, scale: scale)
-
-                for presentation in folderPresentations {
-                    let isDraggedSource = self.folderHiddenApplicationID == presentation.button.application.id
-                    presentation.button.isHidden = isDraggedSource
-                }
-
-                // LAUNCHPANE_FOLDER_OPEN_FPS_V13
-                // Resume any missing HQ folder icons only after the zoom reaches
-                // its final state. Existing cache/fallback images remain visible
-                // during the transition, so frame pacing wins without blanks.
-                self.warmFolderIcons(
-                    visibleApplications,
-                    pointSize: metrics.iconSize,
-                    scale: scale
-                )
-
-                // Build the adjacent page after the opening frame has settled.
-                // This removes layer/text creation from the first swipe frame.
-                Task { @MainActor [weak self] in
-                    await Task.yield()
-                    guard
-                        let self,
-                        animationGeneration == self.folderAnimationGeneration,
-                        self.openFolderID == folder.id
-                    else { return }
-                    self.stageAdjacentFolderPageSurfaces(
-                        folder: folder,
-                        metrics: metrics,
-                        scale: scale
-                    )
-                }
-            }
+            Task { @MainActor [weak self] in self?.finishFolderOpening(context: context, contentLayer: contentLayer) }
         }
         dimLayer.add(dimFade, forKey: "folderDimIn")
         contentLayer.add(contentAnimation, forKey: "folderExpandIn")
         CATransaction.commit()
     }
 
+    fileprivate func finishFolderOpening(context: FolderOverlayRenderContext, contentLayer: CALayer) {
+        let folder = context.folder
+        let metrics = context.metrics
+        let scale = context.scale
+        let animationGeneration = context.generation
+        let visibleApplications = context.visibleApplications
+        guard animationGeneration == folderAnimationGeneration, self.openFolderID != nil else { return }
+        // Retire the opening presentation before descendant pages ever
+        // start moving. This guarantees paging never shares a frame with
+        // the just-finished full-folder zoom presentation.
+        contentLayer.removeAllAnimations()
+        contentLayer.shouldRasterize = false
+        contentLayer.rasterizationScale = 1
+
+        // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
+        // V13 deliberately used one parent raster for the zoom. Once
+        // that animation ends, hand caching back to individual tiles
+        // exactly like root pages so horizontal motion stays GPU-cheap.
+        self.enableFolderTileRasterCaches(folderPresentations, scale: scale)
+
+        for presentation in folderPresentations {
+            let isDraggedSource = self.folderHiddenApplicationID == presentation.button.application.id
+            presentation.button.isHidden = isDraggedSource
+        }
+
+        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
+        // Resume any missing HQ folder icons only after the zoom reaches
+        // its final state. Existing cache/fallback images remain visible
+        // during the transition, so frame pacing wins without blanks.
+        self.warmFolderIcons(visibleApplications, pointSize: metrics.iconSize, scale: scale)
+
+        // Build the adjacent page after the opening frame has settled.
+        // This removes layer/text creation from the first swipe frame.
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, animationGeneration == self.folderAnimationGeneration, self.openFolderID == folder.id else {
+                return
+            }
+            self.stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
+        }
+    }
+
     // LAUNCHPANE_PROGRESSIVE_FOLDER_ICON_WARM_V6
-    func warmFolderIcons(
-        _ applications: [ApplicationRecord],
-        pointSize: CGFloat,
-        scale: CGFloat
-    ) {
+    fileprivate func warmFolderIcons(_ applications: [ApplicationRecord], pointSize: CGFloat, scale: CGFloat) {
         folderIconTask = Task { @MainActor [weak self] in
             guard let self else { return }
 
@@ -8505,26 +6750,17 @@ private extension LaunchpadRootView {
             var batchStart = 0
             while batchStart < applications.count, !Task.isCancelled {
                 let batchEnd = min(batchStart + batchSize, applications.count)
-                let batch = Array(applications[batchStart ..< batchEnd])
+                let batch = Array(applications[batchStart..<batchEnd])
 
-                await iconCache.warm(
-                    batch,
-                    pointSize: pointSize,
-                    scale: scale,
-                    maximumConcurrentLoads: batchSize
-                )
+                await iconCache.warm(batch, pointSize: pointSize, scale: scale, maximumConcurrentLoads: batchSize)
                 guard !Task.isCancelled else { return }
 
                 let loadedIDs = Set(batch.map(\.id))
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                for presentation in folderPresentations
-                where loadedIDs.contains(presentation.button.application.id) {
+                for presentation in folderPresentations where loadedIDs.contains(presentation.button.application.id) {
                     if let image = iconCache.cgImage(
-                        for: presentation.button.application,
-                        pointSize: pointSize,
-                        scale: scale
-                    ) {
+                        for: presentation.button.application, pointSize: pointSize, scale: scale) {
                         presentation.iconLayer.contents = image
                     }
                 }
@@ -8543,11 +6779,8 @@ private extension LaunchpadRootView {
     // page's applications from local slot zero. This deliberately does not reuse
     // a page-global/absolute index. A sparse second page therefore occupies
     // slots 0, 1, 2... of the same lattice used by a full first page.
-    func folderPageItemFrames(
-        localIndex: Int,
-        visibleCount: Int,
-        metrics: FolderGridMetrics
-    ) -> GridItemFrames? {
+    fileprivate func folderPageItemFrames(localIndex: Int, visibleCount: Int, metrics: FolderGridMetrics)
+        -> GridItemFrames? {
         // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16_COMPILE_REPAIR
         //
         // GridItemFrames belongs to LayoutCore. Its synthesized memberwise
@@ -8557,72 +6790,47 @@ private extension LaunchpadRootView {
         //
         // visibleCount remains an explicit guard so a sparse later page can
         // never accidentally expose unused slots from the full-folder lattice.
-        guard
-            localIndex >= 0,
-            localIndex < visibleCount,
-            localIndex < metrics.itemsPerPage
-        else { return nil }
+        guard localIndex >= 0, localIndex < visibleCount, localIndex < metrics.itemsPerPage else { return nil }
 
         return metrics.itemFrames(forItemAt: localIndex)
     }
 
-    struct FolderPageContents {
+    fileprivate struct FolderPageContents {
         let layer: CALayer
         let presentations: [AppTilePresentation]
         let applications: [ApplicationRecord]
     }
 
     // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
-    func makeFolderPageLayer(
-        folder: ResolvedLaunchpadFolder,
-        metrics: FolderGridMetrics,
-        pageIndex: Int,
-        scale: CGFloat
+    fileprivate func makeFolderPageLayer(
+        folder: ResolvedLaunchpadFolder, metrics: FolderGridMetrics, pageIndex: Int, scale: CGFloat
     ) -> FolderPageContents {
         let startIndex = pageIndex * metrics.itemsPerPage
-        let endIndex = min(
-            startIndex + metrics.itemsPerPage,
-            folder.applications.count
-        )
-        guard startIndex < endIndex else {
-            let emptyLayer = CALayer()
-            emptyLayer.bounds = metrics.panelFrame
-            emptyLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-            emptyLayer.position = metrics.panelFrame.center
-            emptyLayer.contentsScale = scale
-            return FolderPageContents(layer: emptyLayer, presentations: [], applications: [])
-        }
-
-        let applications = Array(folder.applications[startIndex ..< endIndex])
+        let endIndex = min(startIndex + metrics.itemsPerPage, folder.applications.count)
         let pageLayer = CALayer()
         pageLayer.bounds = metrics.panelFrame
         pageLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         pageLayer.position = metrics.panelFrame.center
         pageLayer.contentsScale = scale
+        guard startIndex < endIndex else {
+            return FolderPageContents(layer: pageLayer, presentations: [], applications: [])
+        }
+        let applications = Array(folder.applications[startIndex..<endIndex])
 
         var presentations: [AppTilePresentation] = []
         presentations.reserveCapacity(applications.count)
 
         for (localIndex, application) in applications.enumerated() {
-            guard let frames = folderPageItemFrames(
-                localIndex: localIndex,
-                visibleCount: applications.count,
-                metrics: metrics
-            ) else { continue }
+            guard
+                let frames = folderPageItemFrames(
+                    localIndex: localIndex, visibleCount: applications.count, metrics: metrics)
+            else { continue }
 
-            let presentation = AppTilePresentationFactory.make(AppTileRenderInput(
-                application: application,
-                cellFrame: frames.cell,
-                iconFrame: frames.icon,
-                labelFrame: frames.label,
-                scale: scale,
-                selected: startIndex + localIndex == folderSelectedIndex,
-                icon: iconCache.bestAvailableCGImage(
-                    for: application,
-                    pointSize: metrics.iconSize,
-                    scale: scale
-                )
-            ))
+            let presentation = AppTilePresentationFactory.make(
+                AppTileRenderInput(
+                    application: application, cellFrame: frames.cell, iconFrame: frames.icon, labelFrame: frames.label,
+                    scale: scale, selected: startIndex + localIndex == folderSelectedIndex,
+                    icon: iconCache.bestAvailableCGImage(for: application, pointSize: metrics.iconSize, scale: scale)))
 
             // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
             // Folder pages use the same per-tile raster strategy as root pages.
@@ -8645,23 +6853,12 @@ private extension LaunchpadRootView {
             presentation.button.onPointerDown = { [weak self, weak presentation] event in
                 guard let self, let presentation else { return }
                 self.folderItemPointerDown(
-                    folderID: folder.id,
-                    application: application,
-                    absoluteIndex: startIndex + localIndex,
-                    frames: frames,
-                    presentation: presentation,
-                    event: event
-                )
+                    folderID: folder.id, absoluteIndex: startIndex + localIndex,
+                    frames: frames, presentation: presentation, event: event)
             }
-            presentation.button.onPointerDragged = { [weak self] update in
-                self?.folderItemPointerDragged(update)
-            }
-            presentation.button.onPointerUp = { [weak self] release in
-                self?.folderItemPointerUp(release)
-            }
-            presentation.button.onPointerCancelled = { [weak self] in
-                self?.folderItemPointerCancelled()
-            }
+            presentation.button.onPointerDragged = { [weak self] update in self?.folderItemPointerDragged(update) }
+            presentation.button.onPointerUp = { [weak self] release in self?.folderItemPointerUp(release) }
+            presentation.button.onPointerCancelled = { [weak self] in self?.folderItemPointerCancelled() }
 
             // Staged pages own no NSView hit targets until they become current.
             presentations.append(presentation)
@@ -8670,52 +6867,35 @@ private extension LaunchpadRootView {
         return FolderPageContents(layer: pageLayer, presentations: presentations, applications: applications)
     }
 
-    func updateFolderPageIndicator(pageCount: Int) {
+    fileprivate func updateFolderPageIndicator(pageCount: Int) {
         guard let dots = folderPageIndicatorLayer else { return }
-        dots.string = (0 ..< pageCount)
-            .map { $0 == folderPage ? "●" : "○" }
-            .joined(separator: "  ")
+        dots.string = (0..<pageCount).map { $0 == folderPage ? "●" : "○" }.joined(separator: "  ")
     }
 
     // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
-    func folderPageSurface(
-        folder: ResolvedLaunchpadFolder,
-        metrics: FolderGridMetrics,
-        pageIndex: Int,
-        scale: CGFloat
+    fileprivate func folderPageSurface(
+        folder: ResolvedLaunchpadFolder, metrics: FolderGridMetrics, pageIndex: Int, scale: CGFloat
     ) -> FolderPageSurface? {
-        if let cached = folderPageSurfaces[pageIndex] {
-            return cached
-        }
+        if let cached = folderPageSurfaces[pageIndex] { return cached }
 
-        guard (0 ..< metrics.pageCount).contains(pageIndex) else { return nil }
-        let built = makeFolderPageLayer(
-            folder: folder,
-            metrics: metrics,
-            pageIndex: pageIndex,
-            scale: scale
-        )
+        guard (0..<metrics.pageCount).contains(pageIndex) else { return nil }
+        let built = makeFolderPageLayer(folder: folder, metrics: metrics, pageIndex: pageIndex, scale: scale)
         let surface = FolderPageSurface(
-            pageIndex: pageIndex,
-            layer: built.layer,
-            presentations: built.presentations,
-            applications: built.applications
-        )
+            pageIndex: pageIndex, layer: built.layer, presentations: built.presentations,
+            applications: built.applications)
         folderPageSurfaces[pageIndex] = surface
         return surface
     }
 
-    func attachFolderButtons(to surface: FolderPageSurface, hidden: Bool) {
+    fileprivate func attachFolderButtons(to surface: FolderPageSurface, hidden: Bool) {
         for presentation in surface.presentations {
-            if presentation.button.superview == nil {
-                addSubview(presentation.button)
-            }
+            if presentation.button.superview == nil { addSubview(presentation.button) }
             let isDraggedSource = folderHiddenApplicationID == presentation.button.application.id
             presentation.button.isHidden = hidden || isDraggedSource
         }
     }
 
-    func detachFolderButtons(from surface: FolderPageSurface) {
+    fileprivate func detachFolderButtons(from surface: FolderPageSurface) {
         for presentation in surface.presentations {
             // LAUNCHPANE_FOLDER_EXTRACTION_POINTER_OWNERSHIP_V17
             //
@@ -8724,17 +6904,12 @@ private extension LaunchpadRootView {
             // the view hierarchy until real mouseUp/cancel. Removing it here
             // synchronously triggers PointerTrackingTileButton.viewWillMove()
             // and corrupts the in-flight Folder -> root ownership handoff.
-            if presentation.button === preservedFolderTrackingButton {
-                continue
-            }
+            if presentation.button === preservedFolderTrackingButton { continue }
             presentation.button.removeFromSuperview()
         }
     }
 
-    func enableFolderTileRasterCaches(
-        _ presentations: [AppTilePresentation],
-        scale: CGFloat
-    ) {
+    fileprivate func enableFolderTileRasterCaches(_ presentations: [AppTilePresentation], scale: CGFloat) {
         guard scale.isFinite, scale > 0 else { return }
         for presentation in presentations {
             presentation.tileLayer.shouldRasterize = true
@@ -8742,20 +6917,16 @@ private extension LaunchpadRootView {
         }
     }
 
-    func stageAdjacentFolderPageSurfaces(
-        folder: ResolvedLaunchpadFolder,
-        metrics: FolderGridMetrics,
-        scale: CGFloat
+    fileprivate func stageAdjacentFolderPageSurfaces(
+        folder: ResolvedLaunchpadFolder, metrics: FolderGridMetrics, scale: CGFloat
     ) {
-        guard
-            interactiveFolderPageSwipe == nil,
-            !folderPageTransitionAnimator.isAnimating,
+        guard interactiveFolderPageSwipe == nil, !folderPageTransitionAnimator.isAnimating,
             let viewportLayer = folderPageViewportLayer
         else { return }
 
         let lower = max(0, folderPage - 1)
         let upper = min(max(0, metrics.pageCount - 1), folderPage + 1)
-        let keep = Set(lower ... upper)
+        let keep = Set(lower...upper)
         let width = max(1, metrics.panelFrame.width)
         let resting = metrics.panelFrame.center
 
@@ -8768,20 +6939,13 @@ private extension LaunchpadRootView {
         }
 
         for pageIndex in keep.sorted() {
-            guard let surface = folderPageSurface(
-                folder: folder,
-                metrics: metrics,
-                pageIndex: pageIndex,
-                scale: scale
-            ) else { continue }
+            guard let surface = folderPageSurface(folder: folder, metrics: metrics, pageIndex: pageIndex, scale: scale)
+            else { continue }
 
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             surface.layer.removeAllAnimations()
-            surface.layer.position = CGPoint(
-                x: resting.x + CGFloat(pageIndex - folderPage) * width,
-                y: resting.y
-            )
+            surface.layer.position = CGPoint(x: resting.x + CGFloat(pageIndex - folderPage) * width, y: resting.y)
             surface.layer.opacity = 1
 
             // LAUNCHPANE_FOLDER_PAGE_LOCAL_LAYOUT_V16
@@ -8791,66 +6955,49 @@ private extension LaunchpadRootView {
             // from an off-page surface.
             surface.layer.isHidden = pageIndex != folderPage
             surface.layer.contentsScale = scale
-            if surface.layer.superlayer == nil {
-                viewportLayer.addSublayer(surface.layer)
-            }
+            if surface.layer.superlayer == nil { viewportLayer.addSublayer(surface.layer) }
             CATransaction.commit()
 
-            if pageIndex != folderPage {
-                detachFolderButtons(from: surface)
-            }
+            if pageIndex != folderPage { detachFolderButtons(from: surface) }
         }
     }
 
-    func presentInteractiveFolderPageSwipe(_ swipe: InteractiveFolderPageSwipe) {
+    fileprivate func presentInteractiveFolderPageSwipe(_ swipe: InteractiveFolderPageSwipe) {
         guard swipe.phase == .tracking else { return }
         swipe.needsPresentationUpdate = false
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         swipe.outgoingSurface.layer.position = CGPoint(
-            x: swipe.restingPosition.x + swipe.translation,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + swipe.translation, y: swipe.restingPosition.y)
         swipe.incomingSurface.layer.position = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width
-                + swipe.translation,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + swipe.translation,
+            y: swipe.restingPosition.y)
         CATransaction.commit()
     }
 
-    func handleInteractiveFolderPageSwipe(_ event: NSEvent) -> Bool {
-        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else {
-            return false
-        }
+    fileprivate func handleInteractiveFolderPageSwipe(_ event: NSEvent) -> Bool {
+        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else { return false }
 
         let disposition = InteractivePageSwipeDecision.disposition(
-            hasActiveSwipe: interactiveFolderPageSwipe != nil,
-            phase: PageScrollPhase(event.phase),
+            hasActiveSwipe: interactiveFolderPageSwipe != nil, phase: PageScrollPhase(event.phase),
             hasHorizontalMovement: event.scrollingDeltaX != 0,
             isHorizontalDominant: abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        )
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
 
         switch disposition {
         case .useDiscretePaging:
-            if interactiveFolderPageSwipe != nil {
-                cancelInteractiveFolderPageSwipeImmediately()
-            }
+            if interactiveFolderPageSwipe != nil { cancelInteractiveFolderPageSwipeImmediately() }
             return false
         case .cancel:
             finishInteractiveFolderPageSwipe(commit: false)
             return true
-        case .finish:
-            return finishInteractiveFolderPageSwipeAfterRelease()
-        case .beginOrUpdate:
-            return continueInteractiveFolderPageSwipe(event)
+        case .finish: return finishInteractiveFolderPageSwipeAfterRelease()
+        case .beginOrUpdate: return continueInteractiveFolderPageSwipe(event)
         }
     }
 
-    func finishInteractiveFolderPageSwipeAfterRelease() -> Bool {
+    fileprivate func finishInteractiveFolderPageSwipeAfterRelease() -> Bool {
         guard let swipe = interactiveFolderPageSwipe else { return false }
         guard swipe.phase == .tracking else { return true }
         let width = max(1, swipe.width)
@@ -8859,21 +7006,18 @@ private extension LaunchpadRootView {
         let normalizedForwardVelocity = forwardVelocity / width
         let projectedProgress = progress + normalizedForwardVelocity * 0.10
         let commit =
-            progress >= 0.025
-                || (progress >= 0.012 && projectedProgress >= 0.040)
-                || (progress >= 0.008 && normalizedForwardVelocity >= 0.25)
+            progress >= 0.025 || (progress >= 0.012 && projectedProgress >= 0.040)
+            || (progress >= 0.008 && normalizedForwardVelocity >= 0.25)
 
         finishInteractiveFolderPageSwipe(commit: commit)
         return true
     }
 
-    func continueInteractiveFolderPageSwipe(_ event: NSEvent) -> Bool {
+    fileprivate func continueInteractiveFolderPageSwipe(_ event: NSEvent) -> Bool {
         guard interactiveFolderPageSwipe?.phase != .settling else { return true }
         if !event.momentumPhase.isEmpty { return true }
 
-        if event.phase.contains(.began) {
-            cancelInteractiveFolderPageSwipeImmediately()
-        }
+        if event.phase.contains(.began) { cancelInteractiveFolderPageSwipeImmediately() }
 
         if interactiveFolderPageSwipe == nil {
             let direction = event.scrollingDeltaX < 0 ? 1 : -1
@@ -8883,53 +7027,32 @@ private extension LaunchpadRootView {
         }
 
         if let swipe = interactiveFolderPageSwipe, event.scrollingDeltaX != 0 {
-            updateInteractiveFolderPageSwipe(
-                swipe,
-                deltaX: event.scrollingDeltaX,
-                timestamp: event.timestamp
-            )
+            updateInteractiveFolderPageSwipe(swipe, deltaX: event.scrollingDeltaX, timestamp: event.timestamp)
         }
         return true
     }
 
-    @discardableResult
-    func beginInteractiveFolderPageSwipe(
-        direction: Int,
-        timestamp: TimeInterval
-    ) -> Bool {
-        guard
-            !folderPageTransitionAnimator.isAnimating,
-            interactiveFolderPageSwipe == nil,
-            let openFolderID,
-            let folder = resolvedFolder(id: openFolderID),
-            let viewportLayer = folderPageViewportLayer
+    @discardableResult fileprivate func beginInteractiveFolderPageSwipe(
+        direction: Int, timestamp: TimeInterval) -> Bool {
+        guard !folderPageTransitionAnimator.isAnimating, interactiveFolderPageSwipe == nil, let openFolderID,
+            let folder = resolvedFolder(id: openFolderID), let viewportLayer = folderPageViewportLayer
         else { return false }
 
         let metrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
         let targetPage = folderPage + direction
-        guard (0 ..< metrics.pageCount).contains(targetPage) else { return false }
+        guard (0..<metrics.pageCount).contains(targetPage) else { return false }
 
         let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
         stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
-        guard
-            let outgoingSurface = folderPageSurfaces[folderPage],
+        guard let outgoingSurface = folderPageSurfaces[folderPage],
             let incomingSurface = folderPageSurface(
-                folder: folder,
-                metrics: metrics,
-                pageIndex: targetPage,
-                scale: scale
-            )
+                folder: folder, metrics: metrics, pageIndex: targetPage, scale: scale)
         else { return false }
 
         folderIconTask?.cancel()
         folderIconTask = nil
-        for presentation in outgoingSurface.presentations {
-            presentation.button.isHidden = true
-        }
+        for presentation in outgoingSurface.presentations { presentation.button.isHidden = true }
 
         let resting = metrics.panelFrame.center
         let width = max(1, metrics.panelFrame.width)
@@ -8939,36 +7062,23 @@ private extension LaunchpadRootView {
         outgoingSurface.layer.removeAllAnimations()
         incomingSurface.layer.removeAllAnimations()
         outgoingSurface.layer.position = resting
-        incomingSurface.layer.position = CGPoint(
-            x: resting.x + CGFloat(direction) * width,
-            y: resting.y
-        )
+        incomingSurface.layer.position = CGPoint(x: resting.x + CGFloat(direction) * width, y: resting.y)
         outgoingSurface.layer.opacity = 1
         incomingSurface.layer.opacity = 1
         outgoingSurface.layer.isHidden = false
         incomingSurface.layer.isHidden = false
-        if incomingSurface.layer.superlayer == nil {
-            viewportLayer.addSublayer(incomingSurface.layer)
-        }
+        if incomingSurface.layer.superlayer == nil { viewportLayer.addSublayer(incomingSurface.layer) }
         CATransaction.commit()
 
         interactiveFolderPageGeneration &+= 1
         interactiveFolderPageSwipe = InteractiveFolderPageSwipe(
-            outgoingSurface: outgoingSurface,
-            incomingSurface: incomingSurface,
-            targetPage: targetPage,
-            direction: direction,
-            restingPosition: resting,
-            width: width,
-            timestamp: timestamp
-        )
+            outgoingSurface: outgoingSurface, incomingSurface: incomingSurface, targetPage: targetPage,
+            direction: direction, restingPosition: resting, width: width, timestamp: timestamp)
         return true
     }
 
-    func updateInteractiveFolderPageSwipe(
-        _ swipe: InteractiveFolderPageSwipe,
-        deltaX: CGFloat,
-        timestamp: TimeInterval
+    fileprivate func updateInteractiveFolderPageSwipe(
+        _ swipe: InteractiveFolderPageSwipe, deltaX: CGFloat, timestamp: TimeInterval
     ) {
         guard swipe.phase == .tracking else { return }
         let elapsed = min(1.0 / 24.0, max(1.0 / 240.0, timestamp - swipe.lastTimestamp))
@@ -8999,11 +7109,9 @@ private extension LaunchpadRootView {
         }
     }
 
-    func finishInteractiveFolderPageSwipe(commit: Bool) {
+    fileprivate func finishInteractiveFolderPageSwipe(commit: Bool) {
         guard let swipe = interactiveFolderPageSwipe, swipe.phase == .tracking else { return }
-        if swipe.needsPresentationUpdate {
-            presentInteractiveFolderPageSwipe(swipe)
-        }
+        if swipe.needsPresentationUpdate { presentInteractiveFolderPageSwipe(swipe) }
 
         pagingDisplayLink?.isPaused = true
         swipe.phase = .settling
@@ -9011,27 +7119,18 @@ private extension LaunchpadRootView {
         let generation = interactiveFolderPageGeneration
 
         let finalTranslation = commit ? -CGFloat(swipe.direction) * swipe.width : 0
-        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position
-            ?? swipe.outgoingSurface.layer.position
-        let incomingStart = swipe.incomingSurface.layer.presentation()?.position
-            ?? swipe.incomingSurface.layer.position
-        let outgoingEnd = CGPoint(
-            x: swipe.restingPosition.x + finalTranslation,
-            y: swipe.restingPosition.y
-        )
+        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position ?? swipe.outgoingSurface.layer.position
+        let incomingStart = swipe.incomingSurface.layer.presentation()?.position ?? swipe.incomingSurface.layer.position
+        let outgoingEnd = CGPoint(x: swipe.restingPosition.x + finalTranslation, y: swipe.restingPosition.y)
         let incomingEnd = CGPoint(
-            x: swipe.restingPosition.x
-                + CGFloat(swipe.direction) * swipe.width
-                + finalTranslation,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + finalTranslation,
+            y: swipe.restingPosition.y)
 
-        guard let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
-            direction: swipe.direction,
-            displayWidth: swipe.width,
-            releaseVelocity: swipe.velocity,
-            targetDelta: outgoingEnd.x - outgoingStart.x
-        ) else {
+        guard
+            let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
+                direction: swipe.direction, displayWidth: swipe.width, releaseVelocity: swipe.velocity,
+                targetDelta: outgoingEnd.x - outgoingStart.x)
+        else {
             completeInteractiveFolderPageSwipe(swipe, commit: commit)
             return
         }
@@ -9049,9 +7148,7 @@ private extension LaunchpadRootView {
         CATransaction.setDisableActions(true)
         CATransaction.setCompletionBlock { [weak self] in
             Task { @MainActor [weak self] in
-                guard
-                    let self,
-                    generation == self.interactiveFolderPageGeneration,
+                guard let self, generation == self.interactiveFolderPageGeneration,
                     self.interactiveFolderPageSwipe === swipe
                 else { return }
                 self.completeInteractiveFolderPageSwipe(swipe, commit: commit)
@@ -9060,20 +7157,13 @@ private extension LaunchpadRootView {
         swipe.outgoingSurface.layer.position = outgoingEnd
         swipe.incomingSurface.layer.position = incomingEnd
         swipe.outgoingSurface.layer.add(
-            animation(from: outgoingStart, to: outgoingEnd),
-            forKey: "interactiveFolderPageOut"
-        )
+            animation(from: outgoingStart, to: outgoingEnd), forKey: "interactiveFolderPageOut")
         swipe.incomingSurface.layer.add(
-            animation(from: incomingStart, to: incomingEnd),
-            forKey: "interactiveFolderPageIn"
-        )
+            animation(from: incomingStart, to: incomingEnd), forKey: "interactiveFolderPageIn")
         CATransaction.commit()
     }
 
-    func completeInteractiveFolderPageSwipe(
-        _ swipe: InteractiveFolderPageSwipe,
-        commit: Bool
-    ) {
+    fileprivate func completeInteractiveFolderPageSwipe(_ swipe: InteractiveFolderPageSwipe, commit: Bool) {
         pagingDisplayLink?.isPaused = true
         swipe.outgoingSurface.layer.removeAllAnimations()
         swipe.incomingSurface.layer.removeAllAnimations()
@@ -9083,17 +7173,13 @@ private extension LaunchpadRootView {
         if commit {
             swipe.incomingSurface.layer.position = swipe.restingPosition
             swipe.outgoingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x - CGFloat(swipe.direction) * swipe.width,
-                y: swipe.restingPosition.y
-            )
+                x: swipe.restingPosition.x - CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
             swipe.incomingSurface.layer.isHidden = false
             swipe.outgoingSurface.layer.isHidden = true
         } else {
             swipe.outgoingSurface.layer.position = swipe.restingPosition
             swipe.incomingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width,
-                y: swipe.restingPosition.y
-            )
+                x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
             swipe.outgoingSurface.layer.isHidden = false
             swipe.incomingSurface.layer.isHidden = true
         }
@@ -9112,29 +7198,17 @@ private extension LaunchpadRootView {
 
         interactiveFolderPageSwipe = nil
 
-        guard
-            let openFolderID,
-            let folder = resolvedFolder(id: openFolderID)
-        else { return }
+        guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else { return }
         let metrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
         let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
         updateFolderPageIndicator(pageCount: metrics.pageCount)
         stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
 
-        if commit {
-            warmFolderIcons(
-                swipe.incomingSurface.applications,
-                pointSize: metrics.iconSize,
-                scale: scale
-            )
-        }
+        if commit { warmFolderIcons(swipe.incomingSurface.applications, pointSize: metrics.iconSize, scale: scale) }
     }
 
-    func cancelInteractiveFolderPageSwipeImmediately() {
+    fileprivate func cancelInteractiveFolderPageSwipeImmediately() {
         guard let swipe = interactiveFolderPageSwipe else { return }
         pagingDisplayLink?.isPaused = true
         interactiveFolderPageGeneration &+= 1
@@ -9145,9 +7219,7 @@ private extension LaunchpadRootView {
         CATransaction.setDisableActions(true)
         swipe.outgoingSurface.layer.position = swipe.restingPosition
         swipe.incomingSurface.layer.position = CGPoint(
-            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width,
-            y: swipe.restingPosition.y
-        )
+            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
         swipe.outgoingSurface.layer.isHidden = false
         swipe.incomingSurface.layer.isHidden = true
         CATransaction.commit()
@@ -9156,46 +7228,65 @@ private extension LaunchpadRootView {
         attachFolderButtons(to: swipe.outgoingSurface, hidden: false)
     }
 
-    func transitionFolderPage(
-        to nextPage: Int,
-        direction: Int,
-        selectedIndex: Int?
+    fileprivate struct FolderPageTransitionContext {
+        let folder: ResolvedLaunchpadFolder
+        let metrics: FolderGridMetrics
+        let scale: CGFloat
+    }
+
+    fileprivate func finishFolderPageTransition(
+        outgoing outgoingSurface: FolderPageSurface, incoming incomingSurface: FolderPageSurface,
+        context: FolderPageTransitionContext, queuedDirection: Int
     ) {
-        guard
-            direction != 0,
-            interactiveFolderPageSwipe == nil,
-            let openFolderID,
+        let folder = context.folder
+        let metrics = context.metrics
+        let scale = context.scale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outgoingSurface.layer.isHidden = true
+        incomingSurface.layer.isHidden = false
+        CATransaction.commit()
+
+        self.attachFolderButtons(to: incomingSurface, hidden: false)
+        self.warmFolderIcons(incomingSurface.applications, pointSize: metrics.iconSize, scale: scale)
+        self.stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
+        if queuedDirection != 0 { self.changeFolderPage(by: queuedDirection) }
+    }
+
+    fileprivate func presentFolderPageWithoutMotion(
+        _ incomingSurface: FolderPageSurface, folder: ResolvedLaunchpadFolder,
+        metrics: FolderGridMetrics, scale: CGFloat
+    ) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        incomingSurface.layer.position = metrics.panelFrame.center
+        CATransaction.commit()
+        attachFolderButtons(to: incomingSurface, hidden: false)
+        warmFolderIcons(incomingSurface.applications, pointSize: metrics.iconSize, scale: scale)
+        stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
+    }
+
+    fileprivate func transitionFolderPage(to nextPage: Int, direction: Int, selectedIndex: Int?) {
+        guard direction != 0, interactiveFolderPageSwipe == nil, let openFolderID,
             let folder = resolvedFolder(id: openFolderID)
         else { return }
 
         if folderPageTransitionAnimator.isAnimating {
-            if selectedIndex == nil {
-                _ = folderPageTransitionAnimator.queueLatestIfAnimating(direction: direction)
-            }
+            if selectedIndex == nil { _ = folderPageTransitionAnimator.queueLatestIfAnimating(direction: direction) }
             return
         }
 
         let metrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
-        guard
-            nextPage >= 0,
-            nextPage < metrics.pageCount,
-            nextPage != folderPage,
-            let viewportLayer = folderPageViewportLayer,
-            let outgoingSurface = folderPageSurfaces[folderPage]
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
+        guard nextPage >= 0, nextPage < metrics.pageCount, nextPage != folderPage,
+            let viewportLayer = folderPageViewportLayer, let outgoingSurface = folderPageSurfaces[folderPage]
         else { return }
 
         let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
         stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
-        guard let incomingSurface = folderPageSurface(
-            folder: folder,
-            metrics: metrics,
-            pageIndex: nextPage,
-            scale: scale
-        ) else { return }
+        guard
+            let incomingSurface = folderPageSurface(folder: folder, metrics: metrics, pageIndex: nextPage, scale: scale)
+        else { return }
 
         folderIconTask?.cancel()
         folderIconTask = nil
@@ -9207,9 +7298,7 @@ private extension LaunchpadRootView {
         folderPresentations = incomingSurface.presentations
         updateFolderPageIndicator(pageCount: metrics.pageCount)
 
-        if incomingSurface.layer.superlayer == nil {
-            viewportLayer.addSublayer(incomingSurface.layer)
-        }
+        if incomingSurface.layer.superlayer == nil { viewportLayer.addSublayer(incomingSurface.layer) }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -9217,133 +7306,81 @@ private extension LaunchpadRootView {
         incomingSurface.layer.isHidden = false
         CATransaction.commit()
 
-        guard let style = LaunchpadVisualStyle.pageTransition(
-            direction: direction,
-            displayWidth: metrics.panelFrame.width
-        ) else {
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            incomingSurface.layer.position = metrics.panelFrame.center
-            CATransaction.commit()
-            attachFolderButtons(to: incomingSurface, hidden: false)
-            warmFolderIcons(incomingSurface.applications, pointSize: metrics.iconSize, scale: scale)
-            stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
+        guard
+            let style = LaunchpadVisualStyle.pageTransition(
+                direction: direction, displayWidth: metrics.panelFrame.width)
+        else {
+            presentFolderPageWithoutMotion(incomingSurface, folder: folder, metrics: metrics, scale: scale)
             return
         }
 
         let request = PageTransitionAnimator.Request(
-            outgoingLayer: outgoingSurface.layer,
-            incomingLayer: incomingSurface.layer,
-            direction: direction,
-            style: style,
-            canvasBounds: metrics.panelFrame
-        )
+            outgoingLayer: outgoingSurface.layer, incomingLayer: incomingSurface.layer, direction: direction,
+            style: style, canvasBounds: metrics.panelFrame)
 
+        let context = FolderPageTransitionContext(folder: folder, metrics: metrics, scale: scale)
         folderPageTransitionAnimator.start(request) { [weak self] queuedDirection in
             guard let self else { return }
 
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            outgoingSurface.layer.isHidden = true
-            incomingSurface.layer.isHidden = false
-            CATransaction.commit()
-
-            self.attachFolderButtons(to: incomingSurface, hidden: false)
-            self.warmFolderIcons(
-                incomingSurface.applications,
-                pointSize: metrics.iconSize,
-                scale: scale
-            )
-            self.stageAdjacentFolderPageSurfaces(
-                folder: folder,
-                metrics: metrics,
-                scale: scale
-            )
-            if queuedDirection != 0 {
-                self.changeFolderPage(by: queuedDirection)
-            }
+            self.finishFolderPageTransition(
+                outgoing: outgoingSurface, incoming: incomingSurface, context: context,
+                queuedDirection: queuedDirection)
         }
     }
 
-    func changeFolderPage(by offset: Int) {
+    fileprivate func changeFolderPage(by offset: Int) {
         guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else { return }
         let metrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
         let nextPage = min(max(folderPage + offset, 0), max(0, metrics.pageCount - 1))
         guard nextPage != folderPage else { return }
 
-        transitionFolderPage(
-            to: nextPage,
-            direction: nextPage - folderPage,
-            selectedIndex: nil
-        )
+        transitionFolderPage(to: nextPage, direction: nextPage - folderPage, selectedIndex: nil)
     }
 
-    func moveFolderSelection(_ movement: GridNavigationMovement) {
+    fileprivate func moveFolderSelection(_ movement: GridNavigationMovement) {
         guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else { return }
         let metrics = solver.solveFolder(
-            display: displayContext,
-            requested: layoutPreferences,
-            itemCount: folder.applications.count
-        )
-        let currentSelection = folder.applications.indices.contains(folderSelectedIndex)
-            ? folderSelectedIndex
-            : nil
-        guard let nextIndex = GridSelectionNavigator.nextIndex(
-            from: currentSelection,
-            movement: movement,
-            currentPage: folderPage,
-            itemsPerPage: metrics.itemsPerPage,
-            columns: metrics.columns,
-            itemCount: folder.applications.count,
-            isRightToLeft: metrics.isRightToLeft
-        ) else { return }
+            display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
+        let currentSelection = folder.applications.indices.contains(folderSelectedIndex) ? folderSelectedIndex : nil
+        guard
+            let nextIndex = GridSelectionNavigator.nextIndex(
+                from: currentSelection, movement: movement,
+                context: GridNavigationContext(
+                    currentPage: folderPage, itemsPerPage: metrics.itemsPerPage, columns: metrics.columns,
+                    itemCount: folder.applications.count, isRightToLeft: metrics.isRightToLeft))
+        else { return }
 
         let previousPage = folderPage
         let nextPage = nextIndex / metrics.itemsPerPage
         if nextPage != previousPage {
-            transitionFolderPage(
-                to: nextPage,
-                direction: nextPage - previousPage,
-                selectedIndex: nextIndex
-            )
+            transitionFolderPage(to: nextPage, direction: nextPage - previousPage, selectedIndex: nextIndex)
         } else {
             folderSelectedIndex = nextIndex
             updateFolderSelectionAppearance(itemsPerPage: metrics.itemsPerPage)
         }
     }
 
-    func updateFolderSelectionAppearance(itemsPerPage: Int) {
+    fileprivate func updateFolderSelectionAppearance(itemsPerPage: Int) {
         let pageStartIndex = folderPage * itemsPerPage
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for (localIndex, presentation) in folderPresentations.enumerated() {
-            presentation.selectionLayer.opacity = pageStartIndex + localIndex == folderSelectedIndex
-                ? 1
-                : 0
+            presentation.selectionLayer.opacity = pageStartIndex + localIndex == folderSelectedIndex ? 1 : 0
         }
         CATransaction.commit()
     }
 
-    func activateSelectedFolderItem() {
-        guard
-            !folderPageTransitionAnimator.isAnimating,
-            interactiveFolderPageSwipe == nil,
-            let openFolderID,
-            let folder = resolvedFolder(id: openFolderID),
-            folder.applications.indices.contains(folderSelectedIndex)
+    fileprivate func activateSelectedFolderItem() {
+        guard !folderPageTransitionAnimator.isAnimating, interactiveFolderPageSwipe == nil, let openFolderID,
+            let folder = resolvedFolder(id: openFolderID), folder.applications.indices.contains(folderSelectedIndex)
         else { return }
         launch(folder.applications[folderSelectedIndex])
     }
 
-    func closeFolder(animated: Bool = true, preservingTrackedButton: AppTileButton? = nil) {
+    fileprivate func closeFolder(animated: Bool = true, preservingTrackedButton: AppTileButton? = nil) {
         guard openFolderID != nil else { return }
-        if folderTitleEditor != nil {
-            finishFolderTitleEditing(commit: true)
-        }
+        if folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
         folderAnimationGeneration &+= 1
         let animationGeneration = folderAnimationGeneration
         let sourceFrame = folderAnimationSourceFrame
@@ -9365,13 +7402,10 @@ private extension LaunchpadRootView {
         if let currentFolderPageLayer = folderPageContentLayer {
             folderPageTransitionAnimator.reset(
                 contentLayer: currentFolderPageLayer,
-                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds
-            )
+                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds)
         }
 
-        if let preservingTrackedButton {
-            preservedFolderTrackingButton = preservingTrackedButton
-        }
+        if let preservingTrackedButton { preservedFolderTrackingButton = preservingTrackedButton }
         removeFolderButtons(preserving: preservedFolderTrackingButton)
         folderHiddenApplicationID = nil
         searchField.isHidden = false
@@ -9384,24 +7418,25 @@ private extension LaunchpadRootView {
             // ownership handoff.
             setPageHitTargetsEnabled(false, preserving: preservingTrackedButton)
         }
-        if renderedConfiguration == nil {
-            needsLayout = true
-        }
+        if renderedConfiguration == nil { needsLayout = true }
 
-        guard
-            animated,
-            let contentLayer,
-            let dimLayer,
-            let transition = LaunchpadVisualStyle.folderTransition(
-                sourceFrame: sourceFrame,
-                panelFrame: panelFrame
-            )
+        guard animated, let contentLayer, let dimLayer,
+            let transition = LaunchpadVisualStyle.folderTransition(sourceFrame: sourceFrame, panelFrame: panelFrame)
         else {
             cleanupFolderOverlay()
             resumeRootIconPrewarmingAfterFolder()
             return
         }
 
+        animateFolderClosing(
+            contentLayer: contentLayer, dimLayer: dimLayer, transition: transition,
+            animationGeneration: animationGeneration)
+    }
+
+    fileprivate func animateFolderClosing(
+        contentLayer: CALayer, dimLayer: CALayer, transition: LaunchpadVisualStyle.FolderTransition,
+        animationGeneration: Int
+    ) {
         // LAUNCHPANE_FOLDER_OPEN_FPS_V13
         // Re-flatten the subtree only for the short close animation.
         contentLayer.shouldRasterize = true
@@ -9432,19 +7467,13 @@ private extension LaunchpadRootView {
         CATransaction.setDisableActions(true)
         dimLayer.opacity = 0
         contentLayer.opacity = 0
-        contentLayer.setAffineTransform(
-            CGAffineTransform(scaleX: transition.sourceScale, y: transition.sourceScale)
-        )
+        contentLayer.setAffineTransform(CGAffineTransform(scaleX: transition.sourceScale, y: transition.sourceScale))
         CATransaction.commit()
 
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
             Task { @MainActor [weak self] in
-                guard
-                    let self,
-                    animationGeneration == folderAnimationGeneration,
-                    openFolderID == nil
-                else { return }
+                guard let self, animationGeneration == folderAnimationGeneration, openFolderID == nil else { return }
                 cleanupFolderOverlay()
                 resumeRootIconPrewarmingAfterFolder()
             }
@@ -9455,24 +7484,19 @@ private extension LaunchpadRootView {
     }
 
     // LAUNCHPANE_FOLDER_OPEN_FPS_V13
-    func resumeRootIconPrewarmingAfterFolder() {
-        guard
-            presentationResourcesActive,
-            openFolderID == nil,
-            let metrics = currentMetrics
-        else { return }
+    fileprivate func resumeRootIconPrewarmingAfterFolder() {
+        guard presentationResourcesActive, openFolderID == nil, let metrics = currentMetrics else { return }
 
         let scale = window?.backingScaleFactor ?? displayContext.backingScaleFactor
         scheduleIconPrewarming(metrics: metrics, scale: scale)
         scheduleSessionHighQualityIconWarm(metrics: metrics, scale: scale)
     }
 
-    func cleanupFolderOverlay() {
+    fileprivate func cleanupFolderOverlay() {
         if let currentFolderPageLayer = folderPageContentLayer {
             folderPageTransitionAnimator.reset(
                 contentLayer: currentFolderPageLayer,
-                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds
-            )
+                canvasBounds: folderPageViewportLayer?.bounds ?? currentFolderPageLayer.bounds)
         }
         for surface in folderPageSurfaces.values {
             detachFolderButtons(from: surface)
@@ -9503,76 +7527,58 @@ private extension LaunchpadRootView {
         }
     }
 
-    func removeFolderButtons(preserving preservedButton: AppTileButton? = nil) {
+    fileprivate func removeFolderButtons(preserving preservedButton: AppTileButton? = nil) {
         let pointerOwner = preservedButton ?? preservedFolderTrackingButton
         for presentation in folderPresentations where presentation.button !== pointerOwner {
             presentation.button.removeFromSuperview()
         }
         folderPresentations.removeAll(keepingCapacity: true)
     }
- }
+}
 
-    // NSTextFieldDelegate is intentionally handled by the root view so editing can
-    // commit without introducing a second window or stealing the folder's visual
-    // animation ownership.
-    extension LaunchpadRootView {
-        func controlTextDidEndEditing(_ obj: Notification) {
-            guard
-                !isEndingFolderTitleEditing,
-                let editor = folderTitleEditor,
-                obj.object as? NSTextField === editor
-            else { return }
+// NSTextFieldDelegate is intentionally handled by the root view so editing can
+// commit without introducing a second window or stealing the folder's visual
+// animation ownership.
+extension LaunchpadRootView {
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor, obj.object as? NSTextField === editor else {
+            return
+        }
+        finishFolderTitleEditing(commit: true)
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard let editor = folderTitleEditor, control === editor else { return false }
+        if commandSelector == NSSelectorFromString("insertNewline:") {
             finishFolderTitleEditing(commit: true)
+            return true
         }
-
-        func control(
-            _ control: NSControl,
-            textView: NSTextView,
-            doCommandBy commandSelector: Selector
-        ) -> Bool {
-            guard let editor = folderTitleEditor, control === editor else { return false }
-            if commandSelector == NSSelectorFromString("insertNewline:") {
-                finishFolderTitleEditing(commit: true)
-                return true
-            }
-            if commandSelector == NSSelectorFromString("cancelOperation:") {
-                finishFolderTitleEditing(commit: false)
-                return true
-            }
-            return false
+        if commandSelector == NSSelectorFromString("cancelOperation:") {
+            finishFolderTitleEditing(commit: false)
+            return true
         }
+        return false
     }
+}
 
-    private extension ResolvedLaunchpadItem {
-        var applicationsForIconRendering: [ApplicationRecord] {
+extension ResolvedLaunchpadItem {
+    fileprivate var applicationsForIconRendering: [ApplicationRecord] {
         switch self {
-        case let .application(application):
-            [application]
-        case let .folder(folder):
-            folder.applications
+        case .application(let application): [application]
+        case .folder(let folder): folder.applications
         }
     }
 }
 
-private extension CGRect {
-    var center: CGPoint {
-        CGPoint(x: midX, y: midY)
-    }
-}
+extension CGRect { fileprivate var center: CGPoint { CGPoint(x: midX, y: midY) } }
 
-@MainActor
-private final class FolderPageSurface {
+@MainActor private final class FolderPageSurface {
     let pageIndex: Int
     let layer: CALayer
     let presentations: [AppTilePresentation]
     let applications: [ApplicationRecord]
 
-    init(
-        pageIndex: Int,
-        layer: CALayer,
-        presentations: [AppTilePresentation],
-        applications: [ApplicationRecord]
-    ) {
+    init(pageIndex: Int, layer: CALayer, presentations: [AppTilePresentation], applications: [ApplicationRecord]) {
         self.pageIndex = pageIndex
         self.layer = layer
         self.presentations = presentations
@@ -9580,8 +7586,7 @@ private final class FolderPageSurface {
     }
 }
 
-@MainActor
-private final class InteractiveFolderPageSwipe {
+@MainActor private final class InteractiveFolderPageSwipe {
     enum Phase {
         case tracking
         case settling
@@ -9601,13 +7606,8 @@ private final class InteractiveFolderPageSwipe {
     var needsPresentationUpdate = false
 
     init(
-        outgoingSurface: FolderPageSurface,
-        incomingSurface: FolderPageSurface,
-        targetPage: Int,
-        direction: Int,
-        restingPosition: CGPoint,
-        width: CGFloat,
-        timestamp: TimeInterval
+        outgoingSurface: FolderPageSurface, incomingSurface: FolderPageSurface, targetPage: Int, direction: Int,
+        restingPosition: CGPoint, width: CGFloat, timestamp: TimeInterval
     ) {
         self.outgoingSurface = outgoingSurface
         self.incomingSurface = incomingSurface
@@ -9619,8 +7619,7 @@ private final class InteractiveFolderPageSwipe {
     }
 }
 
-@MainActor
-private final class InteractivePageSwipe {
+@MainActor private final class InteractivePageSwipe {
     enum Phase {
         case tracking
         case settling
@@ -9640,13 +7639,8 @@ private final class InteractivePageSwipe {
     var needsPresentationUpdate = false
 
     init(
-        outgoingSurface: LaunchpadPageSurface,
-        incomingSurface: LaunchpadPageSurface,
-        targetPage: Int,
-        direction: Int,
-        restingPosition: CGPoint,
-        width: CGFloat,
-        timestamp: TimeInterval
+        outgoingSurface: LaunchpadPageSurface, incomingSurface: LaunchpadPageSurface, targetPage: Int, direction: Int,
+        restingPosition: CGPoint, width: CGFloat, timestamp: TimeInterval
     ) {
         self.outgoingSurface = outgoingSurface
         self.incomingSurface = incomingSurface
@@ -9660,12 +7654,8 @@ private final class InteractivePageSwipe {
 
 private enum LaunchpadRuntimePaths {
     static var layoutFileURL: URL {
-        guard
-            let overridePath = ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"],
-            !overridePath.isEmpty
-        else {
-            return LauncherLayoutStore.defaultFileURL
-        }
+        guard let overridePath = ProcessInfo.processInfo.environment["LAUNCHPANE_LAYOUT_PATH"], !overridePath.isEmpty
+        else { return LauncherLayoutStore.defaultFileURL }
         return URL(fileURLWithPath: overridePath)
     }
 }
@@ -9677,8 +7667,7 @@ private struct PageSurfaceConfiguration: Equatable {
     let metrics: GridMetrics
 }
 
-@MainActor
-private final class LaunchpadPageSurface {
+@MainActor private final class LaunchpadPageSurface {
     let pageIndex: Int
     let layer: CALayer
     var entries: [LaunchpadPageEntry] = []
@@ -9689,49 +7678,47 @@ private final class LaunchpadPageSurface {
     }
 }
 
-@MainActor
-private enum LaunchpadTilePresentation {
+@MainActor private enum LaunchpadTilePresentation {
     case application(AppTilePresentation)
     case folder(FolderTilePresentation)
 
     var tileLayer: CALayer {
         switch self {
-        case let .application(presentation): presentation.tileLayer
-        case let .folder(presentation): presentation.tileLayer
+        case .application(let presentation): presentation.tileLayer
+        case .folder(let presentation): presentation.tileLayer
         }
     }
 
     var selectionLayer: CALayer {
         switch self {
-        case let .application(presentation): presentation.selectionLayer
-        case let .folder(presentation): presentation.selectionLayer
+        case .application(let presentation): presentation.selectionLayer
+        case .folder(let presentation): presentation.selectionLayer
         }
     }
 
     var iconLayer: CALayer {
         switch self {
-        case let .application(presentation): presentation.iconLayer
-        case let .folder(presentation): presentation.iconLayer
+        case .application(let presentation): presentation.iconLayer
+        case .folder(let presentation): presentation.iconLayer
         }
     }
 
     var labelLayer: CATextLayer {
         switch self {
-        case let .application(presentation): presentation.labelLayer
-        case let .folder(presentation): presentation.labelLayer
+        case .application(let presentation): presentation.labelLayer
+        case .folder(let presentation): presentation.labelLayer
         }
     }
 
     var button: PointerTrackingTileButton {
         switch self {
-        case let .application(presentation): presentation.button
-        case let .folder(presentation): presentation.button
+        case .application(let presentation): presentation.button
+        case .folder(let presentation): presentation.button
         }
     }
 }
 
-@MainActor
-private final class LaunchpadPageEntry {
+@MainActor private final class LaunchpadPageEntry {
     let item: ResolvedLaunchpadItem
     var absoluteIndex: Int
     var frames: GridItemFrames
@@ -9744,10 +7731,7 @@ private final class LaunchpadPageEntry {
     var button: PointerTrackingTileButton { presentation.button }
 
     init(
-        item: ResolvedLaunchpadItem,
-        absoluteIndex: Int,
-        frames: GridItemFrames,
-        presentation: LaunchpadTilePresentation
+        item: ResolvedLaunchpadItem, absoluteIndex: Int, frames: GridItemFrames, presentation: LaunchpadTilePresentation
     ) {
         self.item = item
         self.absoluteIndex = absoluteIndex
@@ -9757,88 +7741,78 @@ private final class LaunchpadPageEntry {
 }
 
 private enum DragSourceOrigin {
-        case root
-        case folder(UUID)
+    case root
+    case folder(UUID)
 
-        var folderID: UUID? {
-            guard case let .folder(folderID) = self else { return nil }
-            return folderID
-        }
+    var folderID: UUID? {
+        guard case .folder(let folderID) = self else { return nil }
+        return folderID
     }
+}
 
-    @MainActor
-    private struct PendingFolderTilePress {
-        let folderID: UUID
-        let entry: LaunchpadPageEntry
-        let point: CGPoint
+@MainActor private struct PendingFolderTilePress {
+    let folderID: UUID
+    let entry: LaunchpadPageEntry
+    let point: CGPoint
+}
+
+@MainActor private final class FolderItemDragSession {
+    let folderID: UUID
+    let sourceEntry: LaunchpadPageEntry
+    let proxyLayer: CALayer
+    let pointerOffset: CGVector
+    let trackingButton: AppTileButton
+    let sourceAbsoluteIndex: Int
+    var destinationAbsoluteIndex: Int
+
+    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
+    // Keep one immutable Folder-order snapshot exactly like the root drag's
+    // projectionBaselineDocument. Every page turn/reflow is projected from
+    // this baseline, never from an already-mutated preview.
+    let baselineApplications: [ApplicationRecord]
+    let sourcePage: Int
+    var hasCrossedPages = false
+
+    // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
+    // Keep edge-paging state on the gesture owner so cancellation, mouseUp,
+    // Folder->Root promotion, and repeated multi-page turns all invalidate
+    // the same asynchronous dwell/waiter deterministically.
+    var lastPointerPoint = CGPoint.zero
+    var lastProxyCenter = CGPoint.zero
+    var edgePagingTask: Task<Void, Never>?
+    var edgePagingDirection: Int?
+    var edgePagingGeneration = 0
+    var isEdgePageTurnInFlight = false
+    var pendingReleasePoint: CGPoint?
+
+    // LAUNCHPANE_FOLDER_DRAG_OWNERSHIP_V2
+    // Folder-local dragging follows the same ownership rule as root drag:
+    // once the proxy exists, the source tile is detached rather than made
+    // transparent. Keep its exact parent/index for an atomic local rollback.
+    let sourceTileParent: CALayer
+    let sourceTileIndex: Int
+
+    init(
+        folderID: UUID, sourceEntry: LaunchpadPageEntry, proxyLayer: CALayer, pointerOffset: CGVector,
+        trackingButton: AppTileButton, sourceAbsoluteIndex: Int, baselineApplications: [ApplicationRecord],
+        sourcePage: Int, sourceTileParent: CALayer, sourceTileIndex: Int
+    ) {
+        self.folderID = folderID
+        self.sourceEntry = sourceEntry
+        self.proxyLayer = proxyLayer
+        self.pointerOffset = pointerOffset
+        self.trackingButton = trackingButton
+        self.sourceAbsoluteIndex = sourceAbsoluteIndex
+        destinationAbsoluteIndex = sourceAbsoluteIndex
+        self.baselineApplications = baselineApplications
+        self.sourcePage = sourcePage
+        self.sourceTileParent = sourceTileParent
+        self.sourceTileIndex = sourceTileIndex
     }
+}
 
-    @MainActor
-    private final class FolderItemDragSession {
-        let folderID: UUID
-        let sourceEntry: LaunchpadPageEntry
-        let proxyLayer: CALayer
-        let pointerOffset: CGVector
-        let trackingButton: AppTileButton
-        let sourceAbsoluteIndex: Int
-        var destinationAbsoluteIndex: Int
-
-        // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
-        // Keep one immutable Folder-order snapshot exactly like the root drag's
-        // projectionBaselineDocument. Every page turn/reflow is projected from
-        // this baseline, never from an already-mutated preview.
-        let baselineApplications: [ApplicationRecord]
-        let sourcePage: Int
-        var hasCrossedPages = false
-
-        // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
-        // Keep edge-paging state on the gesture owner so cancellation, mouseUp,
-        // Folder->Root promotion, and repeated multi-page turns all invalidate
-        // the same asynchronous dwell/waiter deterministically.
-        var lastPointerPoint = CGPoint.zero
-        var lastProxyCenter = CGPoint.zero
-        var edgePagingTask: Task<Void, Never>?
-        var edgePagingDirection: Int?
-        var edgePagingGeneration = 0
-        var isEdgePageTurnInFlight = false
-        var pendingReleasePoint: CGPoint?
-
-        // LAUNCHPANE_FOLDER_DRAG_OWNERSHIP_V2
-        // Folder-local dragging follows the same ownership rule as root drag:
-        // once the proxy exists, the source tile is detached rather than made
-        // transparent. Keep its exact parent/index for an atomic local rollback.
-        let sourceTileParent: CALayer
-        let sourceTileIndex: Int
-
-        init(
-            folderID: UUID,
-            sourceEntry: LaunchpadPageEntry,
-            proxyLayer: CALayer,
-            pointerOffset: CGVector,
-            trackingButton: AppTileButton,
-            sourceAbsoluteIndex: Int,
-            baselineApplications: [ApplicationRecord],
-            sourcePage: Int,
-            sourceTileParent: CALayer,
-            sourceTileIndex: Int
-        ) {
-            self.folderID = folderID
-            self.sourceEntry = sourceEntry
-            self.proxyLayer = proxyLayer
-            self.pointerOffset = pointerOffset
-            self.trackingButton = trackingButton
-            self.sourceAbsoluteIndex = sourceAbsoluteIndex
-            destinationAbsoluteIndex = sourceAbsoluteIndex
-            self.baselineApplications = baselineApplications
-            self.sourcePage = sourcePage
-            self.sourceTileParent = sourceTileParent
-            self.sourceTileIndex = sourceTileIndex
-        }
-    }
-
-    @MainActor
-    private struct PendingTilePress {
-        let entry: LaunchpadPageEntry
+@MainActor private struct PendingTilePress {
+    let entry: LaunchpadPageEntry
     let point: CGPoint
 }
 
@@ -9847,8 +7821,7 @@ private struct DragPageLocation: Equatable {
     let index: Int
 }
 
-@MainActor
-private final class FolderCreationPreview {
+@MainActor private final class FolderCreationPreview {
     let folderID: UUID
     let target: LauncherDropTarget
     let sourceIdentity: ApplicationIdentity
@@ -9861,8 +7834,7 @@ private final class FolderCreationPreview {
     }
 }
 
-@MainActor
-private final class LaunchpadDragSession {
+@MainActor private final class LaunchpadDragSession {
     let sourceEntry: LaunchpadPageEntry
 
     var draft: LauncherLayoutDraft
@@ -9886,30 +7858,19 @@ private final class LaunchpadDragSession {
     var previewLocation: DragPageLocation?
     var projectedDocument: LauncherLayoutDocument?
 
-    var edgePagingTask:
-        Task<Void, Never>?
+    var edgePagingTask: Task<Void, Never>?
 
-    var isEdgePageTransitionActive =
-        false
+    var isEdgePageTransitionActive = false
 
-    var pendingCompletionPoint:
-        CGPoint?
+    var pendingCompletionPoint: CGPoint?
 
     // Immutable geometry captured before dragging begins.
     //
     // In-place preview changes entry.frames / position,
     // therefore cancellation must restore from this snapshot.
-    let originalFramesByIdentifier:
-        [
-            LauncherLayoutItemIdentifier:
-                GridItemFrames
-        ]
+    let originalFramesByIdentifier: [LauncherLayoutItemIdentifier: GridItemFrames]
 
-    let originalIndexByIdentifier:
-        [
-            LauncherLayoutItemIdentifier:
-                Int
-        ]
+    let originalIndexByIdentifier: [LauncherLayoutItemIdentifier: Int]
 
     // Normal same-page reorder path.
     //
@@ -9927,9 +7888,7 @@ private final class LaunchpadDragSession {
     var previewSurface: LaunchpadPageSurface?
     var previewState: LauncherDragPreviewState
 
-    var previewDestinationIdentifier: LauncherLayoutItemIdentifier {
-        previewState.destination
-    }
+    var previewDestinationIdentifier: LauncherLayoutItemIdentifier { previewState.destination }
 
     // LAUNCHPANE_REORDER_RESPONSE_080_V4
     // The spatial gate prevents accidental swaps; keep the temporal confirmation
@@ -9940,82 +7899,44 @@ private final class LaunchpadDragSession {
     var folderCreationPreview: FolderCreationPreview?
     var isSourceLabelHiddenForMerge = false
 
-    var target:
-        LauncherDropTarget = .outside
+    var target: LauncherDropTarget = .outside
 
     init(
-        sourceEntry: LaunchpadPageEntry,
-        draft: LauncherLayoutDraft,
-        proxyLayer: CALayer,
-        pointerOffset: CGVector,
-        originalSurface: LaunchpadPageSurface,
-        sourcePage: Int,
-        sourceOrigin: DragSourceOrigin = .root,
+        sourceEntry: LaunchpadPageEntry, draft: LauncherLayoutDraft, proxyLayer: CALayer, pointerOffset: CGVector,
+        originalSurface: LaunchpadPageSurface, sourcePage: Int, sourceOrigin: DragSourceOrigin = .root,
         projectionBaselineDocument: LauncherLayoutDocument? = nil
     ) {
         self.sourceEntry = sourceEntry
         self.draft = draft
         self.proxyLayer = proxyLayer
         self.pointerOffset = pointerOffset
-        self.originalSurface =
-            originalSurface
+        self.originalSurface = originalSurface
 
-        self.sourcePage =
-            sourcePage
+        self.sourcePage = sourcePage
 
         self.sourceOrigin = sourceOrigin
         self.projectionBaselineDocument = projectionBaselineDocument ?? draft.snapshot
 
-        lastPointerPoint =
-            sourceEntry
-                .frames
-                .cell
-                .center
+        lastPointerPoint = sourceEntry.frames.cell.center
 
-        originalFramesByIdentifier =
-            Dictionary(
-                uniqueKeysWithValues:
-                    originalSurface
-                        .entries
-                        .map {
-                            (
-                                $0.item.id,
-                                $0.frames
-                            )
-                        }
-            )
+        originalFramesByIdentifier = Dictionary(
+            uniqueKeysWithValues: originalSurface.entries.map { ($0.item.id, $0.frames) })
 
-        originalIndexByIdentifier =
-            Dictionary(
-                uniqueKeysWithValues:
-                    originalSurface
-                        .entries
-                        .map {
-                            (
-                                $0.item.id,
-                                $0.absoluteIndex
-                            )
-                        }
-            )
-        previewState = LauncherDragPreviewState(
-            source: sourceEntry.item.id
-        )
+        originalIndexByIdentifier = Dictionary(
+            uniqueKeysWithValues: originalSurface.entries.map { ($0.item.id, $0.absoluteIndex) })
+        previewState = LauncherDragPreviewState(source: sourceEntry.item.id)
     }
 }
 
-@MainActor
-private final class LaunchpadDragCommitContext {
+@MainActor private final class LaunchpadDragCommitContext {
     let session: LaunchpadDragSession
 
-    var completionState =
-        LauncherDragCommitState()
+    var completionState = LauncherDragCommitState()
 
     // True only after the persisted document has been compared page-by-page
     // with the existing layer surfaces and the live drag preview was proven to
     // be an exact match. This covers both insertion and same-page folder merges.
     var didAdoptCommittedPreview = false
 
-    init(session: LaunchpadDragSession) {
-        self.session = session
-    }
+    init(session: LaunchpadDragSession) { self.session = session }
 }

@@ -7,7 +7,7 @@ final class PageMotionProfileTests: XCTestCase {
 
         XCTAssertEqual(profile.duration, 0.56)
         let initialScreenWidthsPerSecond =
-            profile.firstControlPoint.y / profile.firstControlPoint.x / profile.duration
+            profile.firstControlPoint.progress / profile.firstControlPoint.time / profile.duration
         XCTAssertLessThan(initialScreenWidthsPerSecond, 1)
         assertMonotonic(profile)
         assertEndsAtRest(profile)
@@ -50,7 +50,7 @@ final class PageMotionProfileTests: XCTestCase {
             releaseVelocity: velocity
         ))
 
-        XCTAssertLessThan(profile.firstControlPoint.x, 0.001)
+        XCTAssertLessThan(profile.firstControlPoint.time, 0.001)
         XCTAssertEqual(initialVelocity(profile, targetDelta: delta), velocity, accuracy: 1e-8)
         assertMonotonic(profile)
         assertEndsAtRest(profile)
@@ -122,7 +122,7 @@ final class PageMotionProfileTests: XCTestCase {
 
     private func initialVelocity(_ profile: PageMotionProfile, targetDelta: Double) -> Double {
         targetDelta / profile.duration
-            * profile.firstControlPoint.y / profile.firstControlPoint.x
+            * profile.firstControlPoint.progress / profile.firstControlPoint.time
     }
 
     private func assertEndsAtRest(
@@ -130,7 +130,7 @@ final class PageMotionProfileTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let endingSlope = (1 - profile.secondControlPoint.y) / (1 - profile.secondControlPoint.x)
+        let endingSlope = (1 - profile.secondControlPoint.progress) / (1 - profile.secondControlPoint.time)
         XCTAssertEqual(endingSlope, 0, file: file, line: line)
     }
 
@@ -141,12 +141,12 @@ final class PageMotionProfileTests: XCTestCase {
     ) {
         let p1 = profile.firstControlPoint
         let p2 = profile.secondControlPoint
-        XCTAssertGreaterThan(p1.x, 0, file: file, line: line)
-        XCTAssertLessThanOrEqual(p1.x, p2.x, file: file, line: line)
-        XCTAssertLessThan(p2.x, 1, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(p1.y, 0, file: file, line: line)
-        XCTAssertLessThanOrEqual(p1.y, p2.y, file: file, line: line)
-        XCTAssertLessThanOrEqual(p2.y, 1, file: file, line: line)
+        XCTAssertGreaterThan(p1.time, 0, file: file, line: line)
+        XCTAssertLessThanOrEqual(p1.time, p2.time, file: file, line: line)
+        XCTAssertLessThan(p2.time, 1, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(p1.progress, 0, file: file, line: line)
+        XCTAssertLessThanOrEqual(p1.progress, p2.progress, file: file, line: line)
+        XCTAssertLessThanOrEqual(p2.progress, 1, file: file, line: line)
 
         // Sample the actual parametric curve, not only its control-point bounds.
         var previousX = 0.0
@@ -154,10 +154,10 @@ final class PageMotionProfileTests: XCTestCase {
         for step in 1...200 {
             let progress = Double(step) / 200
             let remaining = 1 - progress
-            let sampleX = 3 * remaining * remaining * progress * p1.x
-                + 3 * remaining * progress * progress * p2.x + progress * progress * progress
-            let sampleY = 3 * remaining * remaining * progress * p1.y
-                + 3 * remaining * progress * progress * p2.y + progress * progress * progress
+            let sampleX = 3 * remaining * remaining * progress * p1.time
+                + 3 * remaining * progress * progress * p2.time + progress * progress * progress
+            let sampleY = 3 * remaining * remaining * progress * p1.progress
+                + 3 * remaining * progress * progress * p2.progress + progress * progress * progress
             XCTAssertGreaterThan(sampleX, previousX, file: file, line: line)
             XCTAssertGreaterThanOrEqual(sampleY, previousY, file: file, line: line)
             XCTAssertLessThanOrEqual(sampleY, 1, file: file, line: line)

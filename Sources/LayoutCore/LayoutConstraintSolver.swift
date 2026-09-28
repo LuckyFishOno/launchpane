@@ -153,7 +153,6 @@ public struct LayoutConstraintSolver: LayoutSolving, Sendable {
     private func largeDisplayProgress(forLogicalWidth logicalWidth: CGFloat) -> CGFloat {
         let baselineLogicalWidth: CGFloat = 1710
         let largeLogicalWidth: CGFloat = 3840
-        guard largeLogicalWidth > baselineLogicalWidth else { return 0 }
         return min(
             1,
             max(0, (logicalWidth - baselineLogicalWidth) / (largeLogicalWidth - baselineLogicalWidth))

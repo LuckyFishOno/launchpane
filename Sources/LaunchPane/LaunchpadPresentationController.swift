@@ -45,6 +45,56 @@ final class LaunchpadWindowController: NSWindowController {
                 backingScaleFactor: 1
             )
 
+        let window = Self.makeWindow(display: display)
+
+        self.init(
+            window: window
+        )
+
+        targetDisplayID =
+            display.displayID
+
+        window.onDidHide = { [weak self] in
+
+            guard let self else {
+                return
+            }
+
+            self.menuBarBackdrop.dismiss()
+
+            // The window is fully ordered out at this point. Drop decoded
+            // Retina icons and compositor page trees while the agent is idle.
+            (self.window?.contentView as? LaunchpadRootView)?
+                .releasePresentationResourcesForIdle()
+
+            self
+                .restorePreviousFrontmostApplicationIfNeeded()
+        }
+
+        observePresentationChanges()
+    }
+
+    private func observePresentationChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector:
+                #selector(
+                    displayConfigurationDidChange
+                ),
+            name:
+                NSApplication
+                    .didChangeScreenParametersNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidResignActive),
+            name: NSApplication.didResignActiveNotification,
+            object: NSApplication.shared
+        )
+    }
+
+    private static func makeWindow(display: DisplayContext) -> LaunchpadWindow {
         let localFrame =
             CGRect(
                 origin: .zero,
@@ -81,47 +131,7 @@ final class LaunchpadWindowController: NSWindowController {
                 displayContext: display
             )
 
-        self.init(
-            window: window
-        )
-
-        targetDisplayID =
-            display.displayID
-
-        window.onDidHide = { [weak self] in
-
-            guard let self else {
-                return
-            }
-
-            self.menuBarBackdrop.dismiss()
-
-            // The window is fully ordered out at this point. Drop decoded
-            // Retina icons and compositor page trees while the agent is idle.
-            (self.window?.contentView as? LaunchpadRootView)?
-                .releasePresentationResourcesForIdle()
-
-            self
-                .restorePreviousFrontmostApplicationIfNeeded()
-        }
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector:
-                #selector(
-                    displayConfigurationDidChange
-                ),
-            name:
-                NSApplication
-                    .didChangeScreenParametersNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(applicationDidResignActive),
-            name: NSApplication.didResignActiveNotification,
-            object: NSApplication.shared
-        )
+        return window
     }
 
     override func showWindow(

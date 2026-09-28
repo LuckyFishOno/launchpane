@@ -183,10 +183,10 @@ enum LaunchpadVisualStyle {
         return PageTransition(
             duration: profile.duration,
             timingFunction: CAMediaTimingFunction(
-                controlPoints: Float(profile.firstControlPoint.x),
-                Float(profile.firstControlPoint.y),
-                Float(profile.secondControlPoint.x),
-                Float(profile.secondControlPoint.y)
+                controlPoints: Float(profile.firstControlPoint.time),
+                Float(profile.firstControlPoint.progress),
+                Float(profile.secondControlPoint.time),
+                Float(profile.secondControlPoint.progress)
             ),
             travelDistance: displayWidth
         )

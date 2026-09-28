@@ -43,9 +43,10 @@ passes 16 deterministic assertions using 64-bit P3 images, including asynchronou
 completion order and explicit invalidation. Release compilation passes.
 
 `MenuBarOpeningAnimationCheck.swift` runs the production AppKit windows and
-Core Animation opening path. Its 20 assertions verify full-width top coverage,
+Core Animation opening path. Its 26 assertions verify full-width top coverage,
 the backing-pixel overlap, whole-surface opacity synchronization, the measured
-13-frame curve and duration, and the Reduce Motion result.
+13-frame curve and duration, synchronized 0.27-second dismissal, and the Reduce
+Motion path when enabled.
 
 `AgentMemoryCheck.swift` creates a hidden window and uses a fresh temporary layout.
 Its `--cycle-displays` mode waits for real icon-prewarm completion while moving
