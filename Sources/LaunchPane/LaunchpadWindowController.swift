@@ -11,98 +11,54 @@ import QuartzCore
     override func acceptsFirstMouse(for _: NSEvent?) -> Bool { true }
 }
 
-@MainActor private final class ApplicationDirectoryMonitor {
-    private var sources: [DispatchSourceFileSystemObject] = []
-    private var debounceTask: Task<Void, Never>?
-    private let onChange: @MainActor () -> Void
-
-    init(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
-
-    deinit {
-        debounceTask?.cancel()
-        sources.forEach { $0.cancel() }
-    }
-
-    func start() {
-        guard sources.isEmpty else { return }
-        let urls = [
-            URL(fileURLWithPath: "/Applications", isDirectory: true),
-            URL(fileURLWithPath: "/System/Applications", isDirectory: true),
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
-        ]
-
-        for url in urls where FileManager.default.fileExists(atPath: url.path) {
-            let descriptor = open(url.path, O_EVTONLY)
-            guard descriptor >= 0 else { continue }
-            let source = DispatchSource.makeFileSystemObjectSource(
-                fileDescriptor: descriptor, eventMask: [.write, .delete, .rename, .revoke], queue: .main)
-            source.setEventHandler { [weak self] in self?.scheduleChange() }
-            source.setCancelHandler { close(descriptor) }
-            sources.append(source)
-            source.resume()
-        }
-    }
-
-    private func scheduleChange() {
-        debounceTask?.cancel()
-        debounceTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            self?.onChange()
-        }
-    }
-}
-
 // swiftlint:disable:next type_body_length
 @MainActor final class LaunchpadRootView: NSView, NSTextFieldDelegate {
-    private let solver = LayoutConstraintSolver()
-    private let catalog = AppCatalogActor(excludedBundleIdentifiers: [
+    let solver = LayoutConstraintSolver()
+    let catalog = AppCatalogActor(excludedBundleIdentifiers: [
         "org.launchpane.LaunchPane", "org.launchpane.LaunchPaneAgent",
     ])
-    private let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
-    private let iconCache = AppIconCache()
+    let layoutStore = LauncherLayoutStore(fileURL: LaunchpadRuntimePaths.layoutFileURL)
+    let iconCache = AppIconCache()
     private let wallpaperView = NSView()
     private let canvasView = LaunchpadCanvasView()
-    private let rootLayer = CALayer()
+    let rootLayer = CALayer()
     private let fixedBackgroundLayer = CALayer()
-    private let fixedOverlayLayer = CALayer()
+    let fixedOverlayLayer = CALayer()
     private let pageIndicatorLayer = CATextLayer()
     private let folderOverlayLayer = CALayer()
     private let dragOverlayLayer = CALayer()
-    private var pageContentLayer = CALayer()
-    private let pageTransitionAnimator = PageTransitionAnimator()
+    var pageContentLayer = CALayer()
+    let pageTransitionAnimator = PageTransitionAnimator()
     private let searchField = LaunchpadSearchField(frame: .zero)
-    private var displayContext: DisplayContext
+    var displayContext: DisplayContext
     private lazy var applicationDirectoryMonitor = ApplicationDirectoryMonitor { [weak self] in
         Task { @MainActor [weak self] in await self?.refreshApplicationsFromDisk() }
     }
 
-    private var applications: [ApplicationRecord] = []
-    private var layoutDocument = LauncherLayoutDocument()
-    private var pageSurfaces: [Int: LaunchpadPageSurface] = [:]
-    private var activeSurface: LaunchpadPageSurface?
+    var applications: [ApplicationRecord] = []
+    var layoutDocument = LauncherLayoutDocument()
+    var pageSurfaces: [Int: LaunchpadPageSurface] = [:]
+    var activeSurface: LaunchpadPageSurface?
     private var renderedConfiguration: PageSurfaceConfiguration?
-    private var contentRevision = 0
-    private var currentPage = 0
-    private var selectedIndex = -1
-    private var currentMetrics: GridMetrics?
-    private var pendingPageDirection = 0
-    private var pageScrollGesture = PageScrollGesture()
-    private var pageSwipeInputGate = PageSwipeInputGate()
-    private var interactivePageSwipe: InteractivePageSwipe?
-    private var interactivePageGeneration = 0
-    private var iconPrewarmTask: Task<Void, Never>?
-    private var idlePinnedIconWarmTask: Task<Void, Never>?
+    var contentRevision = 0
+    var currentPage = 0
+    var selectedIndex = -1
+    var currentMetrics: GridMetrics?
+    var pendingPageDirection = 0
+    var pageScrollGesture = PageScrollGesture()
+    var pageSwipeInputGate = PageSwipeInputGate()
+    var interactivePageSwipe: InteractivePageSwipe?
+    var interactivePageGeneration = 0
 
     // LAUNCHPANE_VISIBLE_ALL_HQ_ICON_PREWARM_V4
     // One presentation-wide task fills the transient cache with full-size
     // icons after the first frame. It survives page transitions so opening a
     // folder later is a cache hit instead of a new decode burst.
-    private var sessionHighQualityIconWarmTask: Task<Void, Never>?
+    let iconPrewarmTasks = IconPrewarmTasks()
 
-    private var pagingDisplayLink: CADisplayLink?
+    var pagingDisplayLink: CADisplayLink?
 
-    private var isPageTransitionActive: Bool {
+    var isPageTransitionActive: Bool {
         pageTransitionAnimator.isAnimating || interactivePageSwipe != nil || folderPageTransitionAnimator.isAnimating
             || interactiveFolderPageSwipe != nil
     }
@@ -115,12 +71,12 @@ import QuartzCore
     private var isFinishingDragVisuals = false
     private var isResettingLayout = false
 
-    private var openFolderID: UUID?
+    var openFolderID: UUID?
     private var folderPage = 0
     private var folderSelectedIndex = -1
     private var folderPageScrollGesture = PageScrollGesture()
     private var folderPageSwipeInputGate = PageSwipeInputGate()
-    private var interactiveFolderPageSwipe: InteractiveFolderPageSwipe?
+    var interactiveFolderPageSwipe: InteractiveFolderPageSwipe?
     private var interactiveFolderPageGeneration = 0
     private var folderPageSurfaces: [Int: FolderPageSurface] = [:]
 
@@ -135,7 +91,7 @@ import QuartzCore
     private weak var folderPageIndicatorLayer: CATextLayer?
 
     private var folderPanelFrame = CGRect.zero
-    private var folderPresentations: [AppTilePresentation] = []
+    var folderPresentations: [AppTilePresentation] = []
     private var folderIconTask: Task<Void, Never>?
     private var folderAnimationSourceFrame: CGRect?
     private var folderContentAnimationLayer: CALayer?
@@ -148,12 +104,12 @@ import QuartzCore
     // folder chrome. Folder-child dragging owns its gesture until the child
     // actually crosses the panel boundary, then hands the same mouse gesture to
     // the existing root drag/reflow state machine.
-    private var folderTitleFrame = CGRect.zero
+    var folderTitleFrame = CGRect.zero
     private var folderTitleHitFrame = CGRect.zero
-    private var folderTitleLayer: CATextLayer?
-    private var folderTitleEditor: NSTextField?
-    private var isEndingFolderTitleEditing = false
-    private var isCommittingFolderTitle = false
+    var folderTitleLayer: CATextLayer?
+    var folderTitleEditor: NSTextField?
+    var isEndingFolderTitleEditing = false
+    var isCommittingFolderTitle = false
     private var pendingFolderPress: PendingFolderTilePress?
     private var folderItemDragSession: FolderItemDragSession?
 
@@ -195,12 +151,12 @@ import QuartzCore
     }
 
     private var hasLoadedApplications = false
-    private var isLoadingApplications = true
+    var isLoadingApplications = true
 
     // High-resolution icon/page/wallpaper resources exist only while the
     // launcher is being presented. The agent keeps model/layout state warm
     // while hidden, but does not retain Retina render trees or decoded icons.
-    private var presentationResourcesActive = false
+    var presentationResourcesActive = false
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -271,8 +227,7 @@ import QuartzCore
         // Stop work which could repopulate decoded icons after the cache is
         // emptied. The application/layout model remains resident and cheap.
         cancelIconPrewarming()
-        sessionHighQualityIconWarmTask?.cancel()
-        sessionHighQualityIconWarmTask = nil
+        iconPrewarmTasks.cancelPresentation()
         folderIconTask?.cancel()
         folderIconTask = nil
 
@@ -327,8 +282,7 @@ import QuartzCore
         // Keep only first-page standalone icons plus tiny 64px previews for
         // each first-page folder's nine visible children. Later-page icons and
         // full-size folder contents remain presentation-only.
-        idlePinnedIconWarmTask?.cancel()
-        idlePinnedIconWarmTask = nil
+        iconPrewarmTasks.cancelIdleFirstPage()
         iconCache.removeTransient()
         contentRevision &+= 1
         needsLayout = false
@@ -433,8 +387,7 @@ import QuartzCore
     func update(displayContext: DisplayContext) {
         // A display move can change backingScaleFactor. Restart the session-wide
         // HQ warm so every cached icon is guaranteed to satisfy the new screen.
-        sessionHighQualityIconWarmTask?.cancel()
-        sessionHighQualityIconWarmTask = nil
+        iconPrewarmTasks.cancelPresentation()
         cancelDragInteraction(animated: false)
         closeFolder(animated: false)
         resetPageTransition()
@@ -569,7 +522,7 @@ import QuartzCore
 }
 
 extension LaunchpadRootView {
-    fileprivate var layoutPreferences: UserLayoutPreferences {
+    var layoutPreferences: UserLayoutPreferences {
         UserLayoutPreferences(isRightToLeft: userInterfaceLayoutDirection == .rightToLeft)
     }
 
@@ -627,14 +580,14 @@ extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    fileprivate func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil)
+    func pageProjection(metrics: GridMetrics, document: LauncherLayoutDocument? = nil)
         -> ResolvedLaunchpadPages {
         ResolvedLaunchpadItemFactory.makePages(
             document: document ?? layoutDocument, applications: applications, query: searchField.stringValue,
             pageCapacity: metrics.itemsPerPage)
     }
 
-    fileprivate func render() {
+    func render() {
         guard !isPageTransitionActive, dragSession == nil, !isCommittingLayout, !isFinishingDragVisuals,
             !isResettingLayout
         else { return }
@@ -867,7 +820,7 @@ extension LaunchpadRootView {
     // Keep currentPage and the immediate neighbours already attached one viewport
     // off-screen. A trackpad gesture then starts by changing only two CALayer
     // positions; it does not construct a page tree or churn the NSView hierarchy.
-    fileprivate func stageAdjacentPageSurfaces(scale: CGFloat) {
+    func stageAdjacentPageSurfaces(scale: CGFloat) {
         // LAUNCHPANE_PAGING_LONG_SESSION_PERF_V1
         //
         // Paging visuals and pointer hit-targets have different lifetimes:
@@ -948,7 +901,7 @@ extension LaunchpadRootView {
         #endif
     }
 
-    fileprivate func attachButtons(to surface: LaunchpadPageSurface, hidden: Bool) {
+    func attachButtons(to surface: LaunchpadPageSurface, hidden: Bool) {
         for entry in surface.entries {
             let button = entry.button
             if button.superview == nil { addSubview(button, positioned: .below, relativeTo: searchField) }
@@ -958,11 +911,11 @@ extension LaunchpadRootView {
         }
     }
 
-    fileprivate func detachButtons(from surface: LaunchpadPageSurface) {
+    func detachButtons(from surface: LaunchpadPageSurface) {
         for entry in surface.entries { entry.button.removeFromSuperview() }
     }
 
-    fileprivate func updatePageIndicator(pageCount: Int, metrics: GridMetrics, scale: CGFloat) {
+    func updatePageIndicator(pageCount: Int, metrics: GridMetrics, scale: CGFloat) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         pageIndicatorLayer.frame = metrics.pageIndicatorReservedFrame
@@ -1022,7 +975,7 @@ extension LaunchpadRootView {
         CATransaction.commit()
     }
 
-    fileprivate func invalidatePageSurfaceCache() {
+    func invalidatePageSurfaceCache() {
         cancelIconPrewarming()
         contentRevision &+= 1
         renderedConfiguration = nil
@@ -1060,13 +1013,13 @@ extension LaunchpadRootView {
         needsLayout = true
     }
 
-    fileprivate func updateSelectionAppearance() {
+    func updateSelectionAppearance() {
         for surface in pageSurfaces.values {
             for entry in surface.entries { entry.selectionLayer.opacity = entry.absoluteIndex == selectedIndex ? 1 : 0 }
         }
     }
 
-    fileprivate func changePage(by offset: Int, queuesDuringTransition: Bool = true) {
+    func changePage(by offset: Int, queuesDuringTransition: Bool = true) {
         guard interactivePageSwipe == nil else { return }
         if pageTransitionAnimator.isAnimating {
             if queuesDuringTransition { _ = pageTransitionAnimator.queueLatestIfAnimating(direction: offset) }
@@ -1097,7 +1050,7 @@ extension LaunchpadRootView {
         }
     }
 
-    fileprivate func launch(_ application: ApplicationRecord) {
+    func launch(_ application: ApplicationRecord) {
         if NSWorkspace.shared.open(application.bundleURL) { requestClose() }
     }
 
@@ -1215,715 +1168,6 @@ extension LaunchpadRootView {
         }
         alert.addButton(withTitle: "OK")
         alert.beginSheetModal(for: window)
-    }
-}
-
-extension LaunchpadRootView {
-    fileprivate func beginPageTransition(
-        from outgoingLayer: CALayer, to incomingLayer: CALayer, direction: Int,
-        style: LaunchpadVisualStyle.PageTransition
-    ) {
-        cancelIconPrewarming()
-        setPageHitTargetsEnabled(false)
-
-        let request = PageTransitionAnimator.Request(
-            outgoingLayer: outgoingLayer, incomingLayer: incomingLayer, direction: direction, style: style,
-            canvasBounds: bounds)
-        pageTransitionAnimator.start(request) { [weak self] queuedDirection in
-            guard let self else { return }
-
-            if let activeSurface { attachButtons(to: activeSurface, hidden: false) }
-            setPageHitTargetsEnabled(true)
-
-            if queuedDirection != 0 {
-                changePage(by: queuedDirection)
-                render()
-                return
-            }
-
-            if let metrics = currentMetrics {
-                let scale = window?.backingScaleFactor ?? 1
-                stageAdjacentPageSurfaces(scale: scale)
-                scheduleIconPrewarming(metrics: metrics, scale: scale)
-            }
-        }
-    }
-
-    fileprivate func configurePagingDisplayLink() {
-        pagingDisplayLink?.invalidate()
-
-        // NSView.displayLink(...) follows the physical display containing this
-        // view. Keep the default frame-rate range so Core Animation can use the
-        // display's native cadence: typically 60 Hz, or up to 120 Hz on
-        // ProMotion displays.
-        let link = displayLink(target: self, selector: #selector(pagingDisplayLinkDidFire(_:)))
-
-        link.isPaused = true
-        link.add(to: RunLoop.main, forMode: .common)
-
-        pagingDisplayLink = link
-    }
-
-    @objc fileprivate func pagingDisplayLinkDidFire(_ link: CADisplayLink) {
-        // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
-        // Folder and root direct-manipulation share one display link. Only one
-        // can exist at a time; presenting at most once per refresh prevents a
-        // burst of trackpad events from turning into redundant CA commits.
-        if let folderSwipe = interactiveFolderPageSwipe, folderSwipe.phase == .tracking,
-            folderSwipe.needsPresentationUpdate {
-            presentInteractiveFolderPageSwipe(folderSwipe)
-            return
-        }
-
-        guard !link.isPaused, let swipe = interactivePageSwipe, swipe.phase == .tracking, swipe.needsPresentationUpdate
-        else { return }
-
-        presentInteractivePageSwipe(swipe)
-    }
-
-    fileprivate func presentInteractivePageSwipe(_ swipe: InteractivePageSwipe) {
-        guard swipe.phase == .tracking else { return }
-
-        swipe.needsPresentationUpdate = false
-
-        let outgoingPosition = CGPoint(x: swipe.restingPosition.x + swipe.translation, y: swipe.restingPosition.y)
-
-        let incomingPosition = CGPoint(
-            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + swipe.translation,
-            y: swipe.restingPosition.y)
-
-        // One compositor transaction per physical display refresh.
-        //
-        // Trackpad events may arrive faster, slower, or irregularly relative
-        // to refresh. Coalescing them here avoids presenting multiple model
-        // updates between two visible frames.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        swipe.outgoingSurface.layer.position = outgoingPosition
-        swipe.incomingSurface.layer.position = incomingPosition
-
-        CATransaction.commit()
-    }
-
-    fileprivate func handleInteractivePageSwipe(_ event: NSEvent) -> Bool {
-        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else { return false }
-
-        let disposition = InteractivePageSwipeDecision.disposition(
-            hasActiveSwipe: interactivePageSwipe != nil, phase: PageScrollPhase(event.phase),
-            hasHorizontalMovement: event.scrollingDeltaX != 0,
-            isHorizontalDominant: abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
-
-        switch disposition {
-        case .useDiscretePaging:
-            if interactivePageSwipe != nil { cancelInteractivePageSwipeImmediately() }
-            return false
-        case .cancel:
-            finishInteractivePageSwipe(commit: false)
-            return true
-        case .finish: return finishInteractivePageSwipeAfterRelease()
-        case .beginOrUpdate: return continueInteractivePageSwipe(event)
-        }
-    }
-
-    fileprivate func finishInteractivePageSwipeAfterRelease() -> Bool {
-        guard let swipe = interactivePageSwipe else { return false }
-        guard swipe.phase == .tracking else { return true }
-        let width = max(1, swipe.width)
-
-        let progress = min(1, max(0, -swipe.translation * CGFloat(swipe.direction) / width))
-        let forwardVelocity = -swipe.velocity * CGFloat(swipe.direction)
-        let normalizedForwardVelocity = forwardVelocity / width
-        // A native-feeling trackpad flick should not require dragging a large
-        // fraction of the screen. Project the release briefly forward and allow
-        // a short, intentional flick to commit while still rejecting tiny jitter.
-        let projectedProgress = progress + normalizedForwardVelocity * 0.10
-
-        // Launchpad paging should react to intent, not require a long drag.
-        //
-        // A short deliberate horizontal movement is enough to commit:
-        // - ~2.5% page travel commits even at a gentle release.
-        // - A very short flick can commit from ~0.8% when it has velocity.
-        //
-        // Horizontal-dominance filtering and the one-page-per-gesture gate
-        // still protect against ordinary trackpad jitter.
-        let commit =
-            progress >= 0.025 || (progress >= 0.012 && projectedProgress >= 0.040)
-            || (progress >= 0.008 && normalizedForwardVelocity >= 0.25)
-
-        finishInteractivePageSwipe(commit: commit)
-        return true
-    }
-
-    fileprivate func continueInteractivePageSwipe(_ event: NSEvent) -> Bool {
-        guard interactivePageSwipe?.phase != .settling else { return true }
-        // Native paging ignores inertial scrolling after the finger releases.
-        if !event.momentumPhase.isEmpty { return true }
-
-        if event.phase.contains(.began) { cancelInteractivePageSwipeImmediately() }
-
-        if interactivePageSwipe == nil {
-            let direction = event.scrollingDeltaX < 0 ? 1 : -1
-
-            let didBegin = beginInteractivePageSwipe(direction: direction, timestamp: event.timestamp)
-            if didBegin {
-                // Do not let partial vertical accumulation from an earlier event
-                // leak into the discrete gesture that follows this swipe.
-                pageScrollGesture = PageScrollGesture()
-            }
-        }
-
-        if let swipe = interactivePageSwipe, event.scrollingDeltaX != 0 {
-            updateInteractivePageSwipe(swipe, deltaX: event.scrollingDeltaX, timestamp: event.timestamp)
-        }
-
-        return true
-    }
-
-    @discardableResult fileprivate func beginInteractivePageSwipe(direction: Int, timestamp: TimeInterval) -> Bool {
-        guard !pageTransitionAnimator.isAnimating, interactivePageSwipe == nil, let metrics = currentMetrics,
-            let outgoingSurface = activeSurface
-        else { return false }
-
-        let pageCount = pageProjection(metrics: metrics).pageCount
-        let targetPage = currentPage + direction
-        guard (0..<pageCount).contains(targetPage), let incomingSurface = pageSurfaces[targetPage] else { return false }
-
-        cancelIconPrewarming()
-        setPageHitTargetsEnabled(false)
-
-        let scale = window?.backingScaleFactor ?? 1
-        let restingPosition = CGPoint(x: bounds.midX, y: bounds.midY)
-        let width = max(1, bounds.width)
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        outgoingSurface.layer.removeAllAnimations()
-        incomingSurface.layer.removeAllAnimations()
-
-        outgoingSurface.layer.frame = bounds
-        outgoingSurface.layer.contentsScale = scale
-        outgoingSurface.layer.position = restingPosition
-        outgoingSurface.layer.opacity = 1
-        outgoingSurface.layer.isHidden = false
-
-        incomingSurface.layer.frame = bounds
-        incomingSurface.layer.contentsScale = scale
-        incomingSurface.layer.position = CGPoint(
-            x: restingPosition.x + CGFloat(direction) * width, y: restingPosition.y)
-        incomingSurface.layer.opacity = 1
-        incomingSurface.layer.isHidden = false
-
-        if incomingSurface.layer.superlayer == nil {
-            rootLayer.insertSublayer(incomingSurface.layer, below: fixedOverlayLayer)
-        }
-
-        CATransaction.commit()
-
-        // The incoming page needs only its CALayer during the gesture.
-        // Its NSButton/NSTrackingArea hit targets are attached only if this page
-        // becomes current after settle completes. This keeps gesture begin free
-        // of NSView hierarchy churn and keeps long-session view count bounded.
-
-        interactivePageGeneration &+= 1
-        interactivePageSwipe = InteractivePageSwipe(
-            outgoingSurface: outgoingSurface, incomingSurface: incomingSurface, targetPage: targetPage,
-            direction: direction, restingPosition: restingPosition, width: width, timestamp: timestamp)
-        return true
-    }
-
-    fileprivate func updateInteractivePageSwipe(
-        _ swipe: InteractivePageSwipe, deltaX: CGFloat, timestamp: TimeInterval) {
-        guard swipe.phase == .tracking else { return }
-        let rawElapsed = timestamp - swipe.lastTimestamp
-        let elapsed = min(1.0 / 24.0, max(1.0 / 240.0, rawElapsed))
-        swipe.lastTimestamp = timestamp
-
-        // Protect against a rare huge NSEvent delta without adding any filter or
-        // latency to ordinary trackpad movement.
-        // AppKit's precise trackpad delta is deliberately conservative for a
-        // full-screen page. A modest gain keeps the page visually attached to
-        // a light two-finger swipe without turning the gesture into a jump.
-        let trackingGain: CGFloat = 1.60
-        let adjustedDelta = deltaX * trackingGain
-        let maximumDelta = swipe.width * 0.18
-        let boundedDelta = min(maximumDelta, max(-maximumDelta, adjustedDelta))
-
-        let instantaneousVelocity = boundedDelta / elapsed
-        let maximumVelocity = swipe.width * 8.0
-        let boundedVelocity = min(maximumVelocity, max(-maximumVelocity, instantaneousVelocity))
-
-        // Fixed 0.72/0.28 filtering changes behaviour with event frequency.
-        // A time-constant filter feels the same at 60 Hz, 120 Hz and under
-        // irregular event delivery. It affects release physics only.
-        let velocityTimeConstant = 0.034
-        let velocityAlpha = 1 - exp(-Double(elapsed) / velocityTimeConstant)
-        swipe.velocity += (boundedVelocity - swipe.velocity) * CGFloat(velocityAlpha)
-
-        let proposed = swipe.translation + boundedDelta
-        if swipe.direction > 0 {
-            swipe.translation = min(0, max(-swipe.width, proposed))
-        } else {
-            swipe.translation = max(0, min(swipe.width, proposed))
-        }
-
-        // Keep input sampling completely finger-driven, but present the newest
-        // translation only on the physical display's refresh boundary.
-        //
-        // Multiple trackpad events between two refreshes collapse into one
-        // compositor update; on ProMotion the same path naturally gets more
-        // opportunities to present.
-        swipe.needsPresentationUpdate = true
-
-        if let pagingDisplayLink {
-            pagingDisplayLink.isPaused = false
-        } else {
-            // Defensive fallback. Normal macOS 15 presentation always has the
-            // NSView display link configured.
-            presentInteractivePageSwipe(swipe)
-        }
-    }
-
-    fileprivate func finishInteractivePageSwipe(commit: Bool) {
-        guard let swipe = interactivePageSwipe, swipe.phase == .tracking else { return }
-
-        // Make the last input sample available to Core Animation before the
-        // compositor-driven settle begins.
-        if swipe.needsPresentationUpdate { presentInteractivePageSwipe(swipe) }
-
-        pagingDisplayLink?.isPaused = true
-        swipe.phase = .settling
-        interactivePageGeneration &+= 1
-        let generation = interactivePageGeneration
-
-        let finalTranslation = commit ? -CGFloat(swipe.direction) * swipe.width : 0
-        let outgoingStart = swipe.outgoingSurface.layer.presentation()?.position ?? swipe.outgoingSurface.layer.position
-        let incomingStart = swipe.incomingSurface.layer.presentation()?.position ?? swipe.incomingSurface.layer.position
-        let outgoingEnd = CGPoint(x: swipe.restingPosition.x + finalTranslation, y: swipe.restingPosition.y)
-        let incomingEnd = CGPoint(
-            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width + finalTranslation,
-            y: swipe.restingPosition.y)
-
-        // Use the position actually displayed, not a potentially newer input
-        // sample. One cubic preserves release velocity all the way into rest;
-        // stretching its duration afterward would introduce a sudden slowdown.
-        guard
-            let transition = LaunchpadVisualStyle.interactivePageSettleTransition(
-                direction: swipe.direction, displayWidth: swipe.width, releaseVelocity: swipe.velocity,
-                targetDelta: outgoingEnd.x - outgoingStart.x)
-        else {
-            completeInteractivePageSwipe(swipe, commit: commit)
-            return
-        }
-
-        func animation(from start: CGPoint, to end: CGPoint) -> CABasicAnimation {
-            let animation = CABasicAnimation(keyPath: "position")
-            animation.fromValue = NSValue(point: start)
-            animation.toValue = NSValue(point: end)
-            animation.duration = transition.duration
-            animation.timingFunction = transition.timingFunction
-            return animation
-        }
-
-        // Commit model endpoints and both animations together. No intermediate
-        // transaction may expose the destination before its animation exists.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        CATransaction.setCompletionBlock { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self, generation == interactivePageGeneration, interactivePageSwipe === swipe else { return }
-                completeInteractivePageSwipe(swipe, commit: commit)
-            }
-        }
-        swipe.outgoingSurface.layer.position = outgoingEnd
-        swipe.incomingSurface.layer.position = incomingEnd
-        swipe.outgoingSurface.layer.add(animation(from: outgoingStart, to: outgoingEnd), forKey: "interactivePageOut")
-        swipe.incomingSurface.layer.add(animation(from: incomingStart, to: incomingEnd), forKey: "interactivePageIn")
-        CATransaction.commit()
-    }
-
-    fileprivate func completeInteractivePageSwipe(_ swipe: InteractivePageSwipe, commit: Bool) {
-        pagingDisplayLink?.isPaused = true
-
-        swipe.outgoingSurface.layer.removeAllAnimations()
-        swipe.incomingSurface.layer.removeAllAnimations()
-
-        let scale = window?.backingScaleFactor ?? 1
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        if commit {
-            swipe.incomingSurface.layer.position = swipe.restingPosition
-            swipe.outgoingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x - CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
-        } else {
-            swipe.outgoingSurface.layer.position = swipe.restingPosition
-            swipe.incomingSurface.layer.position = CGPoint(
-                x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
-        }
-
-        CATransaction.commit()
-
-        if commit {
-            // The outgoing page remains staged as CALayers only. Detaching its
-            // hit targets removes its NSTrackingAreas from AppKit bookkeeping.
-            detachButtons(from: swipe.outgoingSurface)
-
-            pageContentLayer = swipe.incomingSurface.layer
-            activeSurface = swipe.incomingSurface
-            currentPage = swipe.targetPage
-            selectedIndex = -1
-
-            attachButtons(to: swipe.incomingSurface, hidden: false)
-        } else {
-            // Cancelled incoming pages never need pointer hit targets.
-            detachButtons(from: swipe.incomingSurface)
-            attachButtons(to: swipe.outgoingSurface, hidden: false)
-        }
-
-        interactivePageSwipe = nil
-        setPageHitTargetsEnabled(true)
-        updateSelectionAppearance()
-
-        if let metrics = currentMetrics {
-            let pageCount = pageProjection(metrics: metrics).pageCount
-            updatePageIndicator(pageCount: pageCount, metrics: metrics, scale: scale)
-
-            // Visible motion is already complete; topology maintenance cannot
-            // steal time from the settle animation anymore.
-            stageAdjacentPageSurfaces(scale: scale)
-            scheduleIconPrewarming(metrics: metrics, scale: scale)
-        }
-    }
-
-    fileprivate func cancelInteractivePageSwipeImmediately() {
-        guard let swipe = interactivePageSwipe else { return }
-
-        pagingDisplayLink?.isPaused = true
-        interactivePageGeneration &+= 1
-        swipe.outgoingSurface.layer.removeAllAnimations()
-        swipe.incomingSurface.layer.removeAllAnimations()
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        swipe.outgoingSurface.layer.position = swipe.restingPosition
-        swipe.incomingSurface.layer.position = CGPoint(
-            x: swipe.restingPosition.x + CGFloat(swipe.direction) * swipe.width, y: swipe.restingPosition.y)
-        CATransaction.commit()
-
-        interactivePageSwipe = nil
-        detachButtons(from: swipe.incomingSurface)
-        attachButtons(to: swipe.outgoingSurface, hidden: false)
-        setPageHitTargetsEnabled(true)
-
-        stageAdjacentPageSurfaces(scale: window?.backingScaleFactor ?? 1)
-    }
-
-    fileprivate func resetPageTransition() {
-        cancelIconPrewarming()
-        cancelInteractivePageSwipeImmediately()
-        pageSwipeInputGate = PageSwipeInputGate()
-        pendingPageDirection = 0
-        pageTransitionAnimator.reset(contentLayer: pageContentLayer, canvasBounds: bounds)
-        setPageHitTargetsEnabled(true)
-    }
-
-    fileprivate func setPageHitTargetsEnabled(
-        _ enabled: Bool, preserving preservedButton: PointerTrackingTileButton? = nil
-    ) {
-        guard let activeSurface else { return }
-        for entry in activeSurface.entries {
-            if let preservedButton, entry.button === preservedButton {
-                // A live drag must keep the original NSButton attached until
-                // AppKit delivers mouseUp/cancel. The button is transparent, so
-                // keeping it alive does not create a second visible icon.
-                entry.button.isEnabled = true
-                entry.button.isHidden = false
-                continue
-            }
-            entry.button.isEnabled = enabled
-            entry.button.isHidden = !enabled || openFolderID != nil
-        }
-    }
-
-    fileprivate func scheduleIdleFirstPageIconWarm() {
-        guard !presentationResourcesActive, !applications.isEmpty, !isLoadingApplications else { return }
-
-        let metrics = solver.solve(display: displayContext, requested: layoutPreferences, itemCount: applications.count)
-        let pages = ResolvedLaunchpadItemFactory.makePages(
-            document: layoutDocument, applications: applications, query: "", pageCapacity: metrics.itemsPerPage)
-
-        let firstPageItems = pages.pages.first ?? []
-        var firstPageStandalone: [ApplicationRecord] = []
-        var firstPageFolderMiniatures: [ApplicationRecord] = []
-        var seenFolderMiniatures: Set<ApplicationIdentity> = []
-
-        for item in firstPageItems {
-            switch item {
-            case .application(let application): firstPageStandalone.append(application)
-            case .folder(let folder):
-                for application in folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
-                where seenFolderMiniatures.insert(application.id).inserted {
-                    firstPageFolderMiniatures.append(application)
-                }
-            }
-        }
-
-        // A 2x standalone source is still small (~5 MiB for 35 96pt icons) and
-        // can satisfy both 1x external and 2x Retina first frames. Folder
-        // previews are much smaller: each first-page child is pinned as an
-        // exact 64px RGBA bitmap, with at most nine children per folder.
-        let pinnedScale = max(CGFloat(2), displayContext.backingScaleFactor)
-        iconCache.retainPinnedFirstPageApplications(firstPageStandalone)
-        iconCache.retainPinnedFirstPageFolderMiniatures(firstPageFolderMiniatures)
-
-        idlePinnedIconWarmTask?.cancel()
-        guard !firstPageStandalone.isEmpty || !firstPageFolderMiniatures.isEmpty else {
-            idlePinnedIconWarmTask = nil
-            return
-        }
-
-        idlePinnedIconWarmTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-
-            // P0: standalone icons dominate first-frame perception. Warm them
-            // first, then use otherwise-idle time for tiny folder previews.
-            await iconCache.warmPinnedFirstPage(
-                firstPageStandalone, pointSize: metrics.iconSize, scale: pinnedScale, maximumConcurrentLoads: 2)
-            guard !Task.isCancelled else { return }
-
-            await iconCache.warmPinnedFirstPageFolderMiniatures(
-                firstPageFolderMiniatures, pixelSize: 64, maximumConcurrentLoads: 2)
-        }
-    }
-
-    /// Starts once per visible presentation and warms every application at the
-    /// root/full-folder icon size. FolderLayoutConstraintSolver deliberately
-    /// matches folder-child icon geometry to the root grid, so one exact
-    /// pointSize/scale request is sufficient for both places.
-    ///
-    /// Phase 0 is intentionally only the *full contents* of first-page folders.
-    /// Those are the only icons a user can plausibly request immediately after
-    /// launch that are not already covered by the pinned first-page standalone
-    /// cache. Once phase 0 completes, the remaining pages fill opportunistically.
-    fileprivate func scheduleSessionHighQualityIconWarm(metrics: GridMetrics, scale: CGFloat) {
-        guard presentationResourcesActive, !applications.isEmpty, !isLoadingApplications,
-            sessionHighQualityIconWarmTask == nil
-        else { return }
-
-        let plan = highQualityIconWarmPlan(metrics: metrics)
-        guard !plan.firstPageFolderContents.isEmpty || !plan.remaining.isEmpty else { return }
-
-        sessionHighQualityIconWarmTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-
-            // Let the pinned first-page render reach the compositor before doing
-            // any extra decode work. This does not delay the opening animation.
-            await Task.yield()
-            guard presentationResourcesActive, !Task.isCancelled else { return }
-
-            // LAUNCHPANE_FOLDER_OPEN_HEADROOM_V6
-            // P0: every child of every first-page folder, full Retina size. Keep
-            // four background workers so an actively opened folder can start its
-            // own four priority loads without creating a decode storm.
-            await iconCache.warm(
-                plan.firstPageFolderContents, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 4)
-            guard presentationResourcesActive, !Task.isCancelled else { return }
-
-            // P1+: all remaining apps in page order. Use only two opportunistic
-            // workers after the first-page folders are warm; interaction wins over
-            // background completion if the user opens a folder immediately.
-            await iconCache.warm(plan.remaining, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 2)
-            guard presentationResourcesActive, !Task.isCancelled else { return }
-
-            // Rebind any surfaces that are currently staged. This is cosmetic:
-            // folders opened after the warm already read the same cache directly.
-            for surface in pageSurfaces.values { refreshIcons(in: surface, pointSize: metrics.iconSize, scale: scale) }
-
-            if openFolderID != nil {
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                for presentation in folderPresentations {
-                    presentation.iconLayer.contents = iconCache.cgImage(
-                        for: presentation.button.application, pointSize: metrics.iconSize, scale: scale)
-                }
-                CATransaction.commit()
-            }
-        }
-    }
-
-    /// Returns a strict priority plan without duplicate applications. The first
-    /// page's folder contents are isolated so they finish before any later-page
-    /// work. Remaining apps follow page order, then the catalog is appended as a
-    /// safety net for any record temporarily absent from the persisted layout.
-    fileprivate func highQualityIconWarmPlan(metrics: GridMetrics) -> (
-        firstPageFolderContents: [ApplicationRecord], remaining: [ApplicationRecord]
-    ) {
-        let pages = ResolvedLaunchpadItemFactory.makePages(
-            document: layoutDocument, applications: applications, query: "", pageCapacity: metrics.itemsPerPage)
-
-        var seen: Set<ApplicationIdentity> = []
-        let firstPage = pages.pages.first ?? []
-        let folderChildren = firstPage.flatMap { item -> [ApplicationRecord] in
-            guard case .folder(let folder) = item else { return [] }
-            return folder.applications
-        }
-        let firstPageFolderContents = folderChildren.filter { seen.insert($0.id).inserted }
-        let standalone = firstPage.compactMap { item -> ApplicationRecord? in
-            guard case .application(let application) = item else { return nil }
-            return application
-        }
-        let laterPages = pages.pages.dropFirst().flatMap { page in
-            page.flatMap { item -> [ApplicationRecord] in
-                switch item {
-                case .application(let application): [application]
-                case .folder(let folder): folder.applications
-                }
-            }
-        }
-        let remaining = (standalone + laterPages + applications).filter { seen.insert($0.id).inserted }
-        return (firstPageFolderContents, remaining)
-    }
-
-    fileprivate func scheduleIconPrewarming(metrics: GridMetrics, scale: CGFloat) {
-        guard !applications.isEmpty, !isLoadingApplications, !isPageTransitionActive else { return }
-
-        let revision = contentRevision
-        let currentSurface = pageSurfaces[currentPage]
-        let adjacentPageIndices = [currentPage - 1, currentPage + 1].filter { pageSurfaces[$0] != nil }
-
-        iconPrewarmTask?.cancel()
-
-        iconPrewarmTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-
-            if let currentSurface {
-                guard await warmVisiblePage(currentSurface, metrics: metrics, scale: scale, revision: revision) else {
-                    return
-                }
-            }
-
-            // P2: adjacent standalone apps first, then only their visible folder
-            // miniatures. This keeps the next swipe responsive without a folder
-            // containing dozens of apps stealing decoder slots.
-            let (adjacentStandalone, adjacentFolderMiniatures) = adjacentIconWarmPlan(adjacentPageIndices)
-
-            await iconCache.warm(
-                adjacentStandalone, pointSize: metrics.iconSize, scale: scale, maximumConcurrentLoads: 2)
-
-            guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return }
-
-            for pageIndex in adjacentPageIndices {
-                guard let surface = pageSurfaces[pageIndex] else { continue }
-                refreshIcons(in: surface, pointSize: metrics.iconSize, scale: scale)
-            }
-
-            await iconCache.warm(
-                adjacentFolderMiniatures,
-                pointSize: AppTilePresentationFactory.folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
-                scale: scale, maximumConcurrentLoads: 2)
-
-            guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return }
-
-            for pageIndex in adjacentPageIndices {
-                guard let surface = pageSurfaces[pageIndex] else { continue }
-                refreshIcons(in: surface, pointSize: metrics.iconSize, scale: scale)
-            }
-        }
-    }
-
-    private func adjacentIconWarmPlan(_ adjacentPageIndices: [Int]) -> ([ApplicationRecord], [ApplicationRecord]) {
-        var adjacentStandalone: [ApplicationRecord] = []
-        var adjacentFolderMiniatures: [ApplicationRecord] = []
-        var seenStandalone: Set<ApplicationIdentity> = []
-        var seenFolder: Set<ApplicationIdentity> = []
-
-        for pageIndex in adjacentPageIndices {
-            guard let surface = pageSurfaces[pageIndex] else { continue }
-
-            for application in standaloneApplications(in: surface)
-                where seenStandalone.insert(application.id).inserted {
-                adjacentStandalone.append(application)
-            }
-            for application in folderMiniatureApplications(in: surface)
-                where seenFolder.insert(application.id).inserted {
-                adjacentFolderMiniatures.append(application)
-            }
-        }
-        return (adjacentStandalone, adjacentFolderMiniatures)
-    }
-
-    private func warmVisiblePage(
-        _ currentSurface: LaunchpadPageSurface, metrics: GridMetrics, scale: CGFloat, revision: Int
-    ) async -> Bool {
-        await iconCache.warm(
-            standaloneApplications(in: currentSurface), pointSize: metrics.iconSize, scale: scale,
-            maximumConcurrentLoads: 2)
-
-        guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return false }
-
-        refreshIcons(in: currentSurface, pointSize: metrics.iconSize, scale: scale)
-
-        // P1: only the nine miniatures a closed folder can actually show.
-        // Do not decode every child of a large folder during launch.
-        await iconCache.warm(
-            folderMiniatureApplications(in: currentSurface),
-            pointSize: AppTilePresentationFactory.folderMiniatureIconPointSize(forRootIconSize: metrics.iconSize),
-            scale: scale, maximumConcurrentLoads: 2)
-
-        guard !Task.isCancelled, revision == contentRevision, !isPageTransitionActive else { return false }
-
-        refreshIcons(in: currentSurface, pointSize: metrics.iconSize, scale: scale)
-        return true
-    }
-
-    fileprivate func standaloneApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
-        var seen: Set<ApplicationIdentity> = []
-        return surface.entries.compactMap { entry -> ApplicationRecord? in
-            guard case .application(let application) = entry.item else { return nil }
-            return seen.insert(application.id).inserted ? application : nil
-        }
-    }
-
-    fileprivate func folderMiniatureApplications(in surface: LaunchpadPageSurface) -> [ApplicationRecord] {
-        var seen: Set<ApplicationIdentity> = []
-        var result: [ApplicationRecord] = []
-        for entry in surface.entries {
-            guard case .folder(let folder) = entry.item else { continue }
-            for application in folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
-            where seen.insert(application.id).inserted { result.append(application) }
-        }
-        return result
-    }
-
-    fileprivate func refreshIcons(in surface: LaunchpadPageSurface, pointSize: CGFloat, scale: CGFloat) {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        for entry in surface.entries {
-            switch entry.presentation {
-            case .application(let presentation):
-                guard case .application(let application) = entry.item else { continue }
-                presentation.iconLayer.contents = iconCache.cgImage(
-                    for: application, pointSize: pointSize, scale: scale)
-            case .folder(let presentation):
-                guard case .folder(let folder) = entry.item else { continue }
-                let miniaturePointSize = AppTilePresentationFactory.folderMiniatureIconPointSize(
-                    forRootIconSize: pointSize)
-                let childIcons = folder.applications.prefix(AppTilePresentationFactory.folderMaximumVisibleChildren)
-                    .compactMap { iconCache.cgImage(for: $0, pointSize: miniaturePointSize, scale: scale) }
-                AppTilePresentationFactory.updateFolderIcon(
-                    presentation, childIcons: childIcons, scale: scale, layoutDirection: userInterfaceLayoutDirection)
-            }
-        }
-        CATransaction.commit()
-    }
-
-    fileprivate func cancelIconPrewarming() {
-        iconPrewarmTask?.cancel()
-        iconPrewarmTask = nil
     }
 }
 
@@ -4765,100 +4009,6 @@ extension LaunchpadRootView {
 }
 
 extension LaunchpadRootView {
-    // MARK: - Native-style folder title editing
-
-    fileprivate func startFolderTitleEditing() {
-        guard folderTitleEditor == nil, !isCommittingFolderTitle, let openFolderID,
-            let folder = resolvedFolder(id: openFolderID), folderTitleFrame.width > 0, folderTitleFrame.height > 0
-        else { return }
-
-        let editor = NSTextField(frame: folderTitleFrame)
-        editor.stringValue = folder.title
-        editor.isEditable = true
-        editor.isSelectable = true
-        editor.isBordered = false
-        editor.isBezeled = false
-        editor.drawsBackground = false
-        editor.backgroundColor = .clear
-        editor.textColor = NSColor.white.withAlphaComponent(0.96)
-        editor.font = NSFont.systemFont(ofSize: 27, weight: .regular)
-        editor.alignment = .center
-        editor.focusRingType = .none
-        editor.maximumNumberOfLines = 1
-        editor.lineBreakMode = .byClipping
-        editor.delegate = self
-        editor.setAccessibilityLabel("Folder name")
-
-        folderTitleEditor = editor
-        folderTitleLayer?.opacity = 0
-        addSubview(editor)
-
-        guard window?.makeFirstResponder(editor) == true else {
-            editor.removeFromSuperview()
-            folderTitleEditor = nil
-            folderTitleLayer?.opacity = 1
-            return
-        }
-        editor.currentEditor()?.selectAll(nil)
-    }
-
-    fileprivate func finishFolderTitleEditing(commit: Bool) {
-        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor else { return }
-        isEndingFolderTitleEditing = true
-
-        let folderID = openFolderID
-        let rawTitle = editor.stringValue
-        let fallbackTitle = folderID.flatMap { resolvedFolder(id: $0)?.title } ?? "Untitled"
-        let normalizedTitle = normalizedFolderTitle(rawTitle)
-
-        // Clear ownership before resigning first responder because AppKit sends
-        // controlTextDidEndEditing synchronously during the responder handoff.
-        folderTitleEditor = nil
-        editor.delegate = nil
-        editor.removeFromSuperview()
-        folderTitleLayer?.opacity = 1
-        folderTitleLayer?.string = commit ? normalizedTitle : fallbackTitle
-        window?.makeFirstResponder(self)
-        isEndingFolderTitleEditing = false
-
-        guard commit, let folderID else { return }
-        persistFolderTitle(normalizedTitle, folderID: folderID)
-    }
-
-    fileprivate func normalizedFolderTitle(_ rawTitle: String) -> String {
-        let trimmed = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Untitled" : trimmed
-    }
-
-    fileprivate func persistFolderTitle(_ title: String, folderID: UUID) {
-        guard !isCommittingFolderTitle else { return }
-
-        let draft: LauncherLayoutDraft
-        do {
-            var candidate = try LauncherLayoutDraft(document: layoutDocument)
-            try candidate.renameFolder(folderID, to: title)
-            guard candidate.hasChanges else { return }
-            draft = candidate
-        } catch {
-            NSSound.beep()
-            return
-        }
-
-        isCommittingFolderTitle = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { isCommittingFolderTitle = false }
-            do {
-                layoutDocument = try await layoutStore.commit(draft)
-                invalidatePageSurfaceCache()
-                if openFolderID == folderID { renderFolderOverlay(animated: false) } else { needsLayout = true }
-            } catch {
-                NSSound.beep()
-                if openFolderID == folderID { renderFolderOverlay(animated: false) }
-            }
-        }
-    }
-
     // MARK: - Folder child drag -> root drag handoff
 
     fileprivate func folderItemPointerDown(
@@ -6267,8 +5417,7 @@ extension LaunchpadRootView {
         // icon decoding before the zoom starts so Core Animation does not compete
         // with AppKit image decode/upload work during the 210ms transition.
         cancelIconPrewarming()
-        sessionHighQualityIconWarmTask?.cancel()
-        sessionHighQualityIconWarmTask = nil
+        iconPrewarmTasks.cancelPresentation()
 
         folderAnimationSourceFrame = sourceFrame ?? folderSourceFrame(for: folderID)
         openFolderID = folderID
@@ -6286,7 +5435,7 @@ extension LaunchpadRootView {
         activeSurface?.entries.first { $0.item.folderID == folderID }?.frames.icon
     }
 
-    fileprivate func resolvedFolder(id: UUID) -> ResolvedLaunchpadFolder? {
+    func resolvedFolder(id: UUID) -> ResolvedLaunchpadFolder? {
         let document: LauncherLayoutDocument
         if let session = dragSession, session.folderCreationPreview?.folderID == id {
             document = session.draft.document
@@ -6339,7 +5488,7 @@ extension LaunchpadRootView {
         }
     }
 
-    fileprivate func renderFolderOverlay(animated: Bool) {
+    func renderFolderOverlay(animated: Bool) {
         guard let openFolderID, let folder = resolvedFolder(id: openFolderID) else {
             closeFolder(animated: false)
             return
@@ -6357,8 +5506,12 @@ extension LaunchpadRootView {
         let visualScale = max(1, metrics.iconSize / max(1, solver.tokens.preferredIconSize))
         let (contentLayer, dimLayer) = makeFolderOverlayContainer(
             metrics: metrics, scale: scale, folderVisualScale: visualScale, animated: animated)
-        addFolderPanel(to: contentLayer, metrics: metrics, folderVisualScale: visualScale)
-        addFolderTitle(to: contentLayer, context: context, folderVisualScale: visualScale)
+        FolderOverlayPresentationFactory.addPanel(to: contentLayer, metrics: metrics, folderVisualScale: visualScale)
+        let title = FolderOverlayPresentationFactory.addTitle(
+            to: contentLayer, folder: folder, metrics: metrics, scale: scale, folderVisualScale: visualScale)
+        folderTitleLayer = title.layer
+        folderTitleFrame = metrics.titleFrame
+        folderTitleHitFrame = title.hitFrame
         populateFolderOverlay(contentLayer: contentLayer, context: context, animated: animated)
         addFolderPageIndicator(to: contentLayer, context: context, folderVisualScale: visualScale)
         animateFolderOverlay(context: context, contentLayer: contentLayer, dimLayer: dimLayer, animated: animated)
@@ -6447,61 +5600,6 @@ extension LaunchpadRootView {
         folderContentAnimationLayer = contentLayer
 
         return (contentLayer, dimLayer)
-    }
-
-    fileprivate func addFolderPanel(to contentLayer: CALayer, metrics: FolderGridMetrics, folderVisualScale: CGFloat) {
-        let panelLayer = CALayer()
-        panelLayer.frame = metrics.panelFrame
-        panelLayer.cornerRadius = min(32 * folderVisualScale, metrics.panelFrame.height * 0.14)
-        panelLayer.cornerCurve = .continuous
-        panelLayer.backgroundColor = NSColor.white.withAlphaComponent(0.46).cgColor
-        panelLayer.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-        panelLayer.borderWidth = 0.6
-        panelLayer.shadowColor = NSColor.black.cgColor
-        panelLayer.shadowOpacity = 0.22
-        panelLayer.shadowOffset = CGSize(width: 0, height: -10 * folderVisualScale)
-        panelLayer.shadowRadius = 30 * folderVisualScale
-
-        // LAUNCHPANE_FOLDER_OPEN_FPS_V13
-        // A fixed shadow path avoids deriving a large translucent alpha mask on
-        // every transformed frame, which is particularly expensive on 4K.
-        panelLayer.shadowPath = CGPath(
-            roundedRect: panelLayer.bounds, cornerWidth: panelLayer.cornerRadius, cornerHeight: panelLayer.cornerRadius,
-            transform: nil)
-
-        contentLayer.addSublayer(panelLayer)
-
-    }
-
-    fileprivate func addFolderTitle(
-        to contentLayer: CALayer, context: FolderOverlayRenderContext, folderVisualScale: CGFloat
-    ) {
-        let folder = context.folder
-        let metrics = context.metrics
-        let scale = context.scale
-        // LAUNCHPANE_FOLDER_TITLE_27PT_V1
-        // Keep 27pt on the MacBook baseline and enlarge it with the folder panel
-        // on wider logical displays.
-        let titleFontSize = 27 * folderVisualScale
-        let titleFont = NSFont.systemFont(ofSize: titleFontSize, weight: .regular)
-        let titleLayer = CATextLayer()
-        titleLayer.frame = metrics.titleFrame
-        titleLayer.string = folder.title
-        titleLayer.alignmentMode = .center
-        titleLayer.fontSize = titleFontSize
-        titleLayer.font = titleFont
-        titleLayer.foregroundColor = NSColor.white.withAlphaComponent(0.96).cgColor
-        titleLayer.contentsScale = scale
-        contentLayer.addSublayer(titleLayer)
-        folderTitleLayer = titleLayer
-        folderTitleFrame = metrics.titleFrame
-        let measuredTitleWidth = ceil((folder.title as NSString).size(withAttributes: [.font: titleFont]).width)
-        let titleHitWidth = min(
-            metrics.titleFrame.width, max(88 * folderVisualScale, measuredTitleWidth + 28 * folderVisualScale))
-        folderTitleHitFrame = CGRect(
-            x: metrics.titleFrame.midX - titleHitWidth / 2, y: metrics.titleFrame.minY, width: titleHitWidth,
-            height: metrics.titleFrame.height)
-
     }
 
     fileprivate func populateFolderOverlay(contentLayer: CALayer, context: FolderOverlayRenderContext, animated: Bool) {
@@ -6962,7 +6060,7 @@ extension LaunchpadRootView {
         }
     }
 
-    fileprivate func presentInteractiveFolderPageSwipe(_ swipe: InteractiveFolderPageSwipe) {
+    func presentInteractiveFolderPageSwipe(_ swipe: InteractiveFolderPageSwipe) {
         guard swipe.phase == .tracking else { return }
         swipe.needsPresentationUpdate = false
 
@@ -7536,31 +6634,6 @@ extension LaunchpadRootView {
     }
 }
 
-// NSTextFieldDelegate is intentionally handled by the root view so editing can
-// commit without introducing a second window or stealing the folder's visual
-// animation ownership.
-extension LaunchpadRootView {
-    func controlTextDidEndEditing(_ obj: Notification) {
-        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor, obj.object as? NSTextField === editor else {
-            return
-        }
-        finishFolderTitleEditing(commit: true)
-    }
-
-    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-        guard let editor = folderTitleEditor, control === editor else { return false }
-        if commandSelector == NSSelectorFromString("insertNewline:") {
-            finishFolderTitleEditing(commit: true)
-            return true
-        }
-        if commandSelector == NSSelectorFromString("cancelOperation:") {
-            finishFolderTitleEditing(commit: false)
-            return true
-        }
-        return false
-    }
-}
-
 extension ResolvedLaunchpadItem {
     fileprivate var applicationsForIconRendering: [ApplicationRecord] {
         switch self {
@@ -7570,87 +6643,7 @@ extension ResolvedLaunchpadItem {
     }
 }
 
-extension CGRect { fileprivate var center: CGPoint { CGPoint(x: midX, y: midY) } }
-
-@MainActor private final class FolderPageSurface {
-    let pageIndex: Int
-    let layer: CALayer
-    let presentations: [AppTilePresentation]
-    let applications: [ApplicationRecord]
-
-    init(pageIndex: Int, layer: CALayer, presentations: [AppTilePresentation], applications: [ApplicationRecord]) {
-        self.pageIndex = pageIndex
-        self.layer = layer
-        self.presentations = presentations
-        self.applications = applications
-    }
-}
-
-@MainActor private final class InteractiveFolderPageSwipe {
-    enum Phase {
-        case tracking
-        case settling
-    }
-
-    var phase: Phase = .tracking
-    let outgoingSurface: FolderPageSurface
-    let incomingSurface: FolderPageSurface
-    let targetPage: Int
-    let direction: Int
-    let restingPosition: CGPoint
-    let width: CGFloat
-
-    var translation: CGFloat = 0
-    var velocity: CGFloat = 0
-    var lastTimestamp: TimeInterval
-    var needsPresentationUpdate = false
-
-    init(
-        outgoingSurface: FolderPageSurface, incomingSurface: FolderPageSurface, targetPage: Int, direction: Int,
-        restingPosition: CGPoint, width: CGFloat, timestamp: TimeInterval
-    ) {
-        self.outgoingSurface = outgoingSurface
-        self.incomingSurface = incomingSurface
-        self.targetPage = targetPage
-        self.direction = direction
-        self.restingPosition = restingPosition
-        self.width = width
-        lastTimestamp = timestamp
-    }
-}
-
-@MainActor private final class InteractivePageSwipe {
-    enum Phase {
-        case tracking
-        case settling
-    }
-
-    var phase: Phase = .tracking
-    let outgoingSurface: LaunchpadPageSurface
-    let incomingSurface: LaunchpadPageSurface
-    let targetPage: Int
-    let direction: Int
-    let restingPosition: CGPoint
-    let width: CGFloat
-
-    var translation: CGFloat = 0
-    var velocity: CGFloat = 0
-    var lastTimestamp: TimeInterval
-    var needsPresentationUpdate = false
-
-    init(
-        outgoingSurface: LaunchpadPageSurface, incomingSurface: LaunchpadPageSurface, targetPage: Int, direction: Int,
-        restingPosition: CGPoint, width: CGFloat, timestamp: TimeInterval
-    ) {
-        self.outgoingSurface = outgoingSurface
-        self.incomingSurface = incomingSurface
-        self.targetPage = targetPage
-        self.direction = direction
-        self.restingPosition = restingPosition
-        self.width = width
-        lastTimestamp = timestamp
-    }
-}
+extension CGRect { var center: CGPoint { CGPoint(x: midX, y: midY) } }
 
 private enum LaunchpadRuntimePaths {
     static var layoutFileURL: URL {
@@ -7658,285 +6651,4 @@ private enum LaunchpadRuntimePaths {
         else { return LauncherLayoutStore.defaultFileURL }
         return URL(fileURLWithPath: overridePath)
     }
-}
-
-private struct PageSurfaceConfiguration: Equatable {
-    let bounds: CGRect
-    let scale: CGFloat
-    let contentRevision: Int
-    let metrics: GridMetrics
-}
-
-@MainActor private final class LaunchpadPageSurface {
-    let pageIndex: Int
-    let layer: CALayer
-    var entries: [LaunchpadPageEntry] = []
-
-    init(pageIndex: Int, layer: CALayer) {
-        self.pageIndex = pageIndex
-        self.layer = layer
-    }
-}
-
-@MainActor private enum LaunchpadTilePresentation {
-    case application(AppTilePresentation)
-    case folder(FolderTilePresentation)
-
-    var tileLayer: CALayer {
-        switch self {
-        case .application(let presentation): presentation.tileLayer
-        case .folder(let presentation): presentation.tileLayer
-        }
-    }
-
-    var selectionLayer: CALayer {
-        switch self {
-        case .application(let presentation): presentation.selectionLayer
-        case .folder(let presentation): presentation.selectionLayer
-        }
-    }
-
-    var iconLayer: CALayer {
-        switch self {
-        case .application(let presentation): presentation.iconLayer
-        case .folder(let presentation): presentation.iconLayer
-        }
-    }
-
-    var labelLayer: CATextLayer {
-        switch self {
-        case .application(let presentation): presentation.labelLayer
-        case .folder(let presentation): presentation.labelLayer
-        }
-    }
-
-    var button: PointerTrackingTileButton {
-        switch self {
-        case .application(let presentation): presentation.button
-        case .folder(let presentation): presentation.button
-        }
-    }
-}
-
-@MainActor private final class LaunchpadPageEntry {
-    let item: ResolvedLaunchpadItem
-    var absoluteIndex: Int
-    var frames: GridItemFrames
-    let presentation: LaunchpadTilePresentation
-
-    var tileLayer: CALayer { presentation.tileLayer }
-    var selectionLayer: CALayer { presentation.selectionLayer }
-    var iconLayer: CALayer { presentation.iconLayer }
-    var labelLayer: CATextLayer { presentation.labelLayer }
-    var button: PointerTrackingTileButton { presentation.button }
-
-    init(
-        item: ResolvedLaunchpadItem, absoluteIndex: Int, frames: GridItemFrames, presentation: LaunchpadTilePresentation
-    ) {
-        self.item = item
-        self.absoluteIndex = absoluteIndex
-        self.frames = frames
-        self.presentation = presentation
-    }
-}
-
-private enum DragSourceOrigin {
-    case root
-    case folder(UUID)
-
-    var folderID: UUID? {
-        guard case .folder(let folderID) = self else { return nil }
-        return folderID
-    }
-}
-
-@MainActor private struct PendingFolderTilePress {
-    let folderID: UUID
-    let entry: LaunchpadPageEntry
-    let point: CGPoint
-}
-
-@MainActor private final class FolderItemDragSession {
-    let folderID: UUID
-    let sourceEntry: LaunchpadPageEntry
-    let proxyLayer: CALayer
-    let pointerOffset: CGVector
-    let trackingButton: AppTileButton
-    let sourceAbsoluteIndex: Int
-    var destinationAbsoluteIndex: Int
-
-    // LAUNCHPANE_FOLDER_DRAG_ROOT_PARITY_V19
-    // Keep one immutable Folder-order snapshot exactly like the root drag's
-    // projectionBaselineDocument. Every page turn/reflow is projected from
-    // this baseline, never from an already-mutated preview.
-    let baselineApplications: [ApplicationRecord]
-    let sourcePage: Int
-    var hasCrossedPages = false
-
-    // LAUNCHPANE_FOLDER_DRAG_EDGE_PAGING_V18
-    // Keep edge-paging state on the gesture owner so cancellation, mouseUp,
-    // Folder->Root promotion, and repeated multi-page turns all invalidate
-    // the same asynchronous dwell/waiter deterministically.
-    var lastPointerPoint = CGPoint.zero
-    var lastProxyCenter = CGPoint.zero
-    var edgePagingTask: Task<Void, Never>?
-    var edgePagingDirection: Int?
-    var edgePagingGeneration = 0
-    var isEdgePageTurnInFlight = false
-    var pendingReleasePoint: CGPoint?
-
-    // LAUNCHPANE_FOLDER_DRAG_OWNERSHIP_V2
-    // Folder-local dragging follows the same ownership rule as root drag:
-    // once the proxy exists, the source tile is detached rather than made
-    // transparent. Keep its exact parent/index for an atomic local rollback.
-    let sourceTileParent: CALayer
-    let sourceTileIndex: Int
-
-    init(
-        folderID: UUID, sourceEntry: LaunchpadPageEntry, proxyLayer: CALayer, pointerOffset: CGVector,
-        trackingButton: AppTileButton, sourceAbsoluteIndex: Int, baselineApplications: [ApplicationRecord],
-        sourcePage: Int, sourceTileParent: CALayer, sourceTileIndex: Int
-    ) {
-        self.folderID = folderID
-        self.sourceEntry = sourceEntry
-        self.proxyLayer = proxyLayer
-        self.pointerOffset = pointerOffset
-        self.trackingButton = trackingButton
-        self.sourceAbsoluteIndex = sourceAbsoluteIndex
-        destinationAbsoluteIndex = sourceAbsoluteIndex
-        self.baselineApplications = baselineApplications
-        self.sourcePage = sourcePage
-        self.sourceTileParent = sourceTileParent
-        self.sourceTileIndex = sourceTileIndex
-    }
-}
-
-@MainActor private struct PendingTilePress {
-    let entry: LaunchpadPageEntry
-    let point: CGPoint
-}
-
-private struct DragPageLocation: Equatable {
-    let page: Int
-    let index: Int
-}
-
-@MainActor private final class FolderCreationPreview {
-    let folderID: UUID
-    let target: LauncherDropTarget
-    let sourceIdentity: ApplicationIdentity
-    var sourceLandingCenter: CGPoint?
-
-    init(folderID: UUID, target: LauncherDropTarget, sourceIdentity: ApplicationIdentity) {
-        self.folderID = folderID
-        self.target = target
-        self.sourceIdentity = sourceIdentity
-    }
-}
-
-@MainActor private final class LaunchpadDragSession {
-    let sourceEntry: LaunchpadPageEntry
-
-    var draft: LauncherLayoutDraft
-
-    let proxyLayer: CALayer
-    let pointerOffset: CGVector
-    let originalSurface: LaunchpadPageSurface
-    let sourcePage: Int
-    let sourceOrigin: DragSourceOrigin
-    let projectionBaselineDocument: LauncherLayoutDocument
-
-    var lastPointerPoint: CGPoint = .zero
-
-    var edgePagingDirection: Int?
-
-    var hasReleased = false
-    var hasCrossedPages = false
-    var edgeGeneration = 0
-    var edgeIncomingSurface: LaunchpadPageSurface?
-    var edgeOutgoingSurface: LaunchpadPageSurface?
-    var previewLocation: DragPageLocation?
-    var projectedDocument: LauncherLayoutDocument?
-
-    var edgePagingTask: Task<Void, Never>?
-
-    var isEdgePageTransitionActive = false
-
-    var pendingCompletionPoint: CGPoint?
-
-    // Immutable geometry captured before dragging begins.
-    //
-    // In-place preview changes entry.frames / position,
-    // therefore cancellation must restore from this snapshot.
-    let originalFramesByIdentifier: [LauncherLayoutItemIdentifier: GridItemFrames]
-
-    let originalIndexByIdentifier: [LauncherLayoutItemIdentifier: Int]
-
-    // Normal same-page reorder path.
-    //
-    // true means:
-    //
-    // originalSurface itself is the preview.
-    //
-    // No second page CALayer tree exists.
-    var usesInPlacePreview = false
-
-    // Snapshot of the target folder/app icon at mouse-up. Merge landing uses
-    // this frozen geometry while the final page surface waits to reflow.
-    var mergeLandingTargetIconFrame: CGRect?
-
-    var previewSurface: LaunchpadPageSurface?
-    var previewState: LauncherDragPreviewState
-
-    var previewDestinationIdentifier: LauncherLayoutItemIdentifier { previewState.destination }
-
-    // LAUNCHPANE_REORDER_RESPONSE_080_V4
-    // The spatial gate prevents accidental swaps; keep the temporal confirmation
-    // short so a deliberate crossing feels immediate.
-    var intentState = LauncherDragIntentState(mergeDwell: 0.15, reorderDwell: 0.16)
-    var intentTask: Task<Void, Never>?
-    var folderSpringOpenTask: Task<Void, Never>?
-    var folderCreationPreview: FolderCreationPreview?
-    var isSourceLabelHiddenForMerge = false
-
-    var target: LauncherDropTarget = .outside
-
-    init(
-        sourceEntry: LaunchpadPageEntry, draft: LauncherLayoutDraft, proxyLayer: CALayer, pointerOffset: CGVector,
-        originalSurface: LaunchpadPageSurface, sourcePage: Int, sourceOrigin: DragSourceOrigin = .root,
-        projectionBaselineDocument: LauncherLayoutDocument? = nil
-    ) {
-        self.sourceEntry = sourceEntry
-        self.draft = draft
-        self.proxyLayer = proxyLayer
-        self.pointerOffset = pointerOffset
-        self.originalSurface = originalSurface
-
-        self.sourcePage = sourcePage
-
-        self.sourceOrigin = sourceOrigin
-        self.projectionBaselineDocument = projectionBaselineDocument ?? draft.snapshot
-
-        lastPointerPoint = sourceEntry.frames.cell.center
-
-        originalFramesByIdentifier = Dictionary(
-            uniqueKeysWithValues: originalSurface.entries.map { ($0.item.id, $0.frames) })
-
-        originalIndexByIdentifier = Dictionary(
-            uniqueKeysWithValues: originalSurface.entries.map { ($0.item.id, $0.absoluteIndex) })
-        previewState = LauncherDragPreviewState(source: sourceEntry.item.id)
-    }
-}
-
-@MainActor private final class LaunchpadDragCommitContext {
-    let session: LaunchpadDragSession
-
-    var completionState = LauncherDragCommitState()
-
-    // True only after the persisted document has been compared page-by-page
-    // with the existing layer surfaces and the live drag preview was proven to
-    // be an exact match. This covers both insertion and same-page folder merges.
-    var didAdoptCommittedPreview = false
-
-    init(session: LaunchpadDragSession) { self.session = session }
 }

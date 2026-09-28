@@ -62,7 +62,7 @@ struct AgentMemoryCheck {
         precondition(field(root, "isLoadingApplications", as: Bool.self) == false, "Catalog refresh timed out")
         root.needsLayout = true
         root.layoutSubtreeIfNeeded()
-        if let task = field(root, "iconPrewarmTask", as: Task<Void, Never>.self) {
+        if let task = root.iconPrewarmTasks.visiblePage {
             await task.value
         }
         CATransaction.flush()

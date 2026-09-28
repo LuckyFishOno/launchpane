@@ -212,7 +212,9 @@ Success ends with `OPACITY CURVE: 1018 assertions passed`.
 
 `FolderMergeCheck.swift` drives real tile events. `FolderMergeScenarios.swift`
 contains the eight approach directions, merge dwell, spring opening, cancellation,
-reorder, offset-grab, and existing-folder scenarios. Compile both test files:
+reorder, offset-grab, and existing-folder scenarios. After spring opening, it also
+checks folder-title Escape cancellation, Enter persistence, whitespace trimming,
+duplicate end-edit notifications, and reopening the editor. Compile both test files:
 
 ```zsh
 runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
@@ -227,3 +229,48 @@ LAUNCHPANE_LAYOUT_PATH="$folder_check_dir/layout.json" "$folder_check_dir/check"
 
 This requires a logged-in graphical session and at least three complete app rows.
 Success ends with `FOLDER MERGE: 0 failures`.
+
+## Root page swipe lifecycle
+
+`PageSwipeLifecycleCheck.swift` exercises the production root-view swipe methods
+without opening a window or discovering applications. It checks frame-coalesced
+presentation, cancellation generation invalidation, original-page restoration,
+and final page/layer ownership in both directions at three logical widths.
+The completion case starts at the destination so it has no remaining animation
+and is independent of refresh rate and Reduce Motion. Timed gestures and pointer
+ownership remain covered separately by the graphical runtime checks.
+
+```zsh
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+swipe_check_dir=$(mktemp -d /private/tmp/launchpane-swipe-check.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/PageSwipeLifecycleCheck.swift \
+  -o "$swipe_check_dir/swipe-check"
+"$swipe_check_dir/swipe-check"
+```
+
+Success ends with `PAGE SWIPE LIFECYCLE: 72 assertions passed`.
+
+## Icon prewarm planning and cancellation
+
+`IconPrewarmCheck.swift` checks first-page folder priority, full child coverage,
+identity deduplication, catalog fallback, and independent cancellation of visible,
+presentation-wide, and idle pinned work. It does not open windows or decode icons.
+
+```zsh
+icon_check_dir=$(mktemp -d /private/tmp/launchpane-icon-prewarm.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" -framework AppCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  Sources/LaunchPane/ResolvedLaunchpadItem.swift \
+  Sources/LaunchPane/IconWarmPlan.swift Sources/LaunchPane/IconPrewarmTasks.swift \
+  Tests/Runtime/IconPrewarmCheck.swift -o "$icon_check_dir/icon-prewarm-check"
+"$icon_check_dir/icon-prewarm-check"
+```
+
+Success ends with `ICON PREWARM: 12 assertions passed`. `IconCacheScaleCheck.swift`
+separately verifies bitmap cache behavior; the graphical search and folder checks
+exercise integration with the production view lifecycle.
