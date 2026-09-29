@@ -7,10 +7,12 @@ public enum FolderMergeGeometry {
     public struct Target<ID: Hashable> {
         public let id: ID
         public let iconFrame: CGRect
+        public let cellFrame: CGRect
 
-        public init(id: ID, iconFrame: CGRect) {
+        public init(id: ID, iconFrame: CGRect, cellFrame: CGRect? = nil) {
             self.id = id
             self.iconFrame = iconFrame
+            self.cellFrame = cellFrame ?? iconFrame
         }
     }
 
@@ -91,6 +93,30 @@ public enum FolderMergeGeometry {
                   let overlap = overlapFraction(draggedIcon, candidate.iconFrame)
             else { return false }
             return distance <= approachRadius && overlap >= approachOverlap
+        }
+    }
+
+    /// Keep the reorder dwell fresh only while motion inside a target's cell
+    /// converges on its acquisition circle. A repeated stationary sample returns
+    /// false, so the existing timer can still commit an intentional gutter hold.
+    public static func isMovingTowardTarget<ID: Hashable>(
+        draggedIcon: CGRect, previousDraggedIcon: CGRect?, targets: [Target<ID>], tokens: Tokens = .standard
+    ) -> Bool {
+        guard tokens.isValid, validIcon(draggedIcon), let previousDraggedIcon,
+            validIcon(previousDraggedIcon) else { return false }
+        return targets.contains { target in
+            guard validIcon(target.iconFrame),
+                target.cellFrame.contains(CGPoint(x: draggedIcon.midX, y: draggedIcon.midY)) else { return false }
+            let offsetX = (target.iconFrame.midX - draggedIcon.midX) / target.iconFrame.width
+            let offsetY = (target.iconFrame.midY - draggedIcon.midY) / target.iconFrame.height
+            let motionX = (draggedIcon.midX - previousDraggedIcon.midX) / target.iconFrame.width
+            let motionY = (draggedIcon.midY - previousDraggedIcon.midY) / target.iconFrame.height
+            let speedSquared = motionX * motionX + motionY * motionY
+            let forward = offsetX * motionX + offsetY * motionY
+            guard speedSquared > 0, forward > 0 else { return false }
+            let cross = offsetX * motionY - offsetY * motionX
+            let missDistanceSquared = cross * cross / speedSquared
+            return missDistanceSquared <= tokens.acquisitionRadius * tokens.acquisitionRadius
         }
     }
 

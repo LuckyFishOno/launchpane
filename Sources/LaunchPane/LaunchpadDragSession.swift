@@ -109,6 +109,7 @@ struct DragPageLocation: Equatable {
     let sourceOrigin: DragSourceOrigin
     let projectionBaselineDocument: LauncherLayoutDocument
 
+    var previousIntentIconFrame: CGRect?
     var lastPointerPoint: CGPoint = .zero
 
     var edgePagingDirection: Int?

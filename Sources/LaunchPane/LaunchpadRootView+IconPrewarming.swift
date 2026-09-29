@@ -103,7 +103,7 @@ extension LaunchpadRootView {
             if openFolderID != nil {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                for presentation in folderPresentations {
+                for presentation in folderPresentation.folderPresentations {
                     presentation.iconLayer.contents = iconCache.cgImage(
                         for: presentation.button.application, pointSize: metrics.iconSize, scale: scale)
                 }

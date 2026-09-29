@@ -24,6 +24,7 @@
 		25AA96D6DBA8A09AEABB83BD /* LegacyLayoutMigrationFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFF5A6C2B39F4D702FC6C04 /* LegacyLayoutMigrationFixture.swift */; };
 		2A6E305E7695B8BA18878A38 /* UserLayoutPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0719329AAA68490D0EDC4714 /* UserLayoutPreferences.swift */; };
 		2ADEBC76C0FC5272ED9F3E72 /* ApplicationDirectoryMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71AD8CA453825E023E12068A /* ApplicationDirectoryMonitor.swift */; };
+		2CD5A3A9672F6A08C6F4B0BD /* FolderPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5770E21DB89970EB1B220ADC /* FolderPresentation.swift */; };
 		2CDE310B9A89A29FD90DC77C /* PageTransitionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE828ABC7FAEAB53292571D /* PageTransitionStateTests.swift */; };
 		2D86C5A9EA7D53B1EA46B5E6 /* WallpaperLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D896D3E99D3FE1479458FD6 /* WallpaperLayout.swift */; };
 		2E49ECF42C2A3F3E7D222260 /* LaunchpadSearchField+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817E324F97C8930C46F469B8 /* LaunchpadSearchField+Layout.swift */; };
@@ -271,6 +272,7 @@
 		5464797DDF48D0E98EC02E3F /* DesktopWallpaperProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWallpaperProvider.swift; sourceTree = "<group>"; };
 		54A54D5FC220B2CA9C1EC08D /* PageScrollGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageScrollGesture.swift; sourceTree = "<group>"; };
 		56D19C432CC9204AF85DA69A /* AppMetadataResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMetadataResolver.swift; sourceTree = "<group>"; };
+		5770E21DB89970EB1B220ADC /* FolderPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPresentation.swift; sourceTree = "<group>"; };
 		58A9E6409FF760E146CACEEB /* DisplayInsets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInsets.swift; sourceTree = "<group>"; };
 		5B0849226AAF027C15E95A0F /* AppCatalogActorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCatalogActorTests.swift; sourceTree = "<group>"; };
 		5B3A6AC9D7E8CEF008F9E1A0 /* LauncherLayoutStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutStoreTests.swift; sourceTree = "<group>"; };
@@ -402,6 +404,7 @@
 				12378F1F17A5458FAAF8CDE4 /* AppTilePresentationFactory.swift */,
 				5464797DDF48D0E98EC02E3F /* DesktopWallpaperProvider.swift */,
 				FDCAE2F3B68D68BEC16696BC /* FolderOverlayPresentationFactory.swift */,
+				5770E21DB89970EB1B220ADC /* FolderPresentation.swift */,
 				443F08E0720F4229DCCD7A94 /* IconPrewarmTasks.swift */,
 				08CEBF51453B6862597EFFE6 /* IconWarmPlan.swift */,
 				48C78DF3C80D205CA6C60C22 /* LaunchpadDragSession.swift */,
@@ -850,6 +853,7 @@
 				2ADEBC76C0FC5272ED9F3E72 /* ApplicationDirectoryMonitor.swift in Sources */,
 				E80DAAA0B220AF99BB55E2E1 /* DesktopWallpaperProvider.swift in Sources */,
 				91E36579953088ACDBF40235 /* FolderOverlayPresentationFactory.swift in Sources */,
+				2CD5A3A9672F6A08C6F4B0BD /* FolderPresentation.swift in Sources */,
 				A013514AC9A3B64D6EF58E11 /* IconPrewarmTasks.swift in Sources */,
 				E2B6C5DE4FFB42FC5725E32B /* IconWarmPlan.swift in Sources */,
 				722374EC4290397D2BEA8D48 /* LaunchPaneAppDelegate.swift in Sources */,

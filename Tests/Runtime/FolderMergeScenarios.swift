@@ -122,7 +122,7 @@ extension FolderMergeCheckDelegate {
             openedID != nil && button.isTrackingPointer,
             "continuous two-second overlap spring-opens without ending the real drag")
 
-        let panel: CGRect = value(root, "folderPanelFrame")!
+        let panel: CGRect = value(root.folderPresentation, "folderPanelFrame")!
         let dropPoint = CGPoint(x: panel.midX, y: panel.midY)
         drag(button, to: dropPoint)
         await release(button, at: dropPoint)
@@ -139,7 +139,7 @@ extension FolderMergeCheckDelegate {
     func checkFolderTitleEditing() async throws {
         let baseline = try persisted()
         root.startFolderTitleEditing()
-        guard let editor = root.folderTitleEditor else {
+        guard let editor = root.folderPresentation.folderTitleEditor else {
             check(false, "folder title editor acquires first responder")
             return
         }
@@ -147,26 +147,29 @@ extension FolderMergeCheckDelegate {
         editor.stringValue = "Discard this name"
         let cancelled = root.control(
             editor, textView: NSTextView(), doCommandBy: NSSelectorFromString("cancelOperation:"))
-        check(cancelled && root.folderTitleEditor == nil, "Escape removes the folder title editor")
-        check(root.folderTitleLayer?.string as? String == originalTitle, "Escape restores the displayed title")
+        check(cancelled && root.folderPresentation.folderTitleEditor == nil, "Escape removes the folder title editor")
+        check(root.folderPresentation.folderTitleLayer?.string as? String == originalTitle,
+            "Escape restores the displayed title")
         check(try persisted() == baseline, "Escape does not write the layout")
 
         root.startFolderTitleEditing()
-        guard let replacement = root.folderTitleEditor else {
+        guard let replacement = root.folderPresentation.folderTitleEditor else {
             check(false, "folder title can be edited again after cancellation")
             return
         }
         replacement.stringValue = "  Renamed Folder  "
         let committed = root.control(
             replacement, textView: NSTextView(), doCommandBy: NSSelectorFromString("insertNewline:"))
-        check(committed && root.folderTitleEditor == nil, "Enter removes the editor before committing")
+        check(committed && root.folderPresentation.folderTitleEditor == nil,
+            "Enter removes the editor before committing")
         root.controlTextDidEndEditing(Notification(name: NSControl.textDidEndEditingNotification, object: replacement))
         await until("folder title persistence settles") { !root.isCommittingFolderTitle }
         let renamed = try persisted()
         check(folders(renamed).first?.customTitle == "Renamed Folder", "committed folder title is trimmed")
         check(renamed.revision == baseline.revision + 1, "duplicate editing notification commits only once")
         root.startFolderTitleEditing()
-        check(root.folderTitleEditor?.stringValue == "Renamed Folder", "reopened editor displays persisted title")
+        check(root.folderPresentation.folderTitleEditor?.stringValue == "Renamed Folder",
+            "reopened editor displays persisted title")
         root.finishFolderTitleEditing(commit: false)
     }
 

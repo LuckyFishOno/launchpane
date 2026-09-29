@@ -126,13 +126,13 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         let beforeDrag = try JSONDecoder().decode(
             LauncherLayoutDocument.self, from: Data(contentsOf: layoutURL)
         )
-        let presentations: [AppTilePresentation] = value(root, "folderPresentations")!
+        let presentations: [AppTilePresentation] = value(root.folderPresentation, "folderPresentations")!
         let source = presentations[0]
         let start = root.convert(
             CGPoint(x: source.button.bounds.midX, y: source.button.bounds.midY), from: source.button
         )
         send(.leftMouseDown, at: start)
-        let panel: CGRect = value(root, "folderPanelFrame")!
+        let panel: CGRect = value(root.folderPresentation, "folderPanelFrame")!
         let target = crossPage
             ? CGPoint(x: panel.maxX - 2, y: start.y)
             : presentations[2].tileLayer.position
@@ -146,8 +146,8 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
                 return duringTransition ? inFlight : page == 1 && !inFlight
             }
         }
-        let folderChrome: CALayer? = value(root, "folderContentAnimationLayer")
-        let landingPresentations: [AppTilePresentation] = value(root, "folderPresentations")!
+        let folderChrome: CALayer? = value(root.folderPresentation, "folderContentAnimationLayer")
+        let landingPresentations: [AppTilePresentation] = value(root.folderPresentation, "folderPresentations")!
         let beforeRelease = try Data(contentsOf: layoutURL)
         let beforeReleaseDocument = try JSONDecoder().decode(LauncherLayoutDocument.self, from: beforeRelease)
         check(beforeReleaseDocument == beforeDrag, "folder drag preview does not persist before release")
@@ -182,8 +182,8 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
               "folder reorder committed exactly once (before=\(beforeDrag.revision), after=\(document.revision))")
         check(Set(folder.applications) == Set(references), "folder reorder preserves every app")
         check(folder.applications != references, "folder order changed")
-        let current: [AppTilePresentation] = value(root, "folderPresentations")!
-        check(value(root, "folderContentAnimationLayer", as: CALayer.self) === folderChrome,
+        let current: [AppTilePresentation] = value(root.folderPresentation, "folderPresentations")!
+        check(value(root.folderPresentation, "folderContentAnimationLayer", as: CALayer.self) === folderChrome,
               "drop keeps the existing folder panel instead of rebuilding it")
         if !duringTransition {
             check(current.allSatisfy { presentation in

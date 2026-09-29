@@ -140,6 +140,37 @@ final class FolderMergeGeometryTests: XCTestCase {
         }
     }
 
+    func testMotionTowardIconProtectsDiagonalApproachAtDifferentScales() {
+        for size: CGFloat in [64, 96, 136] {
+            let target = CGRect(x: 200, y: 200, width: size, height: size)
+            let cell = target.insetBy(dx: -size, dy: -size)
+            let targets = [Target(id: "target", iconFrame: target, cellFrame: cell)]
+            for direction in directions {
+                let previous = target.offsetBy(dx: direction.dx * size * 1.4, dy: direction.dy * size * 1.4)
+                let current = target.offsetBy(dx: direction.dx * size * 1.3, dy: direction.dy * size * 1.3)
+                XCTAssertTrue(FolderMergeGeometry.isMovingTowardTarget(
+                    draggedIcon: current, previousDraggedIcon: previous, targets: targets))
+                XCTAssertFalse(FolderMergeGeometry.isMovingTowardTarget(
+                    draggedIcon: current, previousDraggedIcon: current, targets: targets), "A hold must allow reorder")
+                XCTAssertFalse(FolderMergeGeometry.isMovingTowardTarget(
+                    draggedIcon: previous, previousDraggedIcon: current, targets: targets),
+                    "Leaving must allow reorder")
+            }
+        }
+    }
+
+    func testMovementOutsideCellOrPastIconDoesNotPostponeReorder() {
+        let targets = [Target(id: "target", iconFrame: icon, cellFrame: icon.insetBy(dx: -100, dy: -100))]
+        XCTAssertFalse(FolderMergeGeometry.isMovingTowardTarget(
+            draggedIcon: icon.offsetBy(dx: 500, dy: 0),
+            previousDraggedIcon: icon.offsetBy(dx: 510, dy: 0), targets: targets))
+        XCTAssertFalse(FolderMergeGeometry.isMovingTowardTarget(
+            draggedIcon: icon.offsetBy(dx: 80, dy: 80),
+            previousDraggedIcon: icon.offsetBy(dx: 90, dy: 80), targets: targets))
+        XCTAssertFalse(FolderMergeGeometry.isMovingTowardTarget(
+            draggedIcon: icon, previousDraggedIcon: nil, targets: targets))
+    }
+
     private var directions: [CGVector] {
         let diagonal = CGFloat(0.5).squareRoot()
         return [

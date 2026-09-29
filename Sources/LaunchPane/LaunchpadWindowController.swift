@@ -25,7 +25,6 @@ import QuartzCore
     private let fixedBackgroundLayer = CALayer()
     let fixedOverlayLayer = CALayer()
     private let pageIndicatorLayer = CATextLayer()
-    private let folderOverlayLayer = CALayer()
     private let dragOverlayLayer = CALayer()
     var pageContentLayer = CALayer()
     let pageTransitionAnimator = PageTransitionAnimator()
@@ -71,6 +70,8 @@ import QuartzCore
     private var isFinishingDragVisuals = false
     private var isResettingLayout = false
 
+    let folderPresentation = FolderPresentation()
+
     var openFolderID: UUID?
     private var folderPage = 0
     private var folderSelectedIndex = -1
@@ -90,13 +91,6 @@ import QuartzCore
     private weak var folderPageContentLayer: CALayer?
     private weak var folderPageIndicatorLayer: CATextLayer?
 
-    private var folderPanelFrame = CGRect.zero
-    var folderPresentations: [AppTilePresentation] = []
-    private var folderIconTask: Task<Void, Never>?
-    private var folderAnimationSourceFrame: CGRect?
-    private var folderContentAnimationLayer: CALayer?
-    private var folderDimAnimationLayer: CALayer?
-    private var folderAnimationGeneration = 0
     private var folderHiddenApplicationID: ApplicationIdentity?
 
     // LAUNCHPANE_FOLDER_INTERACTION_V1
@@ -104,11 +98,6 @@ import QuartzCore
     // folder chrome. Folder-child dragging owns its gesture until the child
     // actually crosses the panel boundary, then hands the same mouse gesture to
     // the existing root drag/reflow state machine.
-    var folderTitleFrame = CGRect.zero
-    private var folderTitleHitFrame = CGRect.zero
-    var folderTitleLayer: CATextLayer?
-    var folderTitleEditor: NSTextField?
-    var isEndingFolderTitleEditing = false
     var isCommittingFolderTitle = false
     private var pendingFolderPress: PendingFolderTilePress?
     private var folderItemDragSession: FolderItemDragSession?
@@ -228,8 +217,7 @@ import QuartzCore
         // emptied. The application/layout model remains resident and cheap.
         cancelIconPrewarming()
         iconPrewarmTasks.cancelPresentation()
-        folderIconTask?.cancel()
-        folderIconTask = nil
+        folderPresentation.cancelIconLoading()
 
         resetIdlePagingState()
 
@@ -405,14 +393,14 @@ import QuartzCore
         if openFolderID != nil {
             // The native title sits above the translucent panel. Treat it as an
             // interactive control before applying the "outside panel closes" rule.
-            if folderTitleEditor != nil {
+            if folderPresentation.folderTitleEditor != nil {
                 finishFolderTitleEditing(commit: true)
-            } else if folderTitleHitFrame.contains(point) {
+            } else if folderPresentation.folderTitleHitFrame.contains(point) {
                 startFolderTitleEditing()
                 return
             }
 
-            if !folderPanelFrame.contains(point) { closeFolder() }
+            if !folderPresentation.folderPanelFrame.contains(point) { closeFolder() }
             return
         }
 
@@ -563,9 +551,9 @@ extension LaunchpadRootView {
         pageIndicatorLayer.fontSize = 15.5
         pageIndicatorLayer.foregroundColor = NSColor.white.withAlphaComponent(0.86).cgColor
         fixedOverlayLayer.addSublayer(pageIndicatorLayer)
-        fixedOverlayLayer.addSublayer(folderOverlayLayer)
+        fixedOverlayLayer.addSublayer(folderPresentation.folderOverlayLayer)
         fixedOverlayLayer.addSublayer(dragOverlayLayer)
-        folderOverlayLayer.isHidden = true
+        folderPresentation.folderOverlayLayer.isHidden = true
     }
 
     fileprivate func updateWallpaper() {
@@ -642,7 +630,7 @@ extension LaunchpadRootView {
         rootLayer.contentsScale = scale
         fixedBackgroundLayer.frame = bounds
         fixedOverlayLayer.frame = bounds
-        folderOverlayLayer.frame = bounds
+        folderPresentation.folderOverlayLayer.frame = bounds
         dragOverlayLayer.frame = bounds
         pageIndicatorLayer.contentsScale = scale
         CATransaction.commit()
@@ -1286,10 +1274,11 @@ extension LaunchpadRootView {
         let generation = session.intentState.generation
         let decision = session.intentState.update(
             candidate: candidate, at: CACurrentMediaTime(),
-            // Spatial hysteresis now decides whether an insertion is valid.
-            // Continuous pointer movement inside that valid zone must NOT keep
-            // restarting the reorder timer.
-            restartDwell: false)
+            // Movement toward an icon must reach its merge zone before a
+            // gutter insertion can displace it. Stationary timer samples do not
+            // restart the dwell, preserving deliberate reorder holds.
+            restartDwell: candidate?.isInsertion == true && hits.isMovingTowardMerge)
+        session.previousIntentIconFrame = draggedIconFrame(for: session)
         if generation != session.intentState.generation {
             session.intentTask?.cancel()
             session.intentTask = nil
@@ -1375,7 +1364,7 @@ extension LaunchpadRootView {
             folderID: folderID, target: target, sourceIdentity: sourceIdentity)
         folderHiddenApplicationID = sourceIdentity
 
-        folderAnimationSourceFrame = targetFrame
+        folderPresentation.folderAnimationSourceFrame = targetFrame
         openFolderID = folderID
         folderPage = 0
         folderSelectedIndex = -1
@@ -2012,16 +2001,20 @@ extension LaunchpadRootView {
             isRightToLeft: metrics.isRightToLeft)
     }
 
-    fileprivate func dragHitTargets(_ session: LaunchpadDragSession) -> (
-        insertion: LauncherDropTarget, merge: LauncherDropTarget?
-    ) {
-        guard let metrics = currentMetrics else { return (.outside, nil) }
+    private struct DragHitTargets {
+        let insertion: LauncherDropTarget
+        let merge: LauncherDropTarget?
+        var isMovingTowardMerge = false
+    }
+
+    private func dragHitTargets(_ session: LaunchpadDragSession) -> DragHitTargets {
+        guard let metrics = currentMetrics else { return DragHitTargets(insertion: .outside, merge: nil) }
         let source = session.sourceEntry
         let draggedFrame = draggedIconFrame(for: session)
         let insertion = dragInsertionTarget(session, draggedFrame: draggedFrame, metrics: metrics)
 
         guard case .application = source.item, let surface = session.previewSurface ?? activeSurface else {
-            return (insertion, nil)
+            return DragHitTargets(insertion: insertion, merge: nil)
         }
         let retaining: LauncherLayoutItemIdentifier?
         switch session.intentState.candidate {
@@ -2030,7 +2023,10 @@ extension LaunchpadRootView {
         default: retaining = nil
         }
         let targets = surface.entries.filter { $0.item.id != source.item.id && $0.tileLayer.superlayer != nil }.map {
-            FolderMergeGeometry.Target(id: $0.item.id, iconFrame: visibleIconFrame(for: $0))
+            let iconFrame = visibleIconFrame(for: $0)
+            let cellFrame = $0.frames.cell.offsetBy(
+                dx: iconFrame.midX - $0.frames.icon.midX, dy: iconFrame.midY - $0.frames.icon.midY)
+            return FolderMergeGeometry.Target(id: $0.item.id, iconFrame: iconFrame, cellFrame: cellFrame)
         }
         // Only visible icons participate. Old snapshot slots remain exclusively
         // rollback data, never invisible merge anchors after an exchange.
@@ -2042,9 +2038,11 @@ extension LaunchpadRootView {
         case nil: merge = nil
         }
         if merge == nil, FolderMergeGeometry.isApproachingTarget(draggedIcon: draggedFrame, targets: targets) {
-            return (.outside, nil)
+            return DragHitTargets(insertion: .outside, merge: nil)
         }
-        return (insertion, merge)
+        let approaching = FolderMergeGeometry.isMovingTowardTarget(
+            draggedIcon: draggedFrame, previousDraggedIcon: session.previousIntentIconFrame, targets: targets)
+        return DragHitTargets(insertion: insertion, merge: merge, isMovingTowardMerge: approaching)
     }
 
     fileprivate func dragInsertionTarget(_ session: LaunchpadDragSession, draggedFrame: CGRect, metrics: GridMetrics)
@@ -2569,7 +2567,7 @@ extension LaunchpadRootView {
             // inserting/merging the source App into this Folder, and
             // updateDragInteraction() deliberately suspends root reorder/edge
             // logic while folderCreationPreview exists. Re-checking the current
-            // pointer against folderPanelFrame here created a contradictory
+            // pointer against folderPresentation.folderPanelFrame here created a contradictory
             // second decision: an already-open Folder could be rolled back merely
             // because the user moved the pointer outside its panel before release.
             //
@@ -3592,7 +3590,9 @@ extension LaunchpadRootView {
         updateDropHighlight(.outside)
         refreshDragProxyForRelease(session.proxyLayer, sourceEntry: session.sourceEntry, hidesLabel: true)
 
-        let sourcePresentation = folderPresentations.first { $0.button.application.id == preview.sourceIdentity }
+        let sourcePresentation = folderPresentation.folderPresentations.first {
+            $0.button.application.id == preview.sourceIdentity
+        }
         let destination =
             preview.sourceLandingCenter ?? sourcePresentation?.tileLayer.frame.center ?? session.proxyLayer.position
         let shouldAnimate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -4020,7 +4020,7 @@ extension LaunchpadRootView {
             !isFinishingDragVisuals, dragStateMachine.pointerDown(on: .application(application.id))
         else { return }
 
-        if folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
+        if folderPresentation.folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
 
         let entry = LaunchpadPageEntry(
             item: .application(application), absoluteIndex: absoluteIndex, frames: frames,
@@ -4135,7 +4135,7 @@ extension LaunchpadRootView {
             }
 
             cancelFolderItemDragEdgePaging(context)
-            if folderPanelFrame.contains(center) {
+            if folderPresentation.folderPanelFrame.contains(center) {
                 completeFolderItemReorder(context, at: center)
             } else {
                 cancelFolderItemDragBeforeExit(animated: true)
@@ -4237,7 +4237,9 @@ extension LaunchpadRootView {
         // deliberate page gesture into a Folder -> Root extraction. Vertical
         // exits remain immediate.
         if folderDragRetentionFrame(metrics: geometry.metrics).contains(center) {
-            if folderPanelFrame.contains(center) { updateFolderItemDragDestination(at: center, context: context) }
+            if folderPresentation.folderPanelFrame.contains(center) {
+                updateFolderItemDragDestination(at: center, context: context)
+            }
             return
         }
 
@@ -4369,8 +4371,7 @@ extension LaunchpadRootView {
         _ = dragStateMachine.update(
             target: .pageInsertion(page: targetPage, index: max(0, destinationAbsoluteIndex - pageStart)))
 
-        folderIconTask?.cancel()
-        folderIconTask = nil
+        folderPresentation.cancelIconLoading()
         for presentation in outgoing.presentations { presentation.button.isHidden = true }
 
         let transition = prepareFolderDragEdgeTransition(
@@ -4450,7 +4451,7 @@ extension LaunchpadRootView {
         self.folderPageSurfaces.removeAll(keepingCapacity: true)
         self.folderPageSurfaces[targetPage] = incoming
         self.folderPage = targetPage
-        self.folderPresentations = incoming.presentations
+        self.folderPresentation.folderPresentations = incoming.presentations
         self.contextualizeFolderDragSurfaceButtons(incoming, context: context)
         self.updateFolderPageIndicator(pageCount: metrics.pageCount)
 
@@ -4674,7 +4675,7 @@ extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
 
-        for presentation in folderPresentations {
+        for presentation in folderPresentation.folderPresentations {
             let identity = presentation.button.application.id
             if identity == sourceApplication.id {
                 presentation.tileLayer.opacity = 0
@@ -4727,7 +4728,8 @@ extension LaunchpadRootView {
         let applications = Array(
             geometry.folder.applications[geometry.pageStartIndex..<geometry.pageStartIndex + geometry.visibleCount])
         let folderID = context.folderID
-        let byIdentity = Dictionary(uniqueKeysWithValues: folderPresentations.map { ($0.button.application.id, $0) })
+        let byIdentity = Dictionary(
+            uniqueKeysWithValues: folderPresentation.folderPresentations.map { ($0.button.application.id, $0) })
         let presentations = applications.compactMap { byIdentity[$0.id] }
         let frames = applications.indices.compactMap {
             folderPageItemFrames(localIndex: $0, visibleCount: applications.count, metrics: geometry.metrics)
@@ -4756,7 +4758,7 @@ extension LaunchpadRootView {
             presentation.button.isEnabled = true
             presentation.button.isHidden = false
         }
-        folderPresentations = presentations
+        folderPresentation.folderPresentations = presentations
         folderPageContentLayer = surface.layer
         folderPageSurfaces = [
             folderPage: FolderPageSurface(
@@ -5143,7 +5145,7 @@ extension LaunchpadRootView {
         // if that rebuilt surface owns a different button.
         self.folderHiddenApplicationID = nil
         if case .application(let application) = context.sourceEntry.item,
-            let livePresentation = self.folderPresentations.first(where: {
+            let livePresentation = self.folderPresentation.folderPresentations.first(where: {
                 $0.button.application.id == application.id
             }) {
             livePresentation.tileLayer.opacity = 1
@@ -5248,7 +5250,7 @@ extension LaunchpadRootView {
         if let outgoing { self.detachFolderButtons(from: outgoing) }
         self.folderPageSurfaces.removeAll(keepingCapacity: true)
         self.folderPageSurfaces[context.sourcePage] = restored
-        self.folderPresentations = restored.presentations
+        self.folderPresentation.folderPresentations = restored.presentations
         self.updateFolderPageIndicator(pageCount: metrics.pageCount)
 
         let sourceLocalIndex = context.sourceAbsoluteIndex - context.sourcePage * metrics.itemsPerPage
@@ -5353,7 +5355,7 @@ extension LaunchpadRootView {
         session.edgeGeneration &+= 1
         session.draft.rollback()
 
-        folderAnimationGeneration &+= 1
+        folderPresentation.invalidateAnimation()
         cleanupFolderOverlay()
         session.proxyLayer.removeAllAnimations()
         session.proxyLayer.removeFromSuperlayer()
@@ -5419,7 +5421,7 @@ extension LaunchpadRootView {
         cancelIconPrewarming()
         iconPrewarmTasks.cancelPresentation()
 
-        folderAnimationSourceFrame = sourceFrame ?? folderSourceFrame(for: folderID)
+        folderPresentation.folderAnimationSourceFrame = sourceFrame ?? folderSourceFrame(for: folderID)
         openFolderID = folderID
         folderPage = 0
         folderSelectedIndex = -1
@@ -5493,32 +5495,33 @@ extension LaunchpadRootView {
             closeFolder(animated: false)
             return
         }
-        folderAnimationGeneration &+= 1
+        folderPresentation.invalidateAnimation()
         resetFolderOverlayRendering()
         let scale = window?.backingScaleFactor ?? 1
         // Resolve one geometry for the whole folder so partial pages retain the same grid.
         let metrics = solver.solveFolder(
             display: displayContext, requested: layoutPreferences, itemCount: folder.applications.count)
         folderPage = min(folderPage, max(0, metrics.pageCount - 1))
-        folderPanelFrame = metrics.panelFrame
+        folderPresentation.folderPanelFrame = metrics.panelFrame
         let context = FolderOverlayRenderContext(
-            folder: folder, metrics: metrics, scale: scale, page: folderPage, generation: folderAnimationGeneration)
+            folder: folder, metrics: metrics, scale: scale, page: folderPage,
+                generation: folderPresentation.folderAnimationGeneration)
         let visualScale = max(1, metrics.iconSize / max(1, solver.tokens.preferredIconSize))
         let (contentLayer, dimLayer) = makeFolderOverlayContainer(
             metrics: metrics, scale: scale, folderVisualScale: visualScale, animated: animated)
         FolderOverlayPresentationFactory.addPanel(to: contentLayer, metrics: metrics, folderVisualScale: visualScale)
         let title = FolderOverlayPresentationFactory.addTitle(
             to: contentLayer, folder: folder, metrics: metrics, scale: scale, folderVisualScale: visualScale)
-        folderTitleLayer = title.layer
-        folderTitleFrame = metrics.titleFrame
-        folderTitleHitFrame = title.hitFrame
+        folderPresentation.folderTitleLayer = title.layer
+        folderPresentation.folderTitleFrame = metrics.titleFrame
+        folderPresentation.folderTitleHitFrame = title.hitFrame
         populateFolderOverlay(contentLayer: contentLayer, context: context, animated: animated)
         addFolderPageIndicator(to: contentLayer, context: context, folderVisualScale: visualScale)
         animateFolderOverlay(context: context, contentLayer: contentLayer, dimLayer: dimLayer, animated: animated)
     }
 
     fileprivate func resetFolderOverlayRendering() {
-        folderIconTask?.cancel()
+        folderPresentation.folderIconTask?.cancel()
         cancelInteractiveFolderPageSwipeImmediately()
         folderPageSwipeInputGate = PageSwipeInputGate()
         for surface in folderPageSurfaces.values {
@@ -5538,20 +5541,20 @@ extension LaunchpadRootView {
         folderPageIndicatorLayer = nil
 
         removeFolderButtons()
-        folderTitleLayer = nil
-        folderTitleFrame = .zero
-        folderTitleHitFrame = .zero
-        folderOverlayLayer.removeAllAnimations()
-        folderOverlayLayer.sublayers?.forEach { $0.removeFromSuperlayer() }
-        folderOverlayLayer.opacity = 1
-        folderOverlayLayer.isHidden = false
+        folderPresentation.folderTitleLayer = nil
+        folderPresentation.folderTitleFrame = .zero
+        folderPresentation.folderTitleHitFrame = .zero
+        folderPresentation.folderOverlayLayer.removeAllAnimations()
+        folderPresentation.folderOverlayLayer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        folderPresentation.folderOverlayLayer.opacity = 1
+        folderPresentation.folderOverlayLayer.isHidden = false
 
     }
 
     fileprivate func makeFolderOverlayContainer(
         metrics: FolderGridMetrics, scale: CGFloat, folderVisualScale: CGFloat, animated: Bool
     ) -> (CALayer, CALayer) {
-        let sourceFrame = folderAnimationSourceFrame
+        let sourceFrame = folderPresentation.folderAnimationSourceFrame
         let sourcePoint = sourceFrame?.center ?? metrics.panelFrame.center
 
         // LAUNCHPANE_FOLDER_OPEN_FPS_V13
@@ -5575,8 +5578,8 @@ extension LaunchpadRootView {
         dimLayer.frame = bounds
         dimLayer.backgroundColor = NSColor.clear.cgColor
         dimLayer.opacity = 1
-        folderOverlayLayer.addSublayer(dimLayer)
-        folderDimAnimationLayer = dimLayer
+        folderPresentation.folderOverlayLayer.addSublayer(dimLayer)
+        folderPresentation.folderDimAnimationLayer = dimLayer
 
         // All folder visuals live in one tightly-bounded container. Scaling this
         // layer around the source tile makes the panel, title and icons expand
@@ -5596,8 +5599,8 @@ extension LaunchpadRootView {
         contentLayer.shouldRasterize = animated
         contentLayer.rasterizationScale = max(1, scale)
 
-        folderOverlayLayer.addSublayer(contentLayer)
-        folderContentAnimationLayer = contentLayer
+        folderPresentation.folderOverlayLayer.addSublayer(contentLayer)
+        folderPresentation.folderContentAnimationLayer = contentLayer
 
         return (contentLayer, dimLayer)
     }
@@ -5633,7 +5636,7 @@ extension LaunchpadRootView {
             else { continue }
             pageLayer.addSublayer(presentation.tileLayer)
             addSubview(presentation.button)
-            folderPresentations.append(presentation)
+            folderPresentation.folderPresentations.append(presentation)
         }
 
         // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
@@ -5642,7 +5645,7 @@ extension LaunchpadRootView {
         // and stage its neighbor after the opening animation.
         folderPageSurfaces = [
             folderPage: FolderPageSurface(
-                pageIndex: folderPage, layer: pageLayer, presentations: folderPresentations,
+                pageIndex: folderPage, layer: pageLayer, presentations: folderPresentation.folderPresentations,
                 applications: visibleApplications)
         ]
 
@@ -5739,7 +5742,7 @@ extension LaunchpadRootView {
         let metrics = context.metrics
         let scale = context.scale
         let visibleApplications = context.visibleApplications
-        let sourceFrame = folderAnimationSourceFrame
+        let sourceFrame = folderPresentation.folderAnimationSourceFrame
         guard animated,
             let transition = LaunchpadVisualStyle.folderTransition(
                 sourceFrame: sourceFrame, panelFrame: metrics.panelFrame)
@@ -5747,7 +5750,7 @@ extension LaunchpadRootView {
             contentLayer.shouldRasterize = false
             contentLayer.rasterizationScale = 1
 
-            for presentation in folderPresentations {
+            for presentation in folderPresentation.folderPresentations {
                 let isDraggedSource = folderHiddenApplicationID == presentation.button.application.id
                 presentation.button.isHidden = isDraggedSource
             }
@@ -5755,7 +5758,7 @@ extension LaunchpadRootView {
             // LAUNCHPANE_FOLDER_PAGING_FRAME_PACED_V15
             // Once there is no full-folder zoom, switch to the same per-tile
             // raster cache used by root pages before any paging begins.
-            enableFolderTileRasterCaches(folderPresentations, scale: scale)
+            enableFolderTileRasterCaches(folderPresentation.folderPresentations, scale: scale)
 
             // A page change has no opening zoom to protect, so remaining HQ
             // icons may start filling immediately.
@@ -5800,7 +5803,8 @@ extension LaunchpadRootView {
         let scale = context.scale
         let animationGeneration = context.generation
         let visibleApplications = context.visibleApplications
-        guard animationGeneration == folderAnimationGeneration, self.openFolderID != nil else { return }
+        guard animationGeneration == folderPresentation.folderAnimationGeneration,
+            self.openFolderID != nil else { return }
         // Retire the opening presentation before descendant pages ever
         // start moving. This guarantees paging never shares a frame with
         // the just-finished full-folder zoom presentation.
@@ -5812,9 +5816,9 @@ extension LaunchpadRootView {
         // V13 deliberately used one parent raster for the zoom. Once
         // that animation ends, hand caching back to individual tiles
         // exactly like root pages so horizontal motion stays GPU-cheap.
-        self.enableFolderTileRasterCaches(folderPresentations, scale: scale)
+        self.enableFolderTileRasterCaches(folderPresentation.folderPresentations, scale: scale)
 
-        for presentation in folderPresentations {
+        for presentation in folderPresentation.folderPresentations {
             let isDraggedSource = self.folderHiddenApplicationID == presentation.button.application.id
             presentation.button.isHidden = isDraggedSource
         }
@@ -5829,7 +5833,8 @@ extension LaunchpadRootView {
         // This removes layer/text creation from the first swipe frame.
         Task { @MainActor [weak self] in
             await Task.yield()
-            guard let self, animationGeneration == self.folderAnimationGeneration, self.openFolderID == folder.id else {
+            guard let self, animationGeneration == self.folderPresentation.folderAnimationGeneration,
+                self.openFolderID == folder.id else {
                 return
             }
             self.stageAdjacentFolderPageSurfaces(folder: folder, metrics: metrics, scale: scale)
@@ -5838,7 +5843,7 @@ extension LaunchpadRootView {
 
     // LAUNCHPANE_PROGRESSIVE_FOLDER_ICON_WARM_V6
     fileprivate func warmFolderIcons(_ applications: [ApplicationRecord], pointSize: CGFloat, scale: CGFloat) {
-        folderIconTask = Task { @MainActor [weak self] in
+        folderPresentation.folderIconTask = Task { @MainActor [weak self] in
             guard let self else { return }
 
             // Warm four icons at a time. Previously the folder waited for every
@@ -5856,7 +5861,8 @@ extension LaunchpadRootView {
                 let loadedIDs = Set(batch.map(\.id))
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                for presentation in folderPresentations where loadedIDs.contains(presentation.button.application.id) {
+                for presentation in folderPresentation.folderPresentations
+                    where loadedIDs.contains(presentation.button.application.id) {
                     if let image = iconCache.cgImage(
                         for: presentation.button.application, pointSize: pointSize, scale: scale) {
                         presentation.iconLayer.contents = image
@@ -6148,8 +6154,7 @@ extension LaunchpadRootView {
                 folder: folder, metrics: metrics, pageIndex: targetPage, scale: scale)
         else { return false }
 
-        folderIconTask?.cancel()
-        folderIconTask = nil
+        folderPresentation.cancelIconLoading()
         for presentation in outgoingSurface.presentations { presentation.button.isHidden = true }
 
         let resting = metrics.panelFrame.center
@@ -6288,7 +6293,7 @@ extension LaunchpadRootView {
             folderPage = swipe.targetPage
             folderSelectedIndex = -1
             folderPageContentLayer = swipe.incomingSurface.layer
-            folderPresentations = swipe.incomingSurface.presentations
+            folderPresentation.folderPresentations = swipe.incomingSurface.presentations
             attachFolderButtons(to: swipe.incomingSurface, hidden: false)
         } else {
             attachFolderButtons(to: swipe.outgoingSurface, hidden: false)
@@ -6386,14 +6391,13 @@ extension LaunchpadRootView {
             let incomingSurface = folderPageSurface(folder: folder, metrics: metrics, pageIndex: nextPage, scale: scale)
         else { return }
 
-        folderIconTask?.cancel()
-        folderIconTask = nil
+        folderPresentation.cancelIconLoading()
         detachFolderButtons(from: outgoingSurface)
 
         folderPage = nextPage
         folderSelectedIndex = selectedIndex ?? -1
         folderPageContentLayer = incomingSurface.layer
-        folderPresentations = incomingSurface.presentations
+        folderPresentation.folderPresentations = incomingSurface.presentations
         updateFolderPageIndicator(pageCount: metrics.pageCount)
 
         if incomingSurface.layer.superlayer == nil { viewportLayer.addSublayer(incomingSurface.layer) }
@@ -6463,7 +6467,7 @@ extension LaunchpadRootView {
         let pageStartIndex = folderPage * itemsPerPage
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for (localIndex, presentation) in folderPresentations.enumerated() {
+        for (localIndex, presentation) in folderPresentation.folderPresentations.enumerated() {
             presentation.selectionLayer.opacity = pageStartIndex + localIndex == folderSelectedIndex ? 1 : 0
         }
         CATransaction.commit()
@@ -6478,20 +6482,19 @@ extension LaunchpadRootView {
 
     fileprivate func closeFolder(animated: Bool = true, preservingTrackedButton: AppTileButton? = nil) {
         guard openFolderID != nil else { return }
-        if folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
-        folderAnimationGeneration &+= 1
-        let animationGeneration = folderAnimationGeneration
-        let sourceFrame = folderAnimationSourceFrame
-        let panelFrame = folderPanelFrame
-        let contentLayer = folderContentAnimationLayer
-        let dimLayer = folderDimAnimationLayer
+        if folderPresentation.folderTitleEditor != nil { finishFolderTitleEditing(commit: true) }
+        folderPresentation.invalidateAnimation()
+        let animationGeneration = folderPresentation.folderAnimationGeneration
+        let sourceFrame = folderPresentation.folderAnimationSourceFrame
+        let panelFrame = folderPresentation.folderPanelFrame
+        let contentLayer = folderPresentation.folderContentAnimationLayer
+        let dimLayer = folderPresentation.folderDimAnimationLayer
 
         openFolderID = nil
         folderPage = 0
         folderSelectedIndex = -1
-        folderPanelFrame = .zero
-        folderIconTask?.cancel()
-        folderIconTask = nil
+        folderPresentation.folderPanelFrame = .zero
+        folderPresentation.cancelIconLoading()
         cancelInteractiveFolderPageSwipeImmediately()
 
         // LAUNCHPANE_FOLDER_PAGING_ROOT_MOTION_V14
@@ -6571,7 +6574,8 @@ extension LaunchpadRootView {
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self, animationGeneration == folderAnimationGeneration, openFolderID == nil else { return }
+                guard let self, animationGeneration == folderPresentation.folderAnimationGeneration,
+                    openFolderID == nil else { return }
                 cleanupFolderOverlay()
                 resumeRootIconPrewarmingAfterFolder()
             }
@@ -6608,29 +6612,11 @@ extension LaunchpadRootView {
         folderPageContentLayer = nil
         folderPageIndicatorLayer = nil
 
-        folderOverlayLayer.removeAllAnimations()
-        folderOverlayLayer.sublayers?.forEach { $0.removeFromSuperlayer() }
-        folderOverlayLayer.opacity = 1
-        folderOverlayLayer.isHidden = true
-        folderContentAnimationLayer = nil
-        folderDimAnimationLayer = nil
-        folderAnimationSourceFrame = nil
-        folderTitleLayer = nil
-        folderTitleFrame = .zero
-        folderTitleHitFrame = .zero
-        if let editor = folderTitleEditor {
-            editor.delegate = nil
-            editor.removeFromSuperview()
-            folderTitleEditor = nil
-        }
+        folderPresentation.clearOverlay()
     }
 
     fileprivate func removeFolderButtons(preserving preservedButton: AppTileButton? = nil) {
-        let pointerOwner = preservedButton ?? preservedFolderTrackingButton
-        for presentation in folderPresentations where presentation.button !== pointerOwner {
-            presentation.button.removeFromSuperview()
-        }
-        folderPresentations.removeAll(keepingCapacity: true)
+        folderPresentation.removeButtons(preserving: preservedButton ?? preservedFolderTrackingButton)
     }
 }
 

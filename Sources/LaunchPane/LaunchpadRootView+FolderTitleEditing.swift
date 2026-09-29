@@ -5,11 +5,12 @@ extension LaunchpadRootView {
     // MARK: - Native-style folder title editing
 
     func startFolderTitleEditing() {
-        guard folderTitleEditor == nil, !isCommittingFolderTitle, let openFolderID,
-            let folder = resolvedFolder(id: openFolderID), folderTitleFrame.width > 0, folderTitleFrame.height > 0
+        guard folderPresentation.folderTitleEditor == nil, !isCommittingFolderTitle, let openFolderID,
+            let folder = resolvedFolder(id: openFolderID),
+            folderPresentation.folderTitleFrame.width > 0, folderPresentation.folderTitleFrame.height > 0
         else { return }
 
-        let editor = NSTextField(frame: folderTitleFrame)
+        let editor = NSTextField(frame: folderPresentation.folderTitleFrame)
         editor.stringValue = folder.title
         editor.isEditable = true
         editor.isSelectable = true
@@ -26,22 +27,23 @@ extension LaunchpadRootView {
         editor.delegate = self
         editor.setAccessibilityLabel("Folder name")
 
-        folderTitleEditor = editor
-        folderTitleLayer?.opacity = 0
+        folderPresentation.folderTitleEditor = editor
+        folderPresentation.folderTitleLayer?.opacity = 0
         addSubview(editor)
 
         guard window?.makeFirstResponder(editor) == true else {
             editor.removeFromSuperview()
-            folderTitleEditor = nil
-            folderTitleLayer?.opacity = 1
+            folderPresentation.folderTitleEditor = nil
+            folderPresentation.folderTitleLayer?.opacity = 1
             return
         }
         editor.currentEditor()?.selectAll(nil)
     }
 
     func finishFolderTitleEditing(commit: Bool) {
-        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor else { return }
-        isEndingFolderTitleEditing = true
+        guard !folderPresentation.isEndingFolderTitleEditing,
+            let editor = folderPresentation.folderTitleEditor else { return }
+        folderPresentation.isEndingFolderTitleEditing = true
 
         let folderID = openFolderID
         let rawTitle = editor.stringValue
@@ -50,13 +52,13 @@ extension LaunchpadRootView {
 
         // Clear ownership before resigning first responder because AppKit sends
         // controlTextDidEndEditing synchronously during the responder handoff.
-        folderTitleEditor = nil
+        folderPresentation.folderTitleEditor = nil
         editor.delegate = nil
         editor.removeFromSuperview()
-        folderTitleLayer?.opacity = 1
-        folderTitleLayer?.string = commit ? normalizedTitle : fallbackTitle
+        folderPresentation.folderTitleLayer?.opacity = 1
+        folderPresentation.folderTitleLayer?.string = commit ? normalizedTitle : fallbackTitle
         window?.makeFirstResponder(self)
-        isEndingFolderTitleEditing = false
+        folderPresentation.isEndingFolderTitleEditing = false
 
         guard commit, let folderID else { return }
         persistFolderTitle(normalizedTitle, folderID: folderID)
@@ -103,14 +105,15 @@ extension LaunchpadRootView {
 // animation ownership.
 extension LaunchpadRootView {
     func controlTextDidEndEditing(_ obj: Notification) {
-        guard !isEndingFolderTitleEditing, let editor = folderTitleEditor, obj.object as? NSTextField === editor else {
+        guard !folderPresentation.isEndingFolderTitleEditing,
+            let editor = folderPresentation.folderTitleEditor, obj.object as? NSTextField === editor else {
             return
         }
         finishFolderTitleEditing(commit: true)
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-        guard let editor = folderTitleEditor, control === editor else { return false }
+        guard let editor = folderPresentation.folderTitleEditor, control === editor else { return false }
         if commandSelector == NSSelectorFromString("insertNewline:") {
             finishFolderTitleEditing(commit: true)
             return true

@@ -274,3 +274,34 @@ swiftc -swift-version 6 -parse-as-library \
 Success ends with `ICON PREWARM: 12 assertions passed`. `IconCacheScaleCheck.swift`
 separately verifies bitmap cache behavior; the graphical search and folder checks
 exercise integration with the production view lifecycle.
+
+## Folder presentation ownership
+
+`FolderPresentationCheck.swift` constructs the production visual-resource owner
+without opening a window or discovering apps. It verifies animation invalidation,
+icon-task cancellation, layer/editor cleanup, safe repeated cleanup, and preserving
+the exact button that still owns a drag while other hit targets are removed.
+
+```zsh
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+folder_owner_dir=$(mktemp -d /private/tmp/launchpane-folder-owner.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/FolderPresentationCheck.swift \
+  -o "$folder_owner_dir/folder-owner-check"
+"$folder_owner_dir/folder-owner-check"
+```
+
+Success ends with `FOLDER PRESENTATION: 15 assertions passed`. Run
+`PointerOwnershipCheck` and `FolderMergeCheck` for the real window and drag paths.
+
+The folder-ownership extraction exposed eight existing `FolderMergeCheck`
+failures in upper-right and lower-left approaches, also reproduced on `565d39f`.
+Tracing showed the reorder dwell expired before a long diagonal path reached the
+merge zone, moving the target away. The runtime now refreshes insertion dwell
+only while the dragged icon moves toward the acquisition zone inside that
+visible target's cell. Stationary samples, moving away, and paths past the icon
+still allow reorder. Geometry tests cover multiple icon sizes and all directions;
+the original graphical assertions remain in place.
