@@ -54,7 +54,7 @@ extension LaunchpadRootView {
         // Folder and root direct-manipulation share one display link. Only one
         // can exist at a time; presenting at most once per refresh prevents a
         // burst of trackpad events from turning into redundant CA commits.
-        if let folderSwipe = interactiveFolderPageSwipe, folderSwipe.phase == .tracking,
+        if let folderSwipe = folderPaging.swipe, folderSwipe.phase == .tracking,
             folderSwipe.needsPresentationUpdate {
             presentInteractiveFolderPageSwipe(folderSwipe)
             return

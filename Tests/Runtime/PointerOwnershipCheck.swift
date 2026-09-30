@@ -142,7 +142,7 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
             await until("folder edge turn reached requested phase") {
                 let context: Any? = value(root, "folderItemDragSession", as: Any.self)
                 let inFlight: Bool = context.flatMap { value($0, "isEdgePageTurnInFlight") } ?? false
-                let page: Int = value(root, "folderPage") ?? 0
+                let page: Int = root.folderPaging.page
                 return duringTransition ? inFlight : page == 1 && !inFlight
             }
         }
@@ -155,11 +155,11 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         let settled = await until("folder drop settles without Escape") {
             value(root, "folderItemDragSession", as: Any.self) == nil
                 && value(root, "isCommittingLayout") == false
-                && value(root, "dragStateMachine", as: LauncherDragStateMachine.self)?.state == .idle
+                && root.dragInteraction.state == .idle
         }
         check(!source.button.isTrackingPointer, "source pointer tracking ended")
         if !settled {
-            let state = value(root, "dragStateMachine", as: LauncherDragStateMachine.self)
+            let state = root.dragInteraction.state
             let committing = value(root, "isCommittingLayout", as: Bool.self)
             let folderDrag = value(root, "folderItemDragSession", as: Any.self)
             print("DIAGNOSTIC state=\(String(describing: state)) "

@@ -22,6 +22,7 @@
 		2185E876E1A099ED1BE98A56 /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791B31D1600F2EED06F09B81 /* LayoutCore.framework */; };
 		24125CBD1853171E7532736A /* LauncherDragCommitStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90626F2B3854A6F1B3685069 /* LauncherDragCommitStateTests.swift */; };
 		25AA96D6DBA8A09AEABB83BD /* LegacyLayoutMigrationFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFF5A6C2B39F4D702FC6C04 /* LegacyLayoutMigrationFixture.swift */; };
+		27E03214223B6F0318ACE061 /* DragTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FDFC9D8DF94173D8395BF8A /* DragTargetResolver.swift */; };
 		2A6E305E7695B8BA18878A38 /* UserLayoutPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0719329AAA68490D0EDC4714 /* UserLayoutPreferences.swift */; };
 		2ADEBC76C0FC5272ED9F3E72 /* ApplicationDirectoryMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71AD8CA453825E023E12068A /* ApplicationDirectoryMonitor.swift */; };
 		2CD5A3A9672F6A08C6F4B0BD /* FolderPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5770E21DB89970EB1B220ADC /* FolderPresentation.swift */; };
@@ -64,12 +65,14 @@
 		859278E7E6CF5E75C02B25E2 /* LauncherDragIntentStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B1DACED1276C6BE1DF4E16 /* LauncherDragIntentStateTests.swift */; };
 		8A18659A2EEFB3338C61798C /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; };
 		8CA5266C37410EBC7C7B13BB /* AppMetadataResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D19C432CC9204AF85DA69A /* AppMetadataResolver.swift */; };
+		8D43D3A254892945F201B4EF /* DragInteractionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F04A321BC4ECEEE13270DD /* DragInteractionCoordinator.swift */; };
 		914F072E2BB7A848F58EB957 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		91E36579953088ACDBF40235 /* FolderOverlayPresentationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDCAE2F3B68D68BEC16696BC /* FolderOverlayPresentationFactory.swift */; };
 		95B51A1C3020A8889E0C5799 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; };
 		9847A3422725DCA2FC78B51E /* ResolvedLaunchpadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92AEB8E21E56ECB6E5A73F0 /* ResolvedLaunchpadItem.swift */; };
 		9CC0F127FF22614287346351 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A013514AC9A3B64D6EF58E11 /* IconPrewarmTasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443F08E0720F4229DCCD7A94 /* IconPrewarmTasks.swift */; };
+		A1DCF3C4474E9BBBF3BFB749 /* FolderPagingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67E5430FF1E9B2966FC9C918 /* FolderPagingController.swift */; };
 		A2BCA3660A15827A0400D191 /* AppCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49251A345677743F8C6D713F /* AppCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A4628FB9CBF145201D044CA6 /* LaunchPaneAgent.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 52590E309EDD8A4A0415DB6E /* LaunchPaneAgent.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A47EBFC9BAD2BB3925D0A264 /* AppCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49251A345677743F8C6D713F /* AppCore.framework */; };
@@ -256,11 +259,13 @@
 		1A6733EB23B92AA8DEB5B47E /* LauncherLayoutDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutDocumentTests.swift; sourceTree = "<group>"; };
 		1E3F7A3DB3B2CD50353978F8 /* LauncherDragPreviewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragPreviewState.swift; sourceTree = "<group>"; };
 		1FBDEF645C587C37DCFE71E3 /* LauncherDragCommitState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragCommitState.swift; sourceTree = "<group>"; };
+		20F04A321BC4ECEEE13270DD /* DragInteractionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragInteractionCoordinator.swift; sourceTree = "<group>"; };
 		2835C973159540054EF4F1D7 /* PageSwipeInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageSwipeInputGate.swift; sourceTree = "<group>"; };
 		2D89720B4DD2D8FD5A33885B /* LaunchPane.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaunchPane.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2EEAA0161EEBC5ACF3370F9E /* LaunchpadSearchComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadSearchComponents.swift; sourceTree = "<group>"; };
 		37E2162DA3747F5B636DC262 /* AppTilePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTilePresentation.swift; sourceTree = "<group>"; };
 		3CFFC68EDE3F1908C2888B26 /* MenuBarBackdropWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarBackdropWindow.swift; sourceTree = "<group>"; };
+		3FDFC9D8DF94173D8395BF8A /* DragTargetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragTargetResolver.swift; sourceTree = "<group>"; };
 		42C7D251312ACC2ED1037591 /* LaunchpadVisualStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchpadVisualStyle.swift; sourceTree = "<group>"; };
 		443F08E0720F4229DCCD7A94 /* IconPrewarmTasks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconPrewarmTasks.swift; sourceTree = "<group>"; };
 		489F0580391E33B1AEC99C32 /* LayoutConstraintSolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConstraintSolverTests.swift; sourceTree = "<group>"; };
@@ -284,6 +289,7 @@
 		5F38184B8E4B8D44F4272ED0 /* LauncherLayoutReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutReconciler.swift; sourceTree = "<group>"; };
 		623D836F4E1AC82D0601E627 /* LayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConstraintSolver.swift; sourceTree = "<group>"; };
 		65EB32DF84B565FFCE6FCEF0 /* PageTransitionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTransitionState.swift; sourceTree = "<group>"; };
+		67E5430FF1E9B2966FC9C918 /* FolderPagingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPagingController.swift; sourceTree = "<group>"; };
 		6DE828ABC7FAEAB53292571D /* PageTransitionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTransitionStateTests.swift; sourceTree = "<group>"; };
 		6FA5ED079D1BF6C8A59C79D2 /* GridMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridMetrics.swift; sourceTree = "<group>"; };
 		70DA7F4EC5AE21BFCC3E73CC /* LauncherLayoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutStore.swift; sourceTree = "<group>"; };
@@ -403,7 +409,10 @@
 				37E2162DA3747F5B636DC262 /* AppTilePresentation.swift */,
 				12378F1F17A5458FAAF8CDE4 /* AppTilePresentationFactory.swift */,
 				5464797DDF48D0E98EC02E3F /* DesktopWallpaperProvider.swift */,
+				20F04A321BC4ECEEE13270DD /* DragInteractionCoordinator.swift */,
+				3FDFC9D8DF94173D8395BF8A /* DragTargetResolver.swift */,
 				FDCAE2F3B68D68BEC16696BC /* FolderOverlayPresentationFactory.swift */,
+				67E5430FF1E9B2966FC9C918 /* FolderPagingController.swift */,
 				5770E21DB89970EB1B220ADC /* FolderPresentation.swift */,
 				443F08E0720F4229DCCD7A94 /* IconPrewarmTasks.swift */,
 				08CEBF51453B6862597EFFE6 /* IconWarmPlan.swift */,
@@ -852,7 +861,10 @@
 				BC6F69DF6B4E694DE94274FF /* AppTilePresentationFactory.swift in Sources */,
 				2ADEBC76C0FC5272ED9F3E72 /* ApplicationDirectoryMonitor.swift in Sources */,
 				E80DAAA0B220AF99BB55E2E1 /* DesktopWallpaperProvider.swift in Sources */,
+				8D43D3A254892945F201B4EF /* DragInteractionCoordinator.swift in Sources */,
+				27E03214223B6F0318ACE061 /* DragTargetResolver.swift in Sources */,
 				91E36579953088ACDBF40235 /* FolderOverlayPresentationFactory.swift in Sources */,
+				A1DCF3C4474E9BBBF3BFB749 /* FolderPagingController.swift in Sources */,
 				2CD5A3A9672F6A08C6F4B0BD /* FolderPresentation.swift in Sources */,
 				A013514AC9A3B64D6EF58E11 /* IconPrewarmTasks.swift in Sources */,
 				E2B6C5DE4FFB42FC5725E32B /* IconWarmPlan.swift in Sources */,

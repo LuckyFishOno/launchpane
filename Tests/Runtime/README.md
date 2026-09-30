@@ -305,3 +305,72 @@ only while the dragged icon moves toward the acquisition zone inside that
 visible target's cell. Stationary samples, moving away, and paths past the icon
 still allow reorder. Geometry tests cover multiple icon sizes and all directions;
 the original graphical assertions remain in place.
+
+## Folder paging ownership
+
+`FolderPagingCheck.swift` exercises the production folder paging owner without
+opening windows or discovering applications. It verifies explicit selection
+updates, drag page handoffs that preserve selection, page clamping, cache
+replacement, layer release, and cancellation in both directions at three panel
+widths. Cancellation must invalidate old callbacks without changing the selected
+page/item and must remain safe when repeated.
+
+```zsh
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+folder_paging_dir=$(mktemp -d /private/tmp/launchpane-folder-paging.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/FolderPagingCheck.swift \
+  -o "$folder_paging_dir/folder-paging-check"
+"$folder_paging_dir/folder-paging-check"
+```
+
+Success ends with `FOLDER PAGING: 44 assertions passed`. The graphical
+`PointerOwnershipCheck` covers preserving the active drag button through folder
+page changes and rollback; `FolderMergeCheck` covers opening, merging, and editing.
+
+## Drag interaction ownership
+
+`DragInteractionCheck.swift` exercises the production drag coordinator, including
+phase transitions, invalid commits, rollback, dismissal shielding, delayed pointer
+retirement, and repeatable idle cleanup. It creates AppKit views without opening a
+window and waits for the coordinator's actual deferred retirement task.
+
+```zsh
+runtime_sources=("${(@f)$(rg --files Sources/LaunchPane -g '*.swift' -g '!main.swift')}")
+drag_owner_dir=$(mktemp -d /private/tmp/launchpane-drag-owner.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  "${runtime_sources[@]}" Tests/Runtime/DragInteractionCheck.swift \
+  -o "$drag_owner_dir/drag-owner-check"
+"$drag_owner_dir/drag-owner-check"
+```
+
+Success ends with `DRAG INTERACTION: 16 assertions passed`. The real input paths
+are covered by `PointerOwnershipCheck`, `CrossPageDragCheck`, and `FolderMergeCheck`.
+
+## Drag target resolution
+
+`DragTargetResolverCheck.swift` tests the production geometry resolver without
+AppKit views or timers: visible folder acquisition, quick-drop insertion fallback,
+approach suppression, diagonal motion versus a stationary gutter hold, absent
+candidate rejection, and cross-page insertion in LTR and RTL layouts.
+
+```zsh
+target_check_dir=$(mktemp -d /private/tmp/launchpane-target-check.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" \
+  -framework AppCore -framework DisplayCore -framework LayoutCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  Sources/LaunchPane/ResolvedLaunchpadItem.swift Sources/LaunchPane/DragTargetResolver.swift \
+  Tests/Runtime/DragTargetResolverCheck.swift -o "$target_check_dir/target-check"
+"$target_check_dir/target-check"
+```
+
+Success ends with `DRAG TARGET RESOLVER: 16 assertions passed`. Run
+`FolderMergeCheck` and `CrossPageDragCheck` for integration with the actual input,
+presentation geometry, preview, and persistence paths.
