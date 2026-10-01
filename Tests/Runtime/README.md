@@ -374,3 +374,39 @@ swiftc -swift-version 6 -parse-as-library \
 Success ends with `DRAG TARGET RESOLVER: 16 assertions passed`. Run
 `FolderMergeCheck` and `CrossPageDragCheck` for integration with the actual input,
 presentation geometry, preview, and persistence paths.
+
+## Drag commit coordination
+
+`DragCommitCoordinatorCheck.swift` checks both persistence/visual completion
+orders, exactly-once finalization, stale callbacks, failure recovery, discard,
+and transaction ownership without opening a window.
+
+```zsh
+commit_check_dir=$(mktemp -d /private/tmp/launchpane-commit.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  -F "$PWD/Builds" -framework AppCore \
+  -Xlinker -rpath -Xlinker "$PWD/Builds" \
+  Sources/LaunchPane/DragCommitCoordinator.swift Tests/Runtime/DragCommitCoordinatorCheck.swift \
+  -o "$commit_check_dir/check"
+"$commit_check_dir/check"
+```
+
+Success reports 18 assertions passed. `FolderMergeCheck` also replaces its
+isolated layout file with a directory to force a real atomic write failure. It
+verifies the normalized transaction snapshot, restored source/destination hit
+targets, idle drag state, and unlocked interaction. The fixture is restored
+afterward; the check requires `LAUNCHPANE_LAYOUT_PATH` under `/private/tmp/`.
+
+## Folder drag transactions
+
+Folder-local commits use `DragCommitCoordinator` for transaction identity and
+completion gating. `LaunchpadRootView+FolderDragTransaction.swift` handles
+persistence and landing handoff; `LaunchpadRootView+FolderDragRollback.swift`
+handles cancellation and source-page restoration.
+
+`PointerOwnershipCheck` covers same-page and cross-page successful drops, a
+release during the page transition, and actual persistence failures on both
+same-page and cross-page drops. Failure cases replace only the isolated layout
+file with a directory, then restore it. They verify the original document and
+usable source hit targets after recovery. Use its command above; the standalone
+commit coordinator check covers stale callbacks and exactly-once completion.

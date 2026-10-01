@@ -15,8 +15,10 @@
 		094A2787D464E97882839D53 /* LayoutConstraintSolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 623D836F4E1AC82D0601E627 /* LayoutConstraintSolver.swift */; };
 		0961E50405FD012239D6BEF7 /* LaunchpadRootView+IconPrewarming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A67BC86FAE3EEB19AADA315B /* LaunchpadRootView+IconPrewarming.swift */; };
 		0B914600F25C1AFDDBCC5B20 /* LauncherDragCommitState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FBDEF645C587C37DCFE71E3 /* LauncherDragCommitState.swift */; };
+		0EBEC7A6D64F7BAA75948F14 /* LaunchpadRootView+FolderDragRollback.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5514F1020B79160B19D64DA /* LaunchpadRootView+FolderDragRollback.swift */; };
 		101F3FD30ABC5471DA95BA0A /* FolderLayoutTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2285F3CA0109F16761E7FB9 /* FolderLayoutTokens.swift */; };
 		10D09C5A6756EF09B3D81E20 /* CenteredPresentationTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F38DB40A1EB1FF2E9C18C96 /* CenteredPresentationTransform.swift */; };
+		1196F7478A60B0F220A2BA3E /* LaunchpadRootView+FolderDragTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDE0E467E4C98512EDCDAF11 /* LaunchpadRootView+FolderDragTransaction.swift */; };
 		12473E05EAC20955E8E7C318 /* LaunchpadPageSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E34EDCF4B542812F3EC87B7 /* LaunchpadPageSurface.swift */; };
 		137EB927173CC3021030D814 /* WallpaperLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB1FA5291240A53CA5475222 /* WallpaperLayoutTests.swift */; };
 		2185E876E1A099ED1BE98A56 /* LayoutCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791B31D1600F2EED06F09B81 /* LayoutCore.framework */; };
@@ -66,6 +68,7 @@
 		8A18659A2EEFB3338C61798C /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; };
 		8CA5266C37410EBC7C7B13BB /* AppMetadataResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D19C432CC9204AF85DA69A /* AppMetadataResolver.swift */; };
 		8D43D3A254892945F201B4EF /* DragInteractionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F04A321BC4ECEEE13270DD /* DragInteractionCoordinator.swift */; };
+		910439918295E9BD73BEBAC8 /* DragCommitCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F61DAC0CAFC3613036B0C56 /* DragCommitCoordinator.swift */; };
 		914F072E2BB7A848F58EB957 /* DisplayCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		91E36579953088ACDBF40235 /* FolderOverlayPresentationFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDCAE2F3B68D68BEC16696BC /* FolderOverlayPresentationFactory.swift */; };
 		95B51A1C3020A8889E0C5799 /* DisplayCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0D439F7B62854C7D342B32 /* DisplayCore.framework */; };
@@ -103,6 +106,7 @@
 		D9C449D78A92B1DC0C1933E6 /* LauncherLayoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70DA7F4EC5AE21BFCC3E73CC /* LauncherLayoutStore.swift */; };
 		DA10C63D6A31F0158A17797A /* AppIconCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EEDE5F07DC5B2B4820BF8E3 /* AppIconCache.swift */; };
 		DBBC9853FA8D703A8C3D01A6 /* PageMotionProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B89C8721A0705390D0919A /* PageMotionProfileTests.swift */; };
+		DE4CB1A0CB963AFD2D20E9DE /* LaunchpadRootView+DragCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4A05589D4874963CB9E29FD /* LaunchpadRootView+DragCommit.swift */; };
 		E2B6C5DE4FFB42FC5725E32B /* IconWarmPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08CEBF51453B6862597EFFE6 /* IconWarmPlan.swift */; };
 		E2F3A01AD28B774BE7A21DD2 /* LauncherLayoutStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3A6AC9D7E8CEF008F9E1A0 /* LauncherLayoutStoreTests.swift */; };
 		E51FE14EDAC3FD4AD65E024F /* LauncherPageLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1388D69DCA4B34D1263B56A4 /* LauncherPageLayoutTests.swift */; };
@@ -287,6 +291,7 @@
 		5EF493E855AA4054D4CCA0D0 /* FolderMergeGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderMergeGeometry.swift; sourceTree = "<group>"; };
 		5F12E80E364BE0803CC6297A /* GridSelectionNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridSelectionNavigatorTests.swift; sourceTree = "<group>"; };
 		5F38184B8E4B8D44F4272ED0 /* LauncherLayoutReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLayoutReconciler.swift; sourceTree = "<group>"; };
+		5F61DAC0CAFC3613036B0C56 /* DragCommitCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragCommitCoordinator.swift; sourceTree = "<group>"; };
 		623D836F4E1AC82D0601E627 /* LayoutConstraintSolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConstraintSolver.swift; sourceTree = "<group>"; };
 		65EB32DF84B565FFCE6FCEF0 /* PageTransitionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageTransitionState.swift; sourceTree = "<group>"; };
 		67E5430FF1E9B2966FC9C918 /* FolderPagingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPagingController.swift; sourceTree = "<group>"; };
@@ -314,16 +319,19 @@
 		9B195A8D8111997A9CE7968B /* LaunchpadSearchField+Editing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchpadSearchField+Editing.swift"; sourceTree = "<group>"; };
 		A160B9FEC4D3C3DD70C75E56 /* ApplicationIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIdentityTests.swift; sourceTree = "<group>"; };
 		A2595FF47923DB2D6E9A2342 /* AppDiscoverySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiscoverySource.swift; sourceTree = "<group>"; };
+		A5514F1020B79160B19D64DA /* LaunchpadRootView+FolderDragRollback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchpadRootView+FolderDragRollback.swift"; sourceTree = "<group>"; };
 		A67BC86FAE3EEB19AADA315B /* LaunchpadRootView+IconPrewarming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchpadRootView+IconPrewarming.swift"; sourceTree = "<group>"; };
 		A8D0B66CA1A4B30199F3E1D3 /* FolderGridMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderGridMetrics.swift; sourceTree = "<group>"; };
 		A92AEB8E21E56ECB6E5A73F0 /* ResolvedLaunchpadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResolvedLaunchpadItem.swift; sourceTree = "<group>"; };
 		ABE6D92867733DAB4470E269 /* ApplicationIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIdentity.swift; sourceTree = "<group>"; };
 		AD7EADCBD77B2AC076503D53 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B4A05589D4874963CB9E29FD /* LaunchpadRootView+DragCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchpadRootView+DragCommit.swift"; sourceTree = "<group>"; };
 		B5C41AAA2190A809AE47BBD4 /* LauncherDragStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragStateMachineTests.swift; sourceTree = "<group>"; };
 		B7E76AADB9F9B3221D0C90F5 /* AppCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BCFF5A6C2B39F4D702FC6C04 /* LegacyLayoutMigrationFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyLayoutMigrationFixture.swift; sourceTree = "<group>"; };
 		C0627172C90DED4320CE1098 /* DisplayContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayContext.swift; sourceTree = "<group>"; };
 		C2DA1F6DF33477D52148D76F /* LauncherDragIntentState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragIntentState.swift; sourceTree = "<group>"; };
+		CDE0E467E4C98512EDCDAF11 /* LaunchpadRootView+FolderDragTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchpadRootView+FolderDragTransaction.swift"; sourceTree = "<group>"; };
 		D22B653BEB2379168AE7EF52 /* DisplayCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DisplayCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4DBF4C4810BE373379F0FDA /* LauncherDragPreviewStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherDragPreviewStateTests.swift; sourceTree = "<group>"; };
 		D994EFC9F4CE41F8D1D24541 /* PageMotionProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageMotionProfile.swift; sourceTree = "<group>"; };
@@ -409,6 +417,7 @@
 				37E2162DA3747F5B636DC262 /* AppTilePresentation.swift */,
 				12378F1F17A5458FAAF8CDE4 /* AppTilePresentationFactory.swift */,
 				5464797DDF48D0E98EC02E3F /* DesktopWallpaperProvider.swift */,
+				5F61DAC0CAFC3613036B0C56 /* DragCommitCoordinator.swift */,
 				20F04A321BC4ECEEE13270DD /* DragInteractionCoordinator.swift */,
 				3FDFC9D8DF94173D8395BF8A /* DragTargetResolver.swift */,
 				FDCAE2F3B68D68BEC16696BC /* FolderOverlayPresentationFactory.swift */,
@@ -419,6 +428,9 @@
 				48C78DF3C80D205CA6C60C22 /* LaunchpadDragSession.swift */,
 				7E34EDCF4B542812F3EC87B7 /* LaunchpadPageSurface.swift */,
 				E176C7187EDE6B31D6F16E7B /* LaunchpadPresentationController.swift */,
+				B4A05589D4874963CB9E29FD /* LaunchpadRootView+DragCommit.swift */,
+				A5514F1020B79160B19D64DA /* LaunchpadRootView+FolderDragRollback.swift */,
+				CDE0E467E4C98512EDCDAF11 /* LaunchpadRootView+FolderDragTransaction.swift */,
 				10BCEF1B78F530EFA27C2A54 /* LaunchpadRootView+FolderTitleEditing.swift */,
 				A67BC86FAE3EEB19AADA315B /* LaunchpadRootView+IconPrewarming.swift */,
 				11DCB02AE9A4C20D24B03BB6 /* LaunchpadRootView+PageSwipe.swift */,
@@ -861,6 +873,7 @@
 				BC6F69DF6B4E694DE94274FF /* AppTilePresentationFactory.swift in Sources */,
 				2ADEBC76C0FC5272ED9F3E72 /* ApplicationDirectoryMonitor.swift in Sources */,
 				E80DAAA0B220AF99BB55E2E1 /* DesktopWallpaperProvider.swift in Sources */,
+				910439918295E9BD73BEBAC8 /* DragCommitCoordinator.swift in Sources */,
 				8D43D3A254892945F201B4EF /* DragInteractionCoordinator.swift in Sources */,
 				27E03214223B6F0318ACE061 /* DragTargetResolver.swift in Sources */,
 				91E36579953088ACDBF40235 /* FolderOverlayPresentationFactory.swift in Sources */,
@@ -872,6 +885,9 @@
 				8456EB1FC9E7BA49D4004E9B /* LaunchpadDragSession.swift in Sources */,
 				12473E05EAC20955E8E7C318 /* LaunchpadPageSurface.swift in Sources */,
 				73BE349718BE329550D753F1 /* LaunchpadPresentationController.swift in Sources */,
+				DE4CB1A0CB963AFD2D20E9DE /* LaunchpadRootView+DragCommit.swift in Sources */,
+				0EBEC7A6D64F7BAA75948F14 /* LaunchpadRootView+FolderDragRollback.swift in Sources */,
+				1196F7478A60B0F220A2BA3E /* LaunchpadRootView+FolderDragTransaction.swift in Sources */,
 				C0F4BC4460F7A8C49ED1D11D /* LaunchpadRootView+FolderTitleEditing.swift in Sources */,
 				0961E50405FD012239D6BEF7 /* LaunchpadRootView+IconPrewarming.swift in Sources */,
 				4EFDB95EEED898D6D5AA073B /* LaunchpadRootView+PageSwipe.swift in Sources */,
@@ -1006,7 +1022,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LaunchPaneAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1016,7 +1032,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPaneAgent;
 				PRODUCT_NAME = LaunchPaneAgent;
 				SDKROOT = macosx;
@@ -1076,7 +1092,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LaunchPane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1086,7 +1102,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPane;
 				PRODUCT_NAME = LaunchPane;
 				SDKROOT = macosx;
@@ -1202,7 +1218,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LaunchPaneAgent;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1212,7 +1228,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPaneAgent;
 				PRODUCT_NAME = LaunchPaneAgent;
 				SDKROOT = macosx;
@@ -1320,7 +1336,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LaunchPane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1330,7 +1346,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.launchpane.LaunchPane;
 				PRODUCT_NAME = LaunchPane;
 				SDKROOT = macosx;

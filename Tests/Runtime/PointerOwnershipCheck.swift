@@ -119,7 +119,9 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         await pause(0.5)
         check(value(root, "openFolderID", as: UUID.self) == folderID, "folder opens through window dispatch")
     }
-    private func checkFolderDrop(crossPage: Bool, duringTransition: Bool = false) async throws {
+    private func checkFolderDrop(
+        crossPage: Bool, duringTransition: Bool = false, failPersistence: Bool = false
+    ) async throws {
         try await openFixture()
         // Loading may reconcile the installed-app catalog and advance the fixture
         // revision. Measure only writes caused by this pointer interaction.
@@ -151,6 +153,13 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         let beforeRelease = try Data(contentsOf: layoutURL)
         let beforeReleaseDocument = try JSONDecoder().decode(LauncherLayoutDocument.self, from: beforeRelease)
         check(beforeReleaseDocument == beforeDrag, "folder drag preview does not persist before release")
+        if failPersistence { try forcePersistenceFailure() }
+        defer {
+            if failPersistence {
+                try? FileManager.default.removeItem(at: layoutURL)
+                try? JSONEncoder().encode(beforeDrag).write(to: layoutURL, options: .atomic)
+            }
+        }
         send(.leftMouseUp, at: target)
         let settled = await until("folder drop settles without Escape") {
             value(root, "folderItemDragSession", as: Any.self) == nil
@@ -158,18 +167,27 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
                 && root.dragInteraction.state == .idle
         }
         check(!source.button.isTrackingPointer, "source pointer tracking ended")
-        if !settled {
-            let state = root.dragInteraction.state
-            let committing = value(root, "isCommittingLayout", as: Bool.self)
-            let folderDrag = value(root, "folderItemDragSession", as: Any.self)
-            print("DIAGNOSTIC state=\(String(describing: state)) "
-                + "committing=\(String(describing: committing)) folderDrag=\(String(describing: folderDrag))")
-        }
-        if settled {
+        if settled && failPersistence {
+            verifyFailedFolderCommit(source: source, beforeDrag: beforeDrag)
+        } else if settled {
             try await verifyFolderLanding(
                 source: source, beforeDrag: beforeDrag, folderChrome: folderChrome,
                 landingPresentations: landingPresentations, duringTransition: duringTransition)
         }
+    }
+
+    private func forcePersistenceFailure() throws {
+        try FileManager.default.removeItem(at: layoutURL)
+        try FileManager.default.createDirectory(at: layoutURL, withIntermediateDirectories: false)
+    }
+
+    private func verifyFailedFolderCommit(source: AppTilePresentation, beforeDrag: LauncherLayoutDocument) {
+        check(root.layoutDocument == beforeDrag, "failed folder commit restores the exact transaction snapshot")
+        let current = root.folderPresentation.folderPresentations
+        check(current.allSatisfy { !$0.button.isHidden && $0.button.isEnabled && $0.button.window != nil },
+              "failed folder commit restores usable hit targets")
+        check(current.filter { $0.button.application.id == source.button.application.id }.count == 1,
+              "failed folder commit restores exactly one source target")
     }
 
     private func verifyFolderLanding(
@@ -220,6 +238,8 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         try await checkFolderDrop(crossPage: false)
         try await checkFolderDrop(crossPage: true)
         try await checkFolderDrop(crossPage: true, duringTransition: true)
+        try await checkFolderDrop(crossPage: false, failPersistence: true)
+        try await checkFolderDrop(crossPage: true, failPersistence: true)
     }
     func applicationDidFinishLaunching(_: Notification) {
         Task { @MainActor in

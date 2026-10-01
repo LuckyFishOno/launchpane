@@ -184,6 +184,7 @@ import QuartzCore
         try await checkLeavingAndRestart()
         try await checkReorderAndOffset()
         try await checkExistingFolder()
+        try await checkFailedCommitRollback()
     }
 
     func applicationDidFinishLaunching(_: Notification) {

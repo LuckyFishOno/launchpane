@@ -195,8 +195,6 @@ struct DragPageLocation: Equatable {
 @MainActor final class LaunchpadDragCommitContext {
     let session: LaunchpadDragSession
 
-    var completionState = LauncherDragCommitState()
-
     // True only after the persisted document has been compared page-by-page
     // with the existing layer surfaces and the live drag preview was proven to
     // be an exact match. This covers both insertion and same-page folder merges.

@@ -305,4 +305,30 @@ extension FolderMergeCheckDelegate {
         fixture = originalFixture
     }
 
+    func checkFailedCommitRollback() async throws {
+        try await openFixture()
+        sourceID = references[0].identity
+        let before = root.layoutDocument.normalizedForPageCapacity(metrics.itemsPerPage)
+        let destination = center(frames(.application(targetID))!.icon)
+        let button = press()
+        drag(button, to: destination)
+        await pause(0.55)
+        check(intent?.isReady == true, "failure fixture reaches merge-ready state")
+        // Replace only the isolated test layout with a directory, forcing the
+        // real store's atomic write to fail without changing user files.
+        try FileManager.default.removeItem(at: layoutURL)
+        try FileManager.default.createDirectory(at: layoutURL, withIntermediateDirectories: false)
+        defer {
+            try? FileManager.default.removeItem(at: layoutURL)
+            try? JSONEncoder().encode(before).write(to: layoutURL, options: .atomic)
+        }
+        await release(button, at: destination)
+        check(root.layoutDocument == before, "failed persistence restores the exact layout snapshot")
+        check(root.dragInteraction.state == .idle, "failed persistence releases the drag state")
+        check(!root.isCommittingLayout, "failed persistence unlocks interaction after recovery")
+        let live = descendants(root).compactMap { $0 as? AppTileButton }
+        check(live.filter { $0.application.id == sourceID }.count == 1, "rollback restores one source hit target")
+        check(live.filter { $0.application.id == targetID }.count == 1, "rollback restores one destination hit target")
+    }
+
 }
