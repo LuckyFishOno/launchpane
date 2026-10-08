@@ -34,6 +34,22 @@ The Xcode application uses two processes. `LaunchPane.app` is a short-lived Dock
 
 SwiftPM exposes and tests the core libraries only. XcodeGen defines the two application targets and embeds the agent in the distributable launcher bundle.
 
+Folder visual resources and opening/closing animation lifetimes belong to
+`FolderPresentation`. Folder page surfaces, selection, swipe tracking, settling,
+and cancellation belong to `FolderPagingController`. Focused root-view
+extensions integrate those owners with display/layout solving, icon loading,
+keyboard navigation, and AppKit pointer handoffs. Animation callbacks validate
+generation and resource identity before changing the active presentation.
+
+Drag proxy snapshots and lift/merge animation construction belong to
+`DragProxyPresentation`. `DragVisualCoordinator` owns delayed landing handoffs,
+rejects replaced or cancelled callbacks, and retires pending proxies on idle
+cleanup. Focused root-view extensions connect preview/reflow geometry and landing
+choices to the live page surfaces and AppKit hit targets. Persisted layout commit
+coordination remains separate from visual completion ownership.
+
+
+
 Visual constants are centralized in typed style or metrics values. Interactive animations prefer stable layer ownership and presentation-state continuity to avoid duplicate rendering, afterimages, and discontinuities during rapid interaction.
 
 ### Desktop Background and Menu Region

@@ -240,6 +240,7 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
         try await checkFolderDrop(crossPage: true, duringTransition: true)
         try await checkFolderDrop(crossPage: false, failPersistence: true)
         try await checkFolderDrop(crossPage: true, failPersistence: true)
+        try await checkFolderSwipeHandoffs()
     }
     func applicationDidFinishLaunching(_: Notification) {
         Task { @MainActor in
@@ -250,6 +251,39 @@ final class PointerOwnershipCheckDelegate: NSObject, NSApplicationDelegate {
             print("POINTER OWNERSHIP: \(failures) failures")
             exit(failures == 0 ? 0 : 1)
         }
+    }
+}
+
+extension PointerOwnershipCheckDelegate {
+    private func checkFolderSwipeHandoffs() async throws {
+        try await openFixture()
+        let panel = root.folderPresentation.folderContentAnimationLayer
+        for commit in [false, true] {
+            check(root.beginInteractiveFolderPageSwipe(direction: 1, timestamp: 1), "Real folder swipe begins")
+            let swipe = root.folderPaging.swipe!
+            root.updateInteractiveFolderPageSwipe(swipe, deltaX: -40, timestamp: 1.02)
+            root.finishInteractiveFolderPageSwipe(commit: commit)
+            await until("folder swipe settles") { root.folderPaging.swipe == nil }
+            check(root.folderPaging.page == (commit ? 1 : 0), "Swipe adopts the expected page")
+            check(root.folderPresentation.folderContentAnimationLayer === panel, "Swipe preserves folder panel")
+            let current = root.folderPresentation.folderPresentations
+            check(current.allSatisfy { !$0.button.isHidden && $0.button.isEnabled && $0.button.window != nil },
+                  "Swipe restores usable hit targets")
+        }
+        check(root.beginInteractiveFolderPageSwipe(direction: -1, timestamp: 2), "Reverse folder swipe begins")
+        root.finishInteractiveFolderPageSwipe(commit: true)
+        root.closeFolder(animated: false)
+        root.openFolder(folderID)
+        await pause(0.5)
+        check(root.openFolderID == folderID && root.folderPaging.page == 0 && root.folderPaging.swipe == nil,
+              "Closing during settle rejects old completion after reopening")
+        let reopened = root.folderPresentation.folderContentAnimationLayer
+        root.closeFolder(animated: true)
+        root.openFolder(folderID)
+        await pause(0.5)
+        check(root.openFolderID == folderID && root.folderPresentation.folderContentAnimationLayer !== reopened,
+              "Close completion cannot clear a newer folder opening")
+        check(!root.folderPresentation.folderOverlayLayer.isHidden, "New folder remains visible")
     }
 }
 

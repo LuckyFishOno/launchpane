@@ -11,6 +11,7 @@ import QuartzCore
         }
         checkSelection(check)
         checkCancellation(check)
+        checkSwipeLifecycle(check)
         print("FOLDER PAGING: \(assertions) assertions passed")
     }
 
@@ -71,4 +72,35 @@ import QuartzCore
             }
         }
     }
+    @MainActor private static func checkSwipeLifecycle(_ check: (Bool, String) -> Void) {
+        for direction in [-1, 1] {
+            let paging = FolderPagingController()
+            paging.selectPage(1, selectedIndex: 5)
+            let viewport = CALayer()
+            let outgoing = FolderPageSurface(pageIndex: 1, layer: CALayer(), presentations: [], applications: [])
+            let incoming = FolderPageSurface(
+                pageIndex: 1 + direction, layer: CALayer(), presentations: [], applications: [])
+            let swipe = InteractiveFolderPageSwipe(
+                outgoingSurface: outgoing, incomingSurface: incoming, targetPage: 1 + direction,
+                direction: direction, restingPosition: CGPoint(x: 500, y: 300), width: 800, timestamp: 1)
+            paging.beginSwipe(swipe, in: viewport)
+            check(paging.swipe === swipe && incoming.layer.superlayer === viewport, "Owner stages incoming page")
+            paging.updateSwipe(swipe, deltaX: -CGFloat(direction) * 100, timestamp: 1.01)
+            check(swipe.translation == -CGFloat(direction) * 144, "Tracking preserves bounded gain")
+            paging.presentSwipe(swipe)
+            check(outgoing.layer.position.x == 500 + swipe.translation, "Owner presents tracking geometry")
+            swipe.phase = .settling
+            let translation = swipe.translation
+            paging.updateSwipe(swipe, deltaX: 100, timestamp: 1.02)
+            check(swipe.translation == translation, "Settling cannot accept tracking updates")
+            check(paging.completeSwipe(swipe, commit: true), "Active swipe completes")
+            check(paging.page == 1 + direction && paging.selectedIndex == -1, "Commit selects incoming page")
+            check(paging.contentLayer === incoming.layer && paging.swipe == nil, "Commit transfers content ownership")
+            check(!paging.completeSwipe(swipe, commit: false), "Repeated completion cannot reverse committed state")
+            paging.beginSwipe(swipe, in: viewport)
+            paging.cancelInteractiveSwipe()
+            check(!paging.completeSwipe(swipe, commit: true), "Cancelled completion cannot change page")
+        }
+    }
+
 }

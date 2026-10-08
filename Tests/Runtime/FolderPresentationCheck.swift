@@ -12,6 +12,7 @@ import QuartzCore
         }
         checkCleanup(check)
         checkPointerOwner(check)
+        checkAnimationOwnership(check)
         print("FOLDER PRESENTATION: \(assertions) assertions passed")
     }
 
@@ -76,4 +77,25 @@ import QuartzCore
         check(tracked.button.superview === host, "Overlay cleanup cannot steal pointer ownership")
         tracked.button.removeFromSuperview()
     }
+    @MainActor private static func checkAnimationOwnership(_ check: (Bool, String) -> Void) {
+        let owner = FolderPresentation()
+        let layer = CALayer()
+        layer.shouldRasterize = true
+        owner.folderContentAnimationLayer = layer
+        let generation = owner.folderAnimationGeneration
+        check(owner.isCurrentAnimation(generation, contentLayer: layer), "Current layer and generation are accepted")
+        check(!owner.isCurrentAnimation(generation, contentLayer: CALayer()),
+              "Another layer cannot finish this opening")
+        owner.invalidateAnimation()
+        check(!owner.finishOpening(generation: generation, contentLayer: layer),
+              "Stale opening cannot retire new visuals")
+        check(layer.shouldRasterize, "Rejected callback leaves raster ownership intact")
+        check(owner.finishOpening(generation: owner.folderAnimationGeneration, contentLayer: layer),
+              "Current opening retires animation resources")
+        check(!layer.shouldRasterize && layer.rasterizationScale == 1, "Resting content releases parent raster cache")
+        owner.clearOverlay()
+        check(!owner.isCurrentAnimation(owner.folderAnimationGeneration, contentLayer: layer),
+              "Released layers reject late animation completion")
+    }
+
 }

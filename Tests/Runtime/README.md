@@ -294,7 +294,7 @@ swiftc -swift-version 6 -parse-as-library \
 "$folder_owner_dir/folder-owner-check"
 ```
 
-Success ends with `FOLDER PRESENTATION: 15 assertions passed`. Run
+Success ends with `FOLDER PRESENTATION: 22 assertions passed`. Run
 `PointerOwnershipCheck` and `FolderMergeCheck` for the real window and drag paths.
 
 The folder-ownership extraction exposed eight existing `FolderMergeCheck`
@@ -327,7 +327,7 @@ swiftc -swift-version 6 -parse-as-library \
 "$folder_paging_dir/folder-paging-check"
 ```
 
-Success ends with `FOLDER PAGING: 44 assertions passed`. The graphical
+Success ends with `FOLDER PAGING: 62 assertions passed`. The graphical
 `PointerOwnershipCheck` covers preserving the active drag button through folder
 page changes and rollback; `FolderMergeCheck` covers opening, merging, and editing.
 
@@ -410,3 +410,44 @@ same-page and cross-page drops. Failure cases replace only the isolated layout
 file with a directory, then restore it. They verify the original document and
 usable source hit targets after recovery. Use its command above; the standalone
 commit coordinator check covers stale callbacks and exactly-once completion.
+
+## Folder presentation and swipe ownership
+
+`FolderPresentation` owns opening/closing animations and validates both the
+animation generation and the exact content-layer identity before accepting a
+completion. `FolderPresentationCheck` checks stale completion rejection and
+retirement of the parent raster cache after opening.
+
+`FolderPagingController` owns tracking gain, velocity filtering, layer placement,
+settling animation, page adoption, and cancellation. `FolderPagingCheck` verifies
+both directions, tracking/settling separation, exactly-once adoption, and late
+completion after cancellation, without showing a window.
+
+`PointerOwnershipCheck` also drives the real folder swipe integration: cancel
+and commit, live hit targets after landing, closing during settling, and reopening
+before a previous closing animation completes. It checks that the current panel
+survives old callbacks. All fixture writes remain isolated under `/private/tmp/`.
+
+## Drag visual ownership
+
+`DragProxyPresentation` builds and refreshes the proxy's icon snapshot and
+separate live label, and applies the existing lift/merge animation profiles.
+`DragVisualCoordinator` owns delayed landing handoffs by proxy identity and token.
+Replacing a handoff, failed persistence, or idle cleanup rejects late callbacks;
+idle cleanup retires proxies still waiting for a landing.
+
+```zsh
+visual_check_dir=$(mktemp -d /private/tmp/launchpane-drag-visual.XXXXXX)
+swiftc -swift-version 6 -parse-as-library \
+  Sources/LaunchPane/DragVisualCoordinator.swift Tests/Runtime/DragVisualCoordinatorCheck.swift \
+  -o "$visual_check_dir/check"
+"$visual_check_dir/check"
+```
+
+Success reports `DRAG VISUAL COORDINATOR: 11 assertions passed`. The check drives
+completion tokens deterministically instead of waiting for animation timers.
+`FolderMergeCheck`, `PointerOwnershipCheck`, and `CrossPageDragCheck` cover the
+real proxy, reflow, landing, rollback, spring-open folder handoff and persistence
+failure paths. Focused root-view extensions keep preview geometry, merge reflow,
+landing decisions, and AppKit pointer handoffs separate from proxy construction
+and delayed completion ownership. Animation durations and curves are unchanged.

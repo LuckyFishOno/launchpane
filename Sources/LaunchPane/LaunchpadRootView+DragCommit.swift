@@ -124,6 +124,7 @@ extension LaunchpadRootView {
     }
 
     func restoreSnapshotUI(afterFailedCommit session: LaunchpadDragSession) {
+        dragVisuals.cancel(for: session.proxyLayer)
         currentPage = session.sourcePage
         session.originalSurface.layer.frame = bounds
         session.originalSurface.layer.position = CGPoint(x: bounds.midX, y: bounds.midY)

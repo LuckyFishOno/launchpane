@@ -2,7 +2,7 @@ import AppCore
 import AppKit
 import QuartzCore
 
-/// Owns folder page selection, cached surfaces, and swipe animation state.
+/// Owns folder page selection, cached surfaces, tracking, and swipe animation lifetimes.
 /// The root coordinates pointer ownership and asynchronous icon loading.
 @MainActor final class FolderPagingController {
     private(set) var page = 0

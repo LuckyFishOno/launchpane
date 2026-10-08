@@ -1,7 +1,7 @@
 import AppKit
 import QuartzCore
 
-/// Owns folder visual resources. The root retains drag transaction and page coordination.
+/// Owns folder visual resources and opening/closing animation lifetimes.
 @MainActor final class FolderPresentation {
     let folderOverlayLayer = CALayer()
     var folderPanelFrame = CGRect.zero
